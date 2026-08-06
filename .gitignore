@@ -6,3 +6,4 @@ circuit_data_gen/renders/
 __pycache__/
 
 .env
+.*
