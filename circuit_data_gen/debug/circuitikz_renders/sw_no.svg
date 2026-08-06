@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="95.4" height="16.881" viewBox="0 0 95.4 16.881">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 29 0 L 65 0 L 65 16.761719 L 29 16.761719 Z M 29 0 " />
+</clipPath>
+</defs>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M -0.00105287 -0.000238922 L 35.576112 -0.000238922 M 49.466312 -0.000238922 L 85.039544 -0.000238922 " transform="matrix(0.993, 0, 0, -0.993, 5.180733, 11.253669)" />
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 35.576112 -0.000238922 L 48.770032 5.95158 " transform="matrix(0.993, 0, 0, -0.993, 5.180733, 11.253669)" />
+</g>
+<path fill-rule="nonzero" fill="rgb(100%, 0%, 0%)" fill-opacity="1" d="M 41.070312 11.253906 C 41.070312 10.941406 40.816406 10.691406 40.507812 10.691406 C 40.195312 10.691406 39.945312 10.941406 39.945312 11.253906 C 39.945312 11.566406 40.195312 11.816406 40.507812 11.816406 C 40.816406 11.816406 41.070312 11.566406 41.070312 11.253906 Z M 41.070312 11.253906 " />
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 54.863281 11.253906 C 54.863281 10.941406 54.609375 10.691406 54.300781 10.691406 C 53.988281 10.691406 53.738281 10.941406 53.738281 11.253906 C 53.738281 11.566406 53.988281 11.816406 54.300781 11.816406 C 54.609375 11.816406 54.863281 11.566406 54.863281 11.253906 Z M 54.863281 11.253906 " />
+<g><circle cx="40.508" cy="11.254" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="42.508" y="9.754" fill="red" stroke="none" font-size="4">p</text><circle cx="54.301" cy="11.254" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="56.301" y="9.754" fill="red" stroke="none" font-size="4">n</text></g></svg>

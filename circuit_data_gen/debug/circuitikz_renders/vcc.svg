@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="18.696" height="26.403" viewBox="0 0 18.696 26.403">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 0.0585938 0 L 18.339844 0 L 18.339844 25.820312 L 0.0585938 25.820312 Z M 0.0585938 0 " />
+</clipPath>
+</defs>
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M -3.966758 6.3507 L -0.000145353 11.907153 L 3.970462 6.3507 " transform="matrix(0.977889, 0, 0, -0.977889, 9.199361, 20.393873)" />
+</g>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M -0.000145353 -0.000673361 L -0.000145353 11.907153 " transform="matrix(0.977889, 0, 0, -0.977889, 9.199361, 20.393873)" />
+<path fill-rule="nonzero" fill="rgb(100%, 0%, 0%)" fill-opacity="1" d="M 9.753906 20.394531 C 9.753906 20.085938 9.503906 19.839844 9.199219 19.839844 C 8.894531 19.839844 8.644531 20.085938 8.644531 20.394531 C 8.644531 20.699219 8.894531 20.949219 9.199219 20.949219 C 9.503906 20.949219 9.753906 20.699219 9.753906 20.394531 Z M 9.753906 20.394531 " />
+<g><circle cx="9.199" cy="20.395" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="11.199" y="18.895" fill="red" stroke="none" font-size="4">A</text></g></svg>

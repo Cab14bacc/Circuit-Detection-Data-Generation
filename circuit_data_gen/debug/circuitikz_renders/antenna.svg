@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="30.602" height="70.455" viewBox="0 0 30.602 70.455">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 0 0.183594 L 30.210938 0.183594 L 30.210938 37 L 0 37 Z M 0 0.183594 " />
+</clipPath>
+</defs>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M -0.198074 -0.000871626 L -0.198074 59.529041 " transform="matrix(0.987161, 0, 0, -0.987161, 15.301, 64.256952)" />
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M -0.198074 59.529041 L 9.722259 59.529041 L -0.198074 39.684418 L -10.122364 59.529041 L -0.198074 59.529041 " transform="matrix(0.987161, 0, 0, -0.987161, 15.301, 64.256952)" />
+</g>
+<path fill-rule="nonzero" fill="rgb(100%, 0%, 0%)" fill-opacity="1" d="M 15.859375 64.257812 C 15.859375 63.949219 15.609375 63.699219 15.300781 63.699219 C 14.992188 63.699219 14.742188 63.949219 14.742188 64.257812 C 14.742188 64.566406 14.992188 64.816406 15.300781 64.816406 C 15.609375 64.816406 15.859375 64.566406 15.859375 64.257812 Z M 15.859375 64.257812 " />
+<g><circle cx="15.301" cy="64.258" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="17.301" y="62.758" fill="red" stroke="none" font-size="4">a</text></g></svg>

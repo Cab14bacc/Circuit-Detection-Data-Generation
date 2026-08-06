@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="95.4" height="17.873" viewBox="0 0 95.4 17.873">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 29 0 L 65 0 L 65 17.746094 L 29 17.746094 Z M 29 0 " />
+</clipPath>
+</defs>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0.000485341 -0.000242684 L 35.575707 -0.000242684 M 49.466684 -0.000242684 L 85.041906 -0.000242684 " transform="matrix(0.992944, 0, 0, -0.992944, 5.183112, 12.23804)" />
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 35.575707 -0.000242684 L 48.770365 6.943279 " transform="matrix(0.992944, 0, 0, -0.992944, 5.183112, 12.23804)" />
+</g>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 49.466684 -0.000242684 L 43.907933 -0.000242684 L 43.907933 6.943279 " transform="matrix(0.992944, 0, 0, -0.992944, 5.183112, 12.23804)" />
+<path fill-rule="nonzero" fill="rgb(100%, 0%, 0%)" fill-opacity="1" d="M 41.070312 12.238281 C 41.070312 11.925781 40.816406 11.675781 40.507812 11.675781 C 40.195312 11.675781 39.945312 11.925781 39.945312 12.238281 C 39.945312 12.550781 40.195312 12.800781 40.507812 12.800781 C 40.816406 12.800781 41.070312 12.550781 41.070312 12.238281 Z M 41.070312 12.238281 " />
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 54.863281 12.238281 C 54.863281 11.925781 54.609375 11.675781 54.300781 11.675781 C 53.988281 11.675781 53.738281 11.925781 53.738281 12.238281 C 53.738281 12.550781 53.988281 12.800781 54.300781 12.800781 C 54.609375 12.800781 54.863281 12.550781 54.863281 12.238281 Z M 54.863281 12.238281 " />
+<g><circle cx="40.508" cy="12.238" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="42.508" y="10.738" fill="red" stroke="none" font-size="4">p</text><circle cx="54.301" cy="12.238" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="56.301" y="10.738" fill="red" stroke="none" font-size="4">n</text></g></svg>

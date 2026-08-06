@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="95.4" height="30.602" viewBox="0 0 95.4 30.602">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 28 0 L 67 0 L 67 30.210938 L 28 30.210938 Z M 28 0 " />
+</clipPath>
+</defs>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M -0.00106691 -0.000925732 L 34.58358 -0.000925732 M 50.455322 -0.000925732 L 85.039969 -0.000925732 " transform="matrix(0.987161, 0, 0, -0.987161, 5.430741, 15.104555)" />
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 50.455322 -0.000925732 L 34.58358 9.919407 L 34.58358 -9.921259 Z M 50.455322 -0.000925732 " transform="matrix(0.987161, 0, 0, -0.987161, 5.430741, 15.104555)" />
+</g>
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 50.455322 -9.921259 L 50.455322 9.919407 L 47.281765 9.919407 " transform="matrix(0.987161, 0, 0, -0.987161, 5.430741, 15.104555)" />
+<path fill-rule="nonzero" fill="rgb(100%, 0%, 0%)" fill-opacity="1" d="M 40.128906 15.105469 C 40.128906 14.796875 39.878906 14.542969 39.570312 14.542969 C 39.261719 14.542969 39.011719 14.796875 39.011719 15.105469 C 39.011719 15.414062 39.261719 15.664062 39.570312 15.664062 C 39.878906 15.664062 40.128906 15.414062 40.128906 15.105469 Z M 40.128906 15.105469 " />
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 55.800781 15.105469 C 55.800781 14.796875 55.550781 14.542969 55.238281 14.542969 C 54.929688 14.542969 54.679688 14.796875 54.679688 15.105469 C 54.679688 15.414062 54.929688 15.664062 55.238281 15.664062 C 55.550781 15.664062 55.800781 15.414062 55.800781 15.105469 Z M 55.800781 15.105469 " />
+<g><circle cx="39.570" cy="15.104" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="41.570" y="13.604" fill="red" stroke="none" font-size="4">+</text><circle cx="55.240" cy="15.104" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="57.240" y="13.604" fill="red" stroke="none" font-size="4">-</text></g></svg>

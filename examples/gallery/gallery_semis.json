@@ -1,0 +1,244 @@
+{
+  "modules": {
+    "circuit": {
+      "cells": {
+        "gnd": {
+          "type": "gnd",
+          "port_directions": {
+            "A": "input"
+          },
+          "connections": {
+            "A": [
+              2
+            ]
+          },
+          "attributes": {
+            "name": "GND"
+          }
+        },
+        "V1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              8
+            ]
+          },
+          "attributes": {
+            "ref": "V1",
+            "value": "{12}"
+          }
+        },
+        "R1": {
+          "type": "r_h",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              9
+            ]
+          },
+          "attributes": {
+            "ref": "R1",
+            "value": "{1k}"
+          }
+        },
+        "Qnpn1": {
+          "type": "q_npn",
+          "port_directions": {
+            "b": "input",
+            "c": "input",
+            "e": "output"
+          },
+          "connections": {
+            "b": [
+              9
+            ],
+            "c": [
+              3
+            ],
+            "e": [
+              4
+            ]
+          },
+          "attributes": {
+            "ref": "Qnpn1",
+            "value": ""
+          }
+        },
+        "Qpnp1": {
+          "type": "q_pnp",
+          "port_directions": {
+            "b": "input",
+            "c": "input",
+            "e": "output"
+          },
+          "connections": {
+            "b": [
+              3
+            ],
+            "c": [
+              4
+            ],
+            "e": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "Qpnp1",
+            "value": ""
+          }
+        },
+        "Jnjf1": {
+          "type": "jfet_n",
+          "port_directions": {
+            "g": "input",
+            "d": "output",
+            "s": "output"
+          },
+          "connections": {
+            "g": [
+              4
+            ],
+            "d": [
+              5
+            ],
+            "s": [
+              6
+            ]
+          },
+          "attributes": {
+            "ref": "Jnjf1",
+            "value": ""
+          }
+        },
+        "Jpjf1": {
+          "type": "jfet_p",
+          "port_directions": {
+            "g": "input",
+            "d": "output",
+            "s": "output"
+          },
+          "connections": {
+            "g": [
+              5
+            ],
+            "d": [
+              6
+            ],
+            "s": [
+              7
+            ]
+          },
+          "attributes": {
+            "ref": "Jpjf1",
+            "value": ""
+          }
+        },
+        "Mnmos1": {
+          "type": "mos_n",
+          "port_directions": {
+            "g": "input",
+            "d": "output",
+            "s": "output"
+          },
+          "connections": {
+            "g": [
+              6
+            ],
+            "d": [
+              7
+            ],
+            "s": [
+              8
+            ]
+          },
+          "attributes": {
+            "ref": "Mnmos1",
+            "value": ""
+          }
+        },
+        "Mpmos1": {
+          "type": "mos_p",
+          "port_directions": {
+            "g": "input",
+            "d": "output",
+            "s": "output"
+          },
+          "connections": {
+            "g": [
+              7
+            ],
+            "d": [
+              8
+            ],
+            "s": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "Mpmos1",
+            "value": ""
+          }
+        },
+        "Eopamp1": {
+          "type": "op",
+          "port_directions": {
+            "+": "input",
+            "-": "input",
+            "out": "output"
+          },
+          "connections": {
+            "+": [
+              8
+            ],
+            "-": [
+              10
+            ],
+            "out": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "Eopamp1",
+            "value": ""
+          }
+        },
+        "E1": {
+          "type": "op",
+          "port_directions": {
+            "out": "output",
+            "-": "input",
+            "+": "input"
+          },
+          "connections": {
+            "out": [
+              9
+            ],
+            "-": [
+              5
+            ],
+            "+": [
+              6
+            ]
+          },
+          "attributes": {
+            "ref": "E1",
+            "value": ""
+          }
+        }
+      }
+    }
+  }
+}

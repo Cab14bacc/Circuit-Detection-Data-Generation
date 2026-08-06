@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="95.4" height="34.571" viewBox="0 0 95.4 34.571">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 35 0 L 63 0 L 63 34.148438 L 35 34.148438 Z M 35 0 " />
+</clipPath>
+</defs>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0.000416505 -0.0000969093 L 38.551062 -0.0000969093 M 46.488193 -0.0000969093 L 85.038838 -0.0000969093 " transform="matrix(0.987743, 0, 0, -0.987743, 5.405839, 17.074123)" />
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 46.488193 11.907576 C 44.253774 8.024037 42.122178 4.310552 42.122178 -0.0000969093 C 42.122178 -4.310746 44.253774 -8.024231 46.488193 -11.903815 " transform="matrix(0.987743, 0, 0, -0.987743, 5.405839, 17.074123)" />
+</g>
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 38.551062 11.907576 L 38.551062 -11.903815 " transform="matrix(0.987743, 0, 0, -0.987743, 5.405839, 17.074123)" />
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 42.122178 -0.0000969093 L 46.488193 -0.0000969093 " transform="matrix(0.987743, 0, 0, -0.987743, 5.405839, 17.074123)" />
+<path fill-rule="nonzero" fill="rgb(100%, 0%, 0%)" fill-opacity="1" d="M 44.046875 17.074219 C 44.046875 16.765625 43.792969 16.515625 43.484375 16.515625 C 43.175781 16.515625 42.925781 16.765625 42.925781 17.074219 C 42.925781 17.382812 43.175781 17.632812 43.484375 17.632812 C 43.792969 17.632812 44.046875 17.382812 44.046875 17.074219 Z M 44.046875 17.074219 " />
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 51.882812 17.074219 C 51.882812 16.765625 51.632812 16.515625 51.324219 16.515625 C 51.015625 16.515625 50.765625 16.765625 50.765625 17.074219 C 50.765625 17.382812 51.015625 17.632812 51.324219 17.632812 C 51.632812 17.632812 51.882812 17.382812 51.882812 17.074219 Z M 51.882812 17.074219 " />
+<g><circle cx="43.486" cy="17.074" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="45.486" y="15.574" fill="red" stroke="none" font-size="4">+</text><circle cx="51.324" cy="17.074" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="53.324" y="15.574" fill="red" stroke="none" font-size="4">-</text></g></svg>

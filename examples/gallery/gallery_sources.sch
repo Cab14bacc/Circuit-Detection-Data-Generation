@@ -1,0 +1,17 @@
+V1 N0 N1 {12}
+Vdc1 N1 N2 {5}
+Vsin1 N2 N3 {1}
+I1 N2 G1 {1m}
+Idc1 N3 G2 {1m}
+Isin1 N3 G3 {1m}
+AM1 N3 N4
+VM1 N4 N5
+BAT1 N5 N6 {9}
+XT1 N6 N7
+ANT1 N7
+Vcc1 N7 0
+Vee1 N6 0
+W G0 N0
+W G0 G1
+W G1 G2
+W G2 G3

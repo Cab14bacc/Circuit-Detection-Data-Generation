@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="95.4" height="21.944" viewBox="0 0 95.4 21.944">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 29 0.0390625 L 63 0.0390625 L 63 21.847656 L 29 21.847656 Z M 29 0.0390625 " />
+</clipPath>
+</defs>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M -0.00018239 0.00107547 L 35.573717 0.00107547 M 49.465226 0.00107547 L 85.039126 0.00107547 " transform="matrix(0.99375, 0, 0, -0.99375, 5.148619, 13.669038)" />
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 35.573717 0.00107547 L 46.686138 6.94683 " transform="matrix(0.99375, 0, 0, -0.99375, 5.148619, 13.669038)" />
+</g>
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="bevel" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 35.573717 8.334409 C 38.553277 8.334409 41.304849 6.746358 42.790698 4.167742 C 43.498245 2.945258 43.871673 1.581264 43.90705 0.205478 " transform="matrix(0.99375, 0, 0, -0.99375, 5.148619, 13.669038)" />
+<path fill-rule="nonzero" fill="rgb(0%, 0%, 0%)" fill-opacity="1" d="M 48.285156 16.5 C 48.589844 15.226562 49.191406 12.929688 50.410156 11.429688 C 48.945312 12.664062 47.914062 12.625 46.550781 11.285156 C 47.648438 12.871094 48.074219 15.207031 48.285156 16.5 Z M 48.285156 16.5 " />
+<path fill-rule="nonzero" fill="rgb(100%, 0%, 0%)" fill-opacity="1" d="M 41.066406 13.667969 C 41.066406 13.359375 40.8125 13.105469 40.5 13.105469 C 40.191406 13.105469 39.9375 13.359375 39.9375 13.667969 C 39.9375 13.980469 40.191406 14.234375 40.5 14.234375 C 40.8125 14.234375 41.066406 13.980469 41.066406 13.667969 Z M 41.066406 13.667969 " />
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 54.867188 13.667969 C 54.867188 13.359375 54.617188 13.105469 54.304688 13.105469 C 53.992188 13.105469 53.742188 13.359375 53.742188 13.667969 C 53.742188 13.980469 53.992188 14.234375 54.304688 14.234375 C 54.617188 14.234375 54.867188 13.980469 54.867188 13.667969 Z M 54.867188 13.667969 " />
+<g><circle cx="40.502" cy="13.670" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="42.502" y="12.170" fill="red" stroke="none" font-size="4">+</text><circle cx="54.305" cy="13.670" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="56.305" y="12.170" fill="red" stroke="none" font-size="4">-</text></g></svg>

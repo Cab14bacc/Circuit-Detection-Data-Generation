@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="34.571" height="95.4" viewBox="0 0 34.571 95.4">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 0 24 L 34.148438 24 L 34.148438 71 L 0 71 Z M 0 24 " />
+</clipPath>
+<clipPath id="clip-1">
+<path clip-rule="nonzero" d="M 0 33 L 34.148438 33 L 34.148438 62 L 0 62 Z M 0 33 " />
+</clipPath>
+</defs>
+<path fill="none" stroke-width="0.3985" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0.00109691 -0.00141651 L 0.00109691 -30.614932 M 0.00109691 -54.426323 L 0.00109691 -85.039838 " transform="matrix(0.987743, 0, 0, -0.987743, 17.073135, 5.404851)" />
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 11.904815 -42.51865 C 11.904815 -49.095355 6.573848 -54.426323 0.00109691 -54.426323 C -6.575608 -54.426323 -11.906576 -49.095355 -11.906576 -42.51865 M 11.904815 -42.51865 C 11.904815 -35.945899 6.573848 -30.614932 0.00109691 -30.614932 C -6.575608 -30.614932 -11.906576 -35.945899 -11.906576 -42.51865 " transform="matrix(0.987743, 0, 0, -0.987743, 17.073135, 5.404851)" />
+</g>
+<g clip-path="url(#clip-1)">
+<path fill="none" stroke-width="0.797" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M -5.954717 -42.51865 C -4.981855 -40.996081 -4.052495 -39.544698 -2.97681 -39.544698 C -1.89717 -39.544698 -0.971765 -40.996081 0.00109691 -42.51865 C 0.970004 -44.045173 1.899364 -45.496557 2.975049 -45.496557 C 4.054689 -45.496557 4.984049 -44.045173 5.952956 -42.51865 " transform="matrix(0.987743, 0, 0, -0.987743, 17.073135, 5.404851)" />
+</g>
+<path fill-rule="nonzero" fill="rgb(100%, 0%, 0%)" fill-opacity="1" d="M 17.632812 35.644531 C 17.632812 35.335938 17.382812 35.085938 17.074219 35.085938 C 16.765625 35.085938 16.511719 35.335938 16.511719 35.644531 C 16.511719 35.953125 16.765625 36.203125 17.074219 36.203125 C 17.382812 36.203125 17.632812 35.953125 17.632812 35.644531 Z M 17.632812 35.644531 " />
+<path fill-rule="nonzero" fill="rgb(0%, 100%, 0%)" fill-opacity="1" d="M 17.632812 59.164062 C 17.632812 58.855469 17.382812 58.605469 17.074219 58.605469 C 16.765625 58.605469 16.511719 58.855469 16.511719 59.164062 C 16.511719 59.472656 16.765625 59.722656 17.074219 59.722656 C 17.382812 59.722656 17.632812 59.472656 17.632812 59.164062 Z M 17.632812 59.164062 " />
+<g><circle cx="17.072" cy="35.645" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="19.072" y="34.145" fill="red" stroke="none" font-size="4">+</text><circle cx="17.072" cy="59.164" r="1.2" fill="red" fill-opacity="0.35" stroke="red" stroke-width="0.3" /><text x="19.072" y="57.664" fill="red" stroke="none" font-size="4">-</text></g></svg>

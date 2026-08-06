@@ -1,0 +1,257 @@
+{
+  "modules": {
+    "circuit": {
+      "cells": {
+        "gnd": {
+          "type": "gnd",
+          "port_directions": {
+            "A": "input"
+          },
+          "connections": {
+            "A": [
+              2
+            ]
+          },
+          "attributes": {
+            "name": "GND"
+          }
+        },
+        "V1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "V1",
+            "value": "{12}"
+          }
+        },
+        "Vdc1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              3
+            ],
+            "-": [
+              4
+            ]
+          },
+          "attributes": {
+            "ref": "Vdc1",
+            "value": "{5}"
+          }
+        },
+        "Vsin1": {
+          "type": "sv",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              4
+            ],
+            "-": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "Vsin1",
+            "value": "{1}"
+          }
+        },
+        "I1": {
+          "type": "i",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              4
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "I1",
+            "value": "{1m}"
+          }
+        },
+        "Idc1": {
+          "type": "i",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "Idc1",
+            "value": "{1m}"
+          }
+        },
+        "Isin1": {
+          "type": "si",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "Isin1",
+            "value": "{1m}"
+          }
+        },
+        "AM1": {
+          "type": "ammeter",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              6
+            ]
+          },
+          "attributes": {
+            "ref": "AM1",
+            "value": ""
+          }
+        },
+        "VM1": {
+          "type": "voltmeter",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              6
+            ],
+            "-": [
+              7
+            ]
+          },
+          "attributes": {
+            "ref": "VM1",
+            "value": ""
+          }
+        },
+        "BAT1": {
+          "type": "battery",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              7
+            ],
+            "-": [
+              8
+            ]
+          },
+          "attributes": {
+            "ref": "BAT1",
+            "value": "{9}"
+          }
+        },
+        "XT1": {
+          "type": "xtal",
+          "port_directions": {
+            "a": "input",
+            "b": "input"
+          },
+          "connections": {
+            "a": [
+              8
+            ],
+            "b": [
+              9
+            ]
+          },
+          "attributes": {
+            "ref": "XT1",
+            "value": ""
+          }
+        },
+        "ANT1": {
+          "type": "antenna",
+          "port_directions": {
+            "a": "input"
+          },
+          "connections": {
+            "a": [
+              9
+            ]
+          },
+          "attributes": {
+            "ref": "ANT1",
+            "value": ""
+          }
+        },
+        "Vcc1": {
+          "type": "vcc",
+          "port_directions": {
+            "A": "output"
+          },
+          "connections": {
+            "A": [
+              9
+            ]
+          },
+          "attributes": {
+            "name": "Vcc1",
+            "value": "0"
+          }
+        },
+        "Vee1": {
+          "type": "vee",
+          "port_directions": {
+            "A": "output"
+          },
+          "connections": {
+            "A": [
+              8
+            ]
+          },
+          "attributes": {
+            "name": "Vee1",
+            "value": "0"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+# All paths are relative to circuit_data_gen, unless specified as absolute path
+[build_skin]
+debug_dir = "debug/circuitikz_renders"
+component_config_path = "configs/components.py"
+skin_path = "skins/lcapy.svg"
+
+[netlistsvg]
+bin_path = "/mnt/e/documents/github/netlistsvg/bin/netlistsvg.js"
+skin_path = "skins/lcapy.svg"
+
+[cli.render]
+default_render_dir = "../output"
+
+[cli.build_skin]
+render_path = "skins"

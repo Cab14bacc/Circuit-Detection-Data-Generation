@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "circuit-data-gen"
+version = "0.1.0"
+description = "Circuit schematic data generation (netlistsvg skins + rendering)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.9",
+    # matplotlib and any other hard runtime deps can go here
+]
+
+[project.scripts]
+cirdg = "circuit_data_gen.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["circuit_data_gen*"]
+
+[tool.setuptools.package-data]
+circuit_data_gen = ["configs/*.toml"]

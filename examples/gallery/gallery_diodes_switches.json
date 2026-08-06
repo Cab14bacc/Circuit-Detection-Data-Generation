@@ -1,0 +1,296 @@
+{
+  "modules": {
+    "circuit": {
+      "cells": {
+        "gnd": {
+          "type": "gnd",
+          "port_directions": {
+            "A": "input"
+          },
+          "connections": {
+            "A": [
+              2
+            ]
+          },
+          "attributes": {
+            "name": "GND"
+          }
+        },
+        "V1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              14
+            ]
+          },
+          "attributes": {
+            "ref": "V1",
+            "value": "{12}"
+          }
+        },
+        "D1": {
+          "type": "d_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              3
+            ],
+            "-": [
+              7
+            ]
+          },
+          "attributes": {
+            "ref": "D1",
+            "value": ""
+          }
+        },
+        "Dled1": {
+          "type": "d_led_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              7
+            ],
+            "-": [
+              8
+            ]
+          },
+          "attributes": {
+            "ref": "Dled1",
+            "value": ""
+          }
+        },
+        "Dschottky1": {
+          "type": "d_sk_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              8
+            ],
+            "-": [
+              9
+            ]
+          },
+          "attributes": {
+            "ref": "Dschottky1",
+            "value": ""
+          }
+        },
+        "Dzener1": {
+          "type": "d_zener_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              9
+            ],
+            "-": [
+              10
+            ]
+          },
+          "attributes": {
+            "ref": "Dzener1",
+            "value": ""
+          }
+        },
+        "Dphoto1": {
+          "type": "d_photo_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              10
+            ],
+            "-": [
+              11
+            ]
+          },
+          "attributes": {
+            "ref": "Dphoto1",
+            "value": ""
+          }
+        },
+        "SW1": {
+          "type": "sw",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              11
+            ],
+            "-": [
+              12
+            ]
+          },
+          "attributes": {
+            "ref": "SW1",
+            "value": ""
+          }
+        },
+        "SWno1": {
+          "type": "sw_no",
+          "port_directions": {
+            "p": "input",
+            "n": "input"
+          },
+          "connections": {
+            "p": [
+              12
+            ],
+            "n": [
+              13
+            ]
+          },
+          "attributes": {
+            "ref": "SWno1",
+            "value": ""
+          }
+        },
+        "SWpush1": {
+          "type": "sw_push",
+          "port_directions": {
+            "p": "input",
+            "n": "input"
+          },
+          "connections": {
+            "p": [
+              13
+            ],
+            "n": [
+              14
+            ]
+          },
+          "attributes": {
+            "ref": "SWpush1",
+            "value": ""
+          }
+        },
+        "R1": {
+          "type": "r_h",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "R1",
+            "value": "{1k}"
+          }
+        },
+        "SWnc1": {
+          "type": "sw_nc",
+          "port_directions": {
+            "p": "input",
+            "n": "input"
+          },
+          "connections": {
+            "p": [
+              10
+            ],
+            "n": [
+              4
+            ]
+          },
+          "attributes": {
+            "ref": "SWnc1",
+            "value": ""
+          }
+        },
+        "D2": {
+          "type": "d_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              4
+            ],
+            "-": [
+              11
+            ]
+          },
+          "attributes": {
+            "ref": "D2",
+            "value": ""
+          }
+        },
+        "SWspdt1": {
+          "type": "sw_spdt",
+          "port_directions": {
+            "p": "input",
+            "n": "input",
+            "common": "input"
+          },
+          "connections": {
+            "p": [
+              13
+            ],
+            "n": [
+              5
+            ],
+            "common": [
+              6
+            ]
+          },
+          "attributes": {
+            "ref": "SWspdt1",
+            "value": ""
+          }
+        },
+        "RV1": {
+          "type": "pot",
+          "port_directions": {
+            "p": "input",
+            "n": "input",
+            "wiper": "output"
+          },
+          "connections": {
+            "p": [
+              5
+            ],
+            "n": [
+              6
+            ],
+            "wiper": [
+              4
+            ]
+          },
+          "attributes": {
+            "ref": "RV1",
+            "value": ""
+          }
+        }
+      }
+    }
+  }
+}
