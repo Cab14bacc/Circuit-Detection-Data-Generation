@@ -652,7 +652,7 @@ def _emit_skin_entry(spec, body_paths, lead_paths, glyph_defs, glyph_uses, geom,
 
         out.append(
             f'  <text x="{rx:.3f}" y="{ry:.3f}" text-anchor="{svg_text_anchor}" '
-            f'dominant-baseline="{svg_dominant_baseline}"'
+            f'dominant-baseline="{svg_dominant_baseline}" '
             f'class="nodelabel" s:attribute="{label_name}">name</text>'
         )
 
@@ -684,7 +684,6 @@ def emit_full_skin(component_names, work_dir: Path | None = None, if_write_class
     font_size = get_config_value("netlistsvg", "font_size")
     font_char_width = get_config_value("netlistsvg", "font_char_width")
     font_char_height = get_config_value("netlistsvg", "font_char_height")
-    font_cap_height = get_config_value("netlistsvg", "font_cap_height")
     font_desc_shift = get_config_value("netlistsvg", "font_desc_shift")
     wire_stroke_width = get_config_value("netlistsvg", "wire_stroke_width")
     symbol_stroke_width = LINE_WIDTH * 2
@@ -695,7 +694,7 @@ def emit_full_skin(component_names, work_dir: Path | None = None, if_write_class
             '<svg xmlns="http://www.w3.org/2000/svg" xmlns:s="https://github.com/nturley/netlistsvg" xmlns:xlink="http://www.w3.org/1999/xlink">',
             '  <s:properties constants="false" splitsAndJoins="false" genericsLaterals="true"'
             f' fontCharWidth="{font_char_width}" fontCharHeight="{font_char_height}"'
-            f' fontCapHeight="{font_cap_height}" fontDescShift="{font_desc_shift}"'
+            f' fontDescShift="{font_desc_shift}"'
             f' wireStrokeWidth="{wire_stroke_width}"/>',
             "  <style>",
             "    svg { stroke: #000; fill: none; }",

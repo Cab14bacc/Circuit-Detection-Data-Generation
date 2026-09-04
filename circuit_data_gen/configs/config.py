@@ -40,15 +40,6 @@ NETLIST_SVG_CONFIG = {
     "FONT_SIZE": 10,
     "FONT_CHAR_WIDTH": 6,
     "FONT_CHAR_HEIGHT": 11,
-    # Ink height of an uppercase glyph (cap height) in px, measured from the
-    # rendered labels (10px bold Courier caps paint ~7px). Label annotation
-    # boxes use this instead of FONT_CHAR_HEIGHT so they hug the glyphs
-    # properly. Emitted into the skin as <s:properties fontCapHeight="..."> by build_skin.py;
-    # netlistsvg falls back to 0.7 * fontCharHeight for older skins.
-    # When this is set to be less than FONT_CHAR_HEIGHT, the annotation boxes can be
-    # incorrectly sized when chars like "g" or "y", which contain "tails", are present,
-    # "FONT_CAP_HEIGHT": 7,
-    "FONT_CAP_HEIGHT": 11,
     # Descender allowance for baseline-anchored label boxes, as a fraction of
     # the box height. Chars like "g"/"y" paint below the baseline; a box
     # ending exactly at the baseline would clip them, so baseline boxes are

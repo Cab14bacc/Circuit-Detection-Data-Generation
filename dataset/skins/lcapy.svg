@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:s="https://github.com/nturley/netlistsvg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <s:properties constants="false" splitsAndJoins="false" genericsLaterals="true" fontCharWidth="6" fontCharHeight="11" fontCapHeight="11" fontDescShift="0.3" wireStrokeWidth="0.8"/>
+  <s:properties constants="false" splitsAndJoins="false" genericsLaterals="true" fontCharWidth="6" fontCharHeight="11" fontDescShift="0.3" wireStrokeWidth="0.8"/>
   <style>
     svg { stroke: #000; fill: none; }
     text { fill: #000; stroke: none; font-size: 10px; font-weight: bold; font-family: "Courier New", monospace; }
@@ -33,8 +33,8 @@
   </g>
   <g s:x="0.393" s:y="5.889" s:pid="+" s:position="left"/>
   <g s:x="31.791" s:y="5.889" s:pid="-" s:position="right"/>
-  <text x="16.092" y="-3.631" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="16.092" y="17.361" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="16.092" y="-3.631" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="16.092" y="17.361" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="r_v" s:class="resistor" s:width="11.703" s:height="31.996">
@@ -44,8 +44,8 @@
   </g>
   <g s:x="5.852" s:y="0.393" s:pid="+" s:position="left"/>
   <g s:x="5.852" s:y="31.604" s:pid="-" s:position="right"/>
-  <text x="17.289" y="15.756" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="-5.584" y="15.756" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="17.289" y="15.756" text-anchor="start" dominant-baseline="middle" class="nodelabel" s:attribute="ref">name</text>
+  <text x="-5.584" y="15.756" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="r_var_h" s:class="resistor_variable" s:width="32.305" s:height="23.637">
@@ -61,8 +61,8 @@
   </g>
   <g s:x="0.395" s:y="11.816" s:pid="+" s:position="left"/>
   <g s:x="31.910" s:y="11.816" s:pid="-" s:position="right"/>
-  <text x="16.152" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="16.152" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="16.152" y="-4.219" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="16.152" y="29.816" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="c_h" s:class="capacitor" s:width="7.879" s:height="23.637">
@@ -72,8 +72,8 @@
   </g>
   <g s:x="0.000" s:y="11.816" s:pid="+" s:position="left"/>
   <g s:x="7.879" s:y="11.816" s:pid="-" s:position="right"/>
-  <text x="3.938" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="3.938" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="3.938" y="-4.219" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="3.938" y="29.816" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="c_polar_h" s:class="capacitor_polar" s:width="7.879" s:height="23.637">
@@ -86,8 +86,8 @@
   </g>
   <g s:x="0.000" s:y="11.816" s:pid="+" s:position="left"/>
   <g s:x="7.879" s:y="11.816" s:pid="-" s:position="right"/>
-  <text x="3.938" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="3.938" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="3.938" y="-4.219" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="3.938" y="29.816" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="c_var_h" s:class="capacitor_variable" s:width="23.633" s:height="23.637">
@@ -103,8 +103,8 @@
   </g>
   <g s:x="7.879" s:y="11.816" s:pid="+" s:position="left"/>
   <g s:x="15.758" s:y="11.816" s:pid="-" s:position="right"/>
-  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="c_v" s:class="capacitor" s:width="23.582" s:height="7.861">
@@ -114,8 +114,8 @@
   </g>
   <g s:x="11.791" s:y="0.000" s:pid="+" s:position="left"/>
   <g s:x="11.791" s:y="7.861" s:pid="-" s:position="right"/>
-  <text x="29.762" y="3.686" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="-6.180" y="3.686" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="29.762" y="3.686" text-anchor="start" dominant-baseline="middle" class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="3.686" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="pz" s:class="piezoelectric" s:width="15.773" s:height="27.605">
@@ -128,8 +128,8 @@
   </g>
   <g s:x="0.000" s:y="13.803" s:pid="a" s:position="left"/>
   <g s:x="15.773" s:y="13.803" s:pid="b" s:position="right"/>
-  <text x="7.887" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="7.887" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="7.887" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.887" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="sw" s:class="switch" s:width="13.709" s:height="11.039">
@@ -145,8 +145,8 @@
   </g>
   <g s:x="0.000" s:y="8.225" s:pid="+" s:position="left"/>
   <g s:x="13.709" s:y="8.225" s:pid="-" s:position="right"/>
-  <text x="6.854" y="-2.363" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="6.854" y="17.531" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="6.854" y="-2.363" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="6.854" y="17.531" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="sw_no" s:class="switch_no" s:width="13.680" s:height="5.863">
@@ -156,8 +156,8 @@
   </g>
   <g s:x="0.000" s:y="5.863" s:pid="p" s:position="left"/>
   <g s:x="13.680" s:y="5.863" s:pid="n" s:position="right"/>
-  <text x="6.840" y="-3.637" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="6.840" y="15.164" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="6.840" y="-3.637" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="6.840" y="15.164" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="sw_nc" s:class="switch_nc" s:width="13.709" s:height="6.854">
@@ -167,8 +167,8 @@
   </g>
   <g s:x="0.000" s:y="6.854" s:pid="p" s:position="left"/>
   <g s:x="13.709" s:y="6.854" s:pid="n" s:position="right"/>
-  <text x="6.854" y="-3.734" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="6.854" y="16.160" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="6.854" y="-3.734" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="6.854" y="16.160" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="sw_push" s:class="switch_push" s:width="22.852" s:height="11.426">
@@ -184,8 +184,8 @@
   </g>
   <g s:x="1.578" s:y="9.852" s:pid="p" s:position="left"/>
   <g s:x="21.275" s:y="9.852" s:pid="n" s:position="right"/>
-  <text x="11.426" y="-4.020" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="11.426" y="19.184" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="11.426" y="-4.020" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="11.426" y="19.184" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="sw_spdt" s:class="switch_spdt" s:width="33.094" s:height="20.633">
@@ -211,7 +211,7 @@
   <g s:x="0.000" s:y="10.316" s:pid="p" s:position="left"/>
   <g s:x="33.094" s:y="1.557" s:pid="n" s:position="right"/>
   <g s:x="33.094" s:y="19.076" s:pid="common" s:position="right"/>
-  <text x="16.547" y="-3.443" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="16.547" y="-3.443" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="d_h" s:class="diode" s:width="15.652" s:height="19.566">
@@ -224,8 +224,8 @@
   </g>
   <g s:x="0.000" s:y="9.785" s:pid="+" s:position="left"/>
   <g s:x="15.652" s:y="9.785" s:pid="-" s:position="right"/>
-  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="d_led_h" s:class="diode_led" s:width="17.352" s:height="29.578">
@@ -244,8 +244,8 @@
   </g>
   <g s:x="0.000" s:y="19.719" s:pid="+" s:position="left"/>
   <g s:x="15.773" s:y="19.719" s:pid="-" s:position="right"/>
-  <text x="7.887" y="-2.836" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="7.887" y="35.564" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="7.887" y="-2.836" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.887" y="35.564" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="d_sk_h" s:class="diode_schottky" s:width="18.785" s:height="19.566">
@@ -258,8 +258,8 @@
   </g>
   <g s:x="0.000" s:y="9.785" s:pid="+" s:position="left"/>
   <g s:x="15.652" s:y="9.785" s:pid="-" s:position="right"/>
-  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="d_zener_h" s:class="diode_zener" s:width="15.652" s:height="19.566">
@@ -272,8 +272,8 @@
   </g>
   <g s:x="0.000" s:y="9.785" s:pid="+" s:position="left"/>
   <g s:x="15.652" s:y="9.785" s:pid="-" s:position="right"/>
-  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="d_photo_h" s:class="diode_photo" s:width="15.773" s:height="23.738">
@@ -292,8 +292,8 @@
   </g>
   <g s:x="0.000" s:y="13.879" s:pid="+" s:position="left"/>
   <g s:x="15.773" s:y="13.879" s:pid="-" s:position="right"/>
-  <text x="7.887" y="-8.676" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="7.887" y="29.725" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="7.887" y="-8.676" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.887" y="29.725" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="l_h" s:class="inductor" s:width="24.180" s:height="8.773">
@@ -303,8 +303,8 @@
   </g>
   <g s:x="0.389" s:y="5.693" s:pid="+" s:position="left"/>
   <g s:x="23.789" s:y="5.693" s:pid="-" s:position="right"/>
-  <text x="12.090" y="-3.797" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="12.090" y="13.912" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="12.090" y="-3.797" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="12.090" y="13.912" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="l_choke_h" s:class="inductor_choke" s:width="24.180" s:height="10.527">
@@ -317,8 +317,8 @@
   </g>
   <g s:x="0.389" s:y="7.447" s:pid="+" s:position="left"/>
   <g s:x="23.789" s:y="7.447" s:pid="-" s:position="right"/>
-  <text x="12.090" y="-2.043" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="12.090" y="15.666" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="12.090" y="-2.043" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="12.090" y="15.666" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="l_var_h" s:class="inductor_var" s:width="24.453" s:height="17.746">
@@ -334,8 +334,8 @@
   </g>
   <g s:x="0.395" s:y="11.830" s:pid="+" s:position="left"/>
   <g s:x="24.059" s:y="11.830" s:pid="-" s:position="right"/>
-  <text x="12.227" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="12.227" y="23.336" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="12.227" y="-4.219" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="12.227" y="23.336" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="l_v" s:class="inductor" s:width="8.672" s:height="23.895">
@@ -345,8 +345,8 @@
   </g>
   <g s:x="3.047" s:y="0.387" s:pid="+" s:position="left"/>
   <g s:x="3.047" s:y="23.508" s:pid="-" s:position="right"/>
-  <text x="14.406" y="11.707" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="-5.133" y="11.707" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="14.406" y="11.707" text-anchor="start" dominant-baseline="middle" class="nodelabel" s:attribute="ref">name</text>
+  <text x="-5.133" y="11.707" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="v" s:class="vsource" s:width="23.582" s:height="23.586">
@@ -368,8 +368,8 @@
   <use xlink:href="#v-glyph-1-0" x="7.953" y="9.295"/>
   <g s:x="11.791" s:y="0.002" s:pid="+" s:position="bottom"/>
   <g s:x="11.791" s:y="23.584" s:pid="-" s:position="top"/>
-  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle" class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="sv" s:class="svsource" s:width="23.582" s:height="23.586">
@@ -382,8 +382,8 @@
   </g>
   <g s:x="11.791" s:y="0.002" s:pid="+" s:position="bottom"/>
   <g s:x="11.791" s:y="23.584" s:pid="-" s:position="top"/>
-  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle" class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="vcvs_h" s:class="controlled_vsource" s:width="27.607" s:height="27.605">
@@ -396,8 +396,8 @@
   </g>
   <g s:x="0.000" s:y="13.803" s:pid="+" s:position="bottom"/>
   <g s:x="27.605" s:y="13.803" s:pid="-" s:position="top"/>
-  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="ccvs" s:class="controlled_vsource" s:width="27.607" s:height="27.605">
@@ -410,8 +410,8 @@
   </g>
   <g s:x="0.000" s:y="13.803" s:pid="+" s:position="bottom"/>
   <g s:x="27.605" s:y="13.803" s:pid="-" s:position="top"/>
-  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="i" s:class="isource" s:width="23.582" s:height="23.586">
@@ -427,8 +427,8 @@
   </g>
   <g s:x="11.791" s:y="0.002" s:pid="+" s:position="bottom"/>
   <g s:x="11.791" s:y="23.584" s:pid="-" s:position="top"/>
-  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle" class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="si" s:class="sisource" s:width="23.582" s:height="23.586">
@@ -441,8 +441,8 @@
   </g>
   <g s:x="11.791" s:y="0.002" s:pid="+" s:position="bottom"/>
   <g s:x="11.791" s:y="23.584" s:pid="-" s:position="top"/>
-  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle" class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="vccs_h" s:class="controlled_isource" s:width="27.607" s:height="27.605">
@@ -455,8 +455,8 @@
   </g>
   <g s:x="0.000" s:y="13.803" s:pid="+" s:position="bottom"/>
   <g s:x="27.605" s:y="13.803" s:pid="-" s:position="top"/>
-  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="cccs" s:class="controlled_isource" s:width="27.607" s:height="27.605">
@@ -469,8 +469,8 @@
   </g>
   <g s:x="0.000" s:y="13.803" s:pid="+" s:position="left"/>
   <g s:x="27.605" s:y="13.803" s:pid="-" s:position="right"/>
-  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="k_spring" s:class="spring" s:width="20.355" s:height="9.891">
@@ -480,8 +480,8 @@
   </g>
   <g s:x="0.395" s:y="4.961" s:pid="+" s:position="left"/>
   <g s:x="19.961" s:y="4.961" s:pid="-" s:position="right"/>
-  <text x="10.180" y="-8.852" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="10.180" y="20.723" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="10.180" y="-8.852" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="10.180" y="20.723" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="m_mass" s:class="mass" s:width="19.533" s:height="18.559">
@@ -494,8 +494,8 @@
   </g>
   <g s:x="0.000" s:y="10.744" s:pid="+" s:position="left"/>
   <g s:x="19.533" s:y="10.744" s:pid="-" s:position="right"/>
-  <text x="9.768" y="-4.125" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="9.768" y="24.340" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="9.768" y="-4.125" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="9.768" y="24.340" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="r_damper" s:class="damper" s:width="15.758" s:height="13.789">
@@ -508,8 +508,8 @@
   </g>
   <g s:x="0.000" s:y="6.895" s:pid="+" s:position="left"/>
   <g s:x="15.758" s:y="6.895" s:pid="-" s:position="right"/>
-  <text x="7.879" y="-3.727" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="7.879" y="19.477" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="7.879" y="-3.727" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.879" y="19.477" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="tp" s:class="twoport" s:width="15.652" s:height="19.566">
@@ -522,8 +522,8 @@
   </g>
   <g s:x="0.000" s:y="9.785" s:pid="+" s:position="left"/>
   <g s:x="15.652" s:y="9.785" s:pid="-" s:position="right"/>
-  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="ammeter" s:class="ammeter" s:width="23.635" s:height="22.453">
@@ -544,8 +544,8 @@
   <use xlink:href="#ammeter-glyph-0-0" x="7.517" y="15.211"/>
   <g s:x="0.000" s:y="11.816" s:pid="+" s:position="left"/>
   <g s:x="23.635" s:y="11.816" s:pid="-" s:position="right"/>
-  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="voltmeter" s:class="voltmeter" s:width="23.635" s:height="22.453">
@@ -566,8 +566,8 @@
   <use xlink:href="#voltmeter-glyph-0-0" x="7.439" y="15.211"/>
   <g s:x="0.000" s:y="11.816" s:pid="+" s:position="left"/>
   <g s:x="23.635" s:y="11.816" s:pid="-" s:position="right"/>
-  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="battery" s:class="battery" s:width="11.820" s:height="23.637">
@@ -577,8 +577,8 @@
   </g>
   <g s:x="0.002" s:y="11.816" s:pid="+" s:position="left"/>
   <g s:x="11.820" s:y="11.816" s:pid="-" s:position="right"/>
-  <text x="5.910" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="5.910" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="5.910" y="-4.219" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="5.910" y="29.816" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="gnd" s:class="ground" s:width="11.734" s:height="15.645">
@@ -590,7 +590,7 @@
     <path class="symbol" d="M 0.0000368961 0.000390801 L 0.0000368961 -11.90346 " fill="none"/>
   </g>
   <g s:x="5.867" s:y="0.000" s:pid="A" s:position="left"/>
-  <text x="5.867" y="20.645" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="5.867" y="20.645" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="q_npn" s:class="npn" s:width="23.900" s:height="43.852">
@@ -613,7 +613,7 @@
   <g s:x="0.197" s:y="21.928" s:pid="b" s:position="left"/>
   <g s:x="23.900" s:y="0.197" s:pid="c" s:position="right"/>
   <g s:x="23.900" s:y="43.654" s:pid="e" s:position="right"/>
-  <text x="12.049" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="12.049" y="-4.803" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="q_pnp" s:class="pnp" s:width="23.900" s:height="43.852">
@@ -636,7 +636,7 @@
   <g s:x="0.197" s:y="21.928" s:pid="b" s:position="left"/>
   <g s:x="23.900" s:y="43.654" s:pid="c" s:position="right"/>
   <g s:x="23.900" s:y="0.197" s:pid="e" s:position="right"/>
-  <text x="12.049" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="12.049" y="-4.803" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="jfet_n" s:class="njfet" s:width="27.654" s:height="43.852">
@@ -656,7 +656,7 @@
   <g s:x="0.000" s:y="29.529" s:pid="g" s:position="left"/>
   <g s:x="27.654" s:y="0.197" s:pid="d" s:position="right"/>
   <g s:x="27.654" s:y="43.654" s:pid="s" s:position="right"/>
-  <text x="13.828" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.828" y="-4.803" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="jfet_p" s:class="pjfet" s:width="27.654" s:height="43.852">
@@ -676,7 +676,7 @@
   <g s:x="0.000" s:y="14.322" s:pid="g" s:position="left"/>
   <g s:x="27.654" s:y="43.654" s:pid="d" s:position="right"/>
   <g s:x="27.654" s:y="0.197" s:pid="s" s:position="right"/>
-  <text x="13.828" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.828" y="-4.803" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="mos_n" s:class="nmos" s:width="27.852" s:height="43.852">
@@ -696,7 +696,7 @@
   <g s:x="0.197" s:y="21.928" s:pid="g" s:position="left"/>
   <g s:x="27.852" s:y="0.197" s:pid="d" s:position="right"/>
   <g s:x="27.852" s:y="43.654" s:pid="s" s:position="right"/>
-  <text x="14.025" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="14.025" y="-4.803" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="mos_p" s:class="pmos" s:width="27.852" s:height="43.852">
@@ -722,7 +722,7 @@
   <g s:x="0.197" s:y="21.928" s:pid="g" s:position="left"/>
   <g s:x="27.852" s:y="43.654" s:pid="d" s:position="right"/>
   <g s:x="27.852" s:y="0.197" s:pid="s" s:position="right"/>
-  <text x="14.025" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="14.025" y="-4.803" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="op" s:class="opamp" s:width="66.945" s:height="55.133">
@@ -748,7 +748,7 @@
   <g s:x="0.000" s:y="41.348" s:pid="i+" s:position="top"/>
   <g s:x="0.000" s:y="13.781" s:pid="i-" s:position="top"/>
   <g s:x="66.945" s:y="27.566" s:pid="o+" s:position="bottom"/>
-  <text x="33.473" y="-5.000" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="33.473" y="-5.000" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="pot" s:class="potentiometer" s:width="32.203" s:height="21.598">
@@ -765,8 +765,8 @@
   <g s:x="0.396" s:y="15.709" s:pid="p" s:position="left"/>
   <g s:x="31.811" s:y="15.709" s:pid="n" s:position="right"/>
   <g s:x="16.104" s:y="0.002" s:pid="wiper" s:position="right"/>
-  <text x="16.104" y="-4.611" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="16.104" y="27.188" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="16.104" y="-4.611" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="16.104" y="27.188" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="tf" s:class="transformer" s:width="59.215" s:height="59.215">
@@ -784,7 +784,7 @@
   <g s:x="59.215" s:y="59.215" s:pid="sm" s:position="bottom"/>
   <g s:x="0.000" s:y="0.000" s:pid="pp" s:position="top"/>
   <g s:x="0.000" s:y="59.215" s:pid="pm" s:position="top"/>
-  <text x="29.607" y="-5.000" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="29.607" y="-5.000" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 <g s:type="adc" s:class="adc" s:width="27.607" s:height="27.605">
@@ -806,8 +806,8 @@
   <use xlink:href="#adc-glyph-0-1" x="16.232" y="23.396"/>
   <g s:x="0.000" s:y="13.803" s:pid="+" s:position="left"/>
   <g s:x="27.605" s:y="13.803" s:pid="-" s:position="right"/>
-  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="dac" s:class="dac" s:width="27.607" s:height="27.605">
@@ -829,8 +829,8 @@
   <use xlink:href="#dac-glyph-0-1" x="16.302" y="23.396"/>
   <g s:x="0.000" s:y="13.803" s:pid="+" s:position="left"/>
   <g s:x="27.605" s:y="13.803" s:pid="-" s:position="right"/>
-  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
-  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>
 
 <g s:type="antenna" s:class="antenna" s:width="19.590" s:height="58.762">
@@ -842,7 +842,7 @@
     <path class="symbol" d="M -0.198074 0.000475933 L -0.198074 59.526431 " fill="none"/>
   </g>
   <g s:x="9.992" s:y="58.762" s:pid="a" s:position="left"/>
-  <text x="9.992" y="-5.000" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="9.992" y="-5.000" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
 </g>
 
 </svg>
