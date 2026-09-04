@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "circuit-data-gen"
+name = "circuit_data_gen"
 version = "0.1.0"
-description = "Circuit schematic data generation (netlistsvg skins + rendering)"
+description = "Circuit data generation"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -41,6 +41,4 @@ line-length = 110
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F"] # Enable default Pyflakes and pycodestyle rules
-
-# pdflatex MiKTeX needed 
+select = ["E", "F"] # Enable default Pyflakes and pycodestyle rules\
