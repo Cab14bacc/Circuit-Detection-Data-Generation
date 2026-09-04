@@ -4,7 +4,7 @@ This repository contains a tool for generating circuit data: **netlists**, **ren
 
 1. Generate a random netlist using an LLM. The netlist is in a simplified [lcapy](https://github.com/mph-/lcapy) styled format (following `grammar.py` in lcapy), simplified as in supporting only a subset of components, and not reading lcapy hints (arguments after `;`). To see which components are supported, read the system prompt in `circuit_data_gen/netlist_gen/prompts/agent_system_prompt.md`.
 2. Validate the candidate with a smoke test: the netlist must parse, render, contain the required components, and form a single electrically-connected graph. Invalid candidates are fed back to the LLM with the error messages for regeneration.
-3. Render the validated netlist to a schematic using our [netlistsvg fork](https://github.com/Cab14bacc/netlistsvg). netlistsvg lays out the netlist with ELK (a multipurpose graph layout algorithm) and draws components from a **skin file** (SVG). The default skin is `dataset/skins/lcapy.svg`, built by `circuit_data_gen/build_skin.py`.
+3. Render the validated netlist to a schematic using our [netlistsvg fork](https://github.com/Cab14bacc/netlistsvg). netlistsvg lays out the netlist with ELK (a multipurpose graph layout algorithm) and draws components from a **skin file** (SVG). The default skin is `dataset/skins/lcapy.svg`, built by `circuit_data_gen/build_skin.py`. Read more about skins in [docs/SKIN_STRUCTURE.md](docs/SKIN_STRUCTURE.md).
 4. Emit structured **annotations** alongside the render: component bounding boxes, nested label (ref/value) boxes, and exact pin coordinates — all in output-image coordinates.
 
 ## Prerequisites
@@ -234,3 +234,7 @@ ruff format
 
 - Some component ports are **dropped** when the skin can't render them (e.g. a VCVS's control inputs on a bipole symbol). Dropped connections don't count for connectivity/hanging checks — mirroring what actually appears in the schematic.
 - After changing any `netlistsvg` config value, rebuild the skin (`cirdg build_skin --all`); after changing `netlistsvg/lib/*.ts`, rebuild the JS (`npx tsc`).
+
+## Example Output
+![Example Overlay 0](examples/example_project/annotations/overlay_0.png)
+![Example Overlay 4](examples/example_project/annotations/overlay_4.png)
