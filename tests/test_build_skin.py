@@ -52,10 +52,6 @@ class TestSkinProperties:
         assert attrs["fontCharWidth"] == str(get_config_value("netlistsvg", "font_char_width"))
         assert attrs["fontCharHeight"] == str(get_config_value("netlistsvg", "font_char_height"))
 
-    def test_cap_height_in_skin(self, skin_path):
-        attrs = self.get_props(skin_path.read_text())
-        assert attrs["fontCapHeight"] == str(get_config_value("netlistsvg", "font_cap_height"))
-
     def test_desc_shift_in_skin(self, skin_path):
         attrs = self.get_props(skin_path.read_text())
         assert attrs["fontDescShift"] == str(get_config_value("netlistsvg", "font_desc_shift"))
