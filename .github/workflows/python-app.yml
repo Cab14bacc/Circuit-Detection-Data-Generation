@@ -2,7 +2,10 @@
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Python package
-
+env:
+  CIRDG_API_KEY: "random_key"
+  CIRDG_MODEL_NAME: "random_name"
+  CIRDG_BASE_URL: "https://random_url/v1"
 on:
   push:
     branches: [ "main" ]
