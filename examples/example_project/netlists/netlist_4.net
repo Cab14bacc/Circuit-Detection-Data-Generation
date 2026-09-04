@@ -1,0 +1,40 @@
+V1 Vin G0 sin 0 5 1k
+R1 Vin N1 1k
+C1 N1 N2 1u
+L1 N2 G1 10m
+W G0 G1
+D1 N2 N3
+D2 N3 N4 tunnel
+R2 N4 G2 1k
+W G1 G2
+V2 Vdd G3 dc 5
+W G2 G3
+R3 Vdd Nd1 1k
+M1 Nd1 N3 Ns1 nmos
+W Ns1 Nd2
+M2 Nd2 N4 Ns2
+R4 Ns2 G4 1k
+W G3 G4
+M3 Nd3 N3 Vdd pmos
+R5 Nd3 G5 1k
+W G4 G5
+SW1 N6 G6
+W G5 G6
+SW2 N7 G7 push
+W G6 G7
+SW3 Nc1 Np1 Nm1 spdt
+W N7 Nc1
+P1 Pinp Pn
+W Np1 Pinp
+W Pn G8
+VM1 Nm1 G8
+W G7 G8
+E1 Np2 Nm2 N3 N4 2
+W Nm2 Nm1
+W Np2 N6
+F1 Np3 Nm3 V2 3
+W Np3 Vdd
+W Nm3 N7
+m1 Nmass1 Nmass2 1
+W Nmass1 G8
+W Nmass2 G8

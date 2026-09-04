@@ -24,38 +24,94 @@
           },
           "connections": {
             "+": [
-              2
+              3
             ],
             "-": [
-              7
+              4
             ]
           },
           "attributes": {
             "ref": "V1",
-            "value": "{12}"
+            "value": "12"
           }
         },
-        "R1": {
-          "type": "r_h",
+        "V2": {
+          "type": "sv",
           "port_directions": {
-            "+": "input",
+            "+": "output",
             "-": "input"
           },
           "connections": {
             "+": [
+              4
+            ],
+            "-": [
+              7
+            ]
+          },
+          "attributes": {
+            "ref": "V2",
+            "value": "1"
+          }
+        },
+        "V3": {
+          "type": "sv",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              7
+            ],
+            "-": [
+              8
+            ]
+          },
+          "attributes": {
+            "ref": "V3"
+          }
+        },
+        "I1": {
+          "type": "i",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              7
+            ],
+            "-": [
               3
-            ],
-            "-": [
-              8
             ]
           },
           "attributes": {
-            "ref": "R1",
-            "value": "{1k}"
+            "ref": "I1",
+            "value": "1m"
           }
         },
-        "Rvariable1": {
-          "type": "r_var_h",
+        "I2": {
+          "type": "si",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              8
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "I2",
+            "value": "1m"
+          }
+        },
+        "F1": {
+          "type": "cccs",
           "port_directions": {
             "+": "input",
             "-": "input"
@@ -65,18 +121,19 @@
               8
             ],
             "-": [
-              9
+              3
             ]
           },
           "attributes": {
-            "ref": "Rvariable1",
-            "value": "{1k}"
+            "ref": "F1",
+            "vcontrol": "V1",
+            "value": "5"
           }
         },
-        "REL1": {
-          "type": "r_h",
+        "H1": {
+          "type": "ccvs",
           "port_directions": {
-            "+": "input",
+            "+": "output",
             "-": "input"
           },
           "connections": {
@@ -84,16 +141,55 @@
               9
             ],
             "-": [
-              10
+              3
             ]
           },
           "attributes": {
-            "ref": "REL1",
-            "value": "{1k}"
+            "ref": "H1",
+            "vcontrol": "V1",
+            "value": "10"
           }
         },
-        "NR1": {
-          "type": "r_h",
+        "E1": {
+          "type": "vcvs_h",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              9
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "E1",
+            "value": "2"
+          }
+        },
+        "G1": {
+          "type": "vccs_h",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              9
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "G1",
+            "value": "2m"
+          }
+        },
+        "AM1": {
+          "type": "ammeter",
           "port_directions": {
             "+": "input",
             "-": "input"
@@ -107,12 +203,11 @@
             ]
           },
           "attributes": {
-            "ref": "NR1",
-            "value": "{1k}"
+            "ref": "AM1"
           }
         },
-        "Y1": {
-          "type": "r_h",
+        "VM1": {
+          "type": "voltmeter",
           "port_directions": {
             "+": "input",
             "-": "input"
@@ -126,12 +221,11 @@
             ]
           },
           "attributes": {
-            "ref": "Y1",
-            "value": "{1m}"
+            "ref": "VM1"
           }
         },
-        "Z1": {
-          "type": "r_h",
+        "BAT1": {
+          "type": "battery",
           "port_directions": {
             "+": "input",
             "-": "input"
@@ -145,12 +239,44 @@
             ]
           },
           "attributes": {
-            "ref": "Z1",
-            "value": "{1k}"
+            "ref": "BAT1",
+            "value": "9"
           }
         },
-        "C1": {
-          "type": "c_h",
+        "XT1": {
+          "type": "pz",
+          "port_directions": {
+            "a": "input",
+            "b": "input"
+          },
+          "connections": {
+            "a": [
+              13
+            ],
+            "b": [
+              14
+            ]
+          },
+          "attributes": {
+            "ref": "XT1"
+          }
+        },
+        "ANT1": {
+          "type": "antenna",
+          "port_directions": {
+            "a": "input"
+          },
+          "connections": {
+            "a": [
+              14
+            ]
+          },
+          "attributes": {
+            "ref": "ANT1"
+          }
+        },
+        "P1": {
+          "type": "tp",
           "port_directions": {
             "+": "input",
             "-": "input"
@@ -164,12 +290,37 @@
             ]
           },
           "attributes": {
-            "ref": "C1",
-            "value": "{100n}"
+            "ref": "P1"
           }
         },
-        "Cpolar1": {
-          "type": "c_polar_h",
+        "TF1": {
+          "type": "tf",
+          "port_directions": {
+            "sp": "input",
+            "sm": "input",
+            "pp": "output",
+            "pm": "output"
+          },
+          "connections": {
+            "sp": [
+              4
+            ],
+            "sm": [
+              8
+            ],
+            "pp": [
+              10
+            ],
+            "pm": [
+              12
+            ]
+          },
+          "attributes": {
+            "ref": "TF1"
+          }
+        },
+        "k1": {
+          "type": "k_spring",
           "port_directions": {
             "+": "input",
             "-": "input"
@@ -179,54 +330,16 @@
               14
             ],
             "-": [
-              15
-            ]
-          },
-          "attributes": {
-            "ref": "Cpolar1",
-            "value": "{10u}"
-          }
-        },
-        "Celectrolytic1": {
-          "type": "c_polar_h",
-          "port_directions": {
-            "+": "input",
-            "-": "input"
-          },
-          "connections": {
-            "+": [
-              15
-            ],
-            "-": [
-              4
-            ]
-          },
-          "attributes": {
-            "ref": "Celectrolytic1",
-            "value": "{10u}"
-          }
-        },
-        "Cvariable1": {
-          "type": "c_var_h",
-          "port_directions": {
-            "+": "input",
-            "-": "input"
-          },
-          "connections": {
-            "+": [
-              4
-            ],
-            "-": [
               5
             ]
           },
           "attributes": {
-            "ref": "Cvariable1",
-            "value": "{100p}"
+            "ref": "k1",
+            "value": "100"
           }
         },
-        "L1": {
-          "type": "l_h",
+        "m1": {
+          "type": "m_mass",
           "port_directions": {
             "+": "input",
             "-": "input"
@@ -240,12 +353,12 @@
             ]
           },
           "attributes": {
-            "ref": "L1",
-            "value": "{10m}"
+            "ref": "m1",
+            "value": "1"
           }
         },
-        "Lchoke1": {
-          "type": "l_choke_h",
+        "r1": {
+          "type": "r_damper",
           "port_directions": {
             "+": "input",
             "-": "input"
@@ -253,52 +366,50 @@
           "connections": {
             "+": [
               6
-            ],
-            "-": [
-              7
-            ]
-          },
-          "attributes": {
-            "ref": "Lchoke1",
-            "value": "{1m}"
-          }
-        },
-        "Lvariable1": {
-          "type": "l_var_h",
-          "port_directions": {
-            "+": "input",
-            "-": "input"
-          },
-          "connections": {
-            "+": [
-              7
-            ],
-            "-": [
-              2
-            ]
-          },
-          "attributes": {
-            "ref": "Lvariable1",
-            "value": "{1m}"
-          }
-        },
-        "Rbias": {
-          "type": "r_h",
-          "port_directions": {
-            "+": "input",
-            "-": "input"
-          },
-          "connections": {
-            "+": [
-              2
             ],
             "-": [
               3
             ]
           },
           "attributes": {
-            "ref": "Rbias",
-            "value": "{10k}"
+            "ref": "r1",
+            "value": "0.5"
+          }
+        },
+        "Vcc1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              14
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "Vcc1"
+          }
+        },
+        "Vee1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              13
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "Vee1"
           }
         }
       }

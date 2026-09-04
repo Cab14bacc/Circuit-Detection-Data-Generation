@@ -2,20 +2,6 @@
   "modules": {
     "circuit": {
       "cells": {
-        "gnd": {
-          "type": "gnd",
-          "port_directions": {
-            "A": "input"
-          },
-          "connections": {
-            "A": [
-              2
-            ]
-          },
-          "attributes": {
-            "name": "GND"
-          }
-        },
         "V1": {
           "type": "v",
           "port_directions": {
@@ -27,12 +13,12 @@
               2
             ],
             "-": [
-              14
+              7
             ]
           },
           "attributes": {
             "ref": "V1",
-            "value": "{12}"
+            "value": "12"
           }
         },
         "D1": {
@@ -46,35 +32,15 @@
               3
             ],
             "-": [
-              7
-            ]
-          },
-          "attributes": {
-            "ref": "D1",
-            "value": ""
-          }
-        },
-        "Dled1": {
-          "type": "d_led_h",
-          "port_directions": {
-            "+": "input",
-            "-": "output"
-          },
-          "connections": {
-            "+": [
-              7
-            ],
-            "-": [
               8
             ]
           },
           "attributes": {
-            "ref": "Dled1",
-            "value": ""
+            "ref": "D1"
           }
         },
-        "Dschottky1": {
-          "type": "d_sk_h",
+        "D2": {
+          "type": "d_led_h",
           "port_directions": {
             "+": "input",
             "-": "output"
@@ -88,12 +54,11 @@
             ]
           },
           "attributes": {
-            "ref": "Dschottky1",
-            "value": ""
+            "ref": "D2"
           }
         },
-        "Dzener1": {
-          "type": "d_zener_h",
+        "D3": {
+          "type": "d_sk_h",
           "port_directions": {
             "+": "input",
             "-": "output"
@@ -107,12 +72,11 @@
             ]
           },
           "attributes": {
-            "ref": "Dzener1",
-            "value": ""
+            "ref": "D3"
           }
         },
-        "Dphoto1": {
-          "type": "d_photo_h",
+        "D4": {
+          "type": "d_zener_h",
           "port_directions": {
             "+": "input",
             "-": "output"
@@ -126,8 +90,25 @@
             ]
           },
           "attributes": {
-            "ref": "Dphoto1",
-            "value": ""
+            "ref": "D4"
+          }
+        },
+        "D5": {
+          "type": "d_photo_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              11
+            ],
+            "-": [
+              12
+            ]
+          },
+          "attributes": {
+            "ref": "D5"
           }
         },
         "SW1": {
@@ -138,38 +119,18 @@
           },
           "connections": {
             "+": [
-              11
+              12
             ],
             "-": [
-              12
-            ]
-          },
-          "attributes": {
-            "ref": "SW1",
-            "value": ""
-          }
-        },
-        "SWno1": {
-          "type": "sw_no",
-          "port_directions": {
-            "p": "input",
-            "n": "input"
-          },
-          "connections": {
-            "p": [
-              12
-            ],
-            "n": [
               13
             ]
           },
           "attributes": {
-            "ref": "SWno1",
-            "value": ""
+            "ref": "SW1"
           }
         },
-        "SWpush1": {
-          "type": "sw_push",
+        "SW2": {
+          "type": "sw_no",
           "port_directions": {
             "p": "input",
             "n": "input"
@@ -183,8 +144,119 @@
             ]
           },
           "attributes": {
-            "ref": "SWpush1",
-            "value": ""
+            "ref": "SW2"
+          }
+        },
+        "SW3": {
+          "type": "sw_nc",
+          "port_directions": {
+            "p": "input",
+            "n": "input"
+          },
+          "connections": {
+            "p": [
+              14
+            ],
+            "n": [
+              15
+            ]
+          },
+          "attributes": {
+            "ref": "SW3"
+          }
+        },
+        "SW4": {
+          "type": "sw_push",
+          "port_directions": {
+            "p": "input",
+            "n": "input"
+          },
+          "connections": {
+            "p": [
+              15
+            ],
+            "n": [
+              7
+            ]
+          },
+          "attributes": {
+            "ref": "SW4"
+          }
+        },
+        "SW5": {
+          "type": "sw_spdt",
+          "port_directions": {
+            "p": "input",
+            "n": "input",
+            "common": "input"
+          },
+          "connections": {
+            "p": [
+              4
+            ],
+            "n": [
+              5
+            ],
+            "common": [
+              6
+            ]
+          },
+          "attributes": {
+            "ref": "SW5"
+          }
+        },
+        "TP1": {
+          "type": "tp",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              3
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "TP1"
+          }
+        },
+        "ADC1": {
+          "type": "adc",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "ADC1"
+          }
+        },
+        "DAC1": {
+          "type": "dac",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              6
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "DAC1"
           }
         },
         "R1": {
@@ -203,91 +275,26 @@
           },
           "attributes": {
             "ref": "R1",
-            "value": "{1k}"
+            "value": "1k"
           }
         },
-        "SWnc1": {
-          "type": "sw_nc",
-          "port_directions": {
-            "p": "input",
-            "n": "input"
-          },
-          "connections": {
-            "p": [
-              10
-            ],
-            "n": [
-              4
-            ]
-          },
-          "attributes": {
-            "ref": "SWnc1",
-            "value": ""
-          }
-        },
-        "D2": {
-          "type": "d_h",
+        "R2": {
+          "type": "r_v",
           "port_directions": {
             "+": "input",
-            "-": "output"
+            "-": "input"
           },
           "connections": {
             "+": [
-              4
+              6
             ],
             "-": [
-              11
+              2
             ]
           },
           "attributes": {
-            "ref": "D2",
-            "value": ""
-          }
-        },
-        "SWspdt1": {
-          "type": "sw_spdt",
-          "port_directions": {
-            "p": "input",
-            "n": "input",
-            "common": "input"
-          },
-          "connections": {
-            "p": [
-              13
-            ],
-            "n": [
-              5
-            ],
-            "common": [
-              6
-            ]
-          },
-          "attributes": {
-            "ref": "SWspdt1",
-            "value": ""
-          }
-        },
-        "RV1": {
-          "type": "pot",
-          "port_directions": {
-            "p": "input",
-            "n": "input",
-            "wiper": "output"
-          },
-          "connections": {
-            "p": [
-              5
-            ],
-            "n": [
-              6
-            ],
-            "wiper": [
-              4
-            ]
-          },
-          "attributes": {
-            "ref": "RV1",
-            "value": ""
+            "ref": "R2",
+            "value": "1k"
           }
         }
       }
