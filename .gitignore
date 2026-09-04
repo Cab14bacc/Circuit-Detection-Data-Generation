@@ -1,11 +1,11 @@
 __pycache__/
+.*/
 circuit_data_gen/debug/
-dataset/
+dataset/projects/
 
 *.egg-info/
 *.egg
 __pycache__/
 
 .env
-.*
-_*.*
+

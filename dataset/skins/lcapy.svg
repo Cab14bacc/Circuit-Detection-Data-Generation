@@ -1,0 +1,848 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:s="https://github.com/nturley/netlistsvg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <s:properties constants="false" splitsAndJoins="false" genericsLaterals="true" fontCharWidth="6" fontCharHeight="11" fontCapHeight="11" fontDescShift="0.3" wireStrokeWidth="0.8"/>
+  <style>
+    svg { stroke: #000; fill: none; }
+    text { fill: #000; stroke: none; font-size: 10px; font-weight: bold; font-family: "Courier New", monospace; }
+    .nodelabel { fill: #000; stroke: none; font-size: 10px; font-family: "Courier New", monospace; }
+    .symbol { stroke: #000; stroke-width: 0.8; fill: none; }
+  </style>
+<g s:type="generic" s:class="generic" s:width="30.0" s:height="30.0">
+  <s:alias val="generic"/>
+  <text x="15.0" y="-4" text-anchor="middle" dominant-baseline="middle" class="nodelabel" s:attribute="ref">name</text>
+  <rect width="30.0" height="30.0" x="0" y="0" s:generic="body" class="symbol"/>
+  <text x="15.0" y="13" text-anchor="middle" dominant-baseline="middle" class="nodelabel" s:attribute="value">value</text>
+  <g s:x="0"   s:y="6.000"  s:pid="in0"  s:position="left">
+    <text x="-5" y="-2" text-anchor="end" class="nodelabel">in0</text>
+  </g>
+  <g s:x="30.0" s:y="6.000" s:pid="out0" s:position="right">
+    <text x="5" y="-2" text-anchor="start" class="nodelabel">out0</text>
+  </g>
+  <g s:x="0"   s:y="24.000"  s:pid="in1"  s:position="left">
+    <text x="-5" y="-2" text-anchor="end" class="nodelabel">in1</text>
+  </g>
+  <g s:x="30.0" s:y="24.000" s:pid="out1" s:position="right">
+    <text x="5" y="-2" text-anchor="start" class="nodelabel">out1</text>
+  </g>
+</g>
+
+<g s:type="r_h" s:class="resistor" s:width="32.184" s:height="11.773">
+  <s:alias val="r_h"/>
+  <g transform="matrix(0.988942,0.000000,0.000000,-0.988942,-25.958013,5.887119)">
+    <path class="symbol" d="M 26.248266 0.000406417 L 29.28971 5.952947 L 34.582612 -5.952134 L 39.875514 5.952947 L 45.164467 -5.952134 L 50.457369 5.952947 L 55.746321 -5.952134 L 58.791715 0.000406417 " fill="none"/>
+  </g>
+  <g s:x="0.393" s:y="5.889" s:pid="+" s:position="left"/>
+  <g s:x="31.791" s:y="5.889" s:pid="-" s:position="right"/>
+  <text x="16.092" y="-3.631" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="16.092" y="17.361" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="r_v" s:class="resistor" s:width="11.703" s:height="31.996">
+  <s:alias val="r_v"/>
+  <g transform="matrix(0.983100,0.000000,0.000000,-0.983100,5.852262,-25.802592)">
+    <path class="symbol" d="M -0.000710864 -26.246152 L 5.951443 -29.289777 L -5.952865 -34.582346 L 5.951443 -39.874916 L -5.952865 -45.163512 L 5.951443 -50.456081 L -5.952865 -55.74865 L -0.000710864 -58.792275 " fill="none"/>
+  </g>
+  <g s:x="5.852" s:y="0.393" s:pid="+" s:position="left"/>
+  <g s:x="5.852" s:y="31.604" s:pid="-" s:position="right"/>
+  <text x="17.289" y="15.756" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="-5.584" y="15.756" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="r_var_h" s:class="resistor_variable" s:width="32.305" s:height="23.637">
+  <s:alias val="r_var_h"/>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-26.053463,11.817901)">
+    <path class="symbol" d="M 26.246876 0.00150538 L 29.29276 5.951603 L 34.581735 -5.952528 L 39.874646 5.951603 L 45.163622 -5.952528 L 50.456533 5.951603 L 55.749444 -5.952528 L 58.791392 0.00150538 " fill="none"/>
+  </g>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-26.053463,11.817901)">
+    <path class="symbol" d="M 36.171576 -11.90656 L 47.406714 9.162767 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-31.250006,-19.222656)">
+    <path class="symbol" d="M 53.707031 19.222656 C 52.875 20.234375 51.332031 22.035156 49.585938 22.851562 C 51.4375 22.382812 52.34375 22.867188 52.988281 24.667969 C 52.691406 22.761719 53.328125 20.476562 53.707031 19.222656 Z M 53.707031 19.222656 " fill="none"/>
+  </g>
+  <g s:x="0.395" s:y="11.816" s:pid="+" s:position="left"/>
+  <g s:x="31.910" s:y="11.816" s:pid="-" s:position="right"/>
+  <text x="16.152" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="16.152" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="c_h" s:class="capacitor" s:width="7.879" s:height="23.637">
+  <s:alias val="c_h"/>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-38.268301,11.817903)">
+    <path class="symbol" d="M 38.552402 11.905636 L 38.552402 -11.90656 M 46.489801 11.905636 L 46.489801 -11.90656 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="11.816" s:pid="+" s:position="left"/>
+  <g s:x="7.879" s:y="11.816" s:pid="-" s:position="right"/>
+  <text x="3.938" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="3.938" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="c_polar_h" s:class="capacitor_polar" s:width="7.879" s:height="23.637">
+  <s:alias val="c_polar_h"/>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-38.268301,11.817903)">
+    <path class="symbol" d="M 46.489801 11.905636 C 44.254579 8.02548 42.121674 4.310604 42.121674 0.00150538 C 42.121674 -4.311528 44.254579 -8.022469 46.489801 -11.90656 " fill="none"/>
+  </g>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-38.268301,11.817903)">
+    <path class="symbol" d="M 38.552402 11.905636 L 38.552402 -11.90656 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="11.816" s:pid="+" s:position="left"/>
+  <g s:x="7.879" s:y="11.816" s:pid="-" s:position="right"/>
+  <text x="3.938" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="3.938" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="c_var_h" s:class="capacitor_variable" s:width="23.633" s:height="23.637">
+  <s:alias val="c_var_h"/>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-30.389401,11.817903)">
+    <path class="symbol" d="M 38.552402 11.905636 L 38.552402 -11.90656 M 46.489801 11.905636 L 46.489801 -11.90656 " fill="none"/>
+  </g>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-30.389401,11.817903)">
+    <path class="symbol" d="M 30.615003 -11.90656 L 52.227395 9.705831 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-35.585944,-19.222654)">
+    <path class="symbol" d="M 59.21875 19.222656 C 58.128906 19.949219 56.128906 21.222656 54.222656 21.496094 C 56.128906 21.585938 56.855469 22.3125 56.949219 24.222656 C 57.21875 22.3125 58.492188 20.3125 59.21875 19.222656 Z M 59.21875 19.222656 " fill="none"/>
+  </g>
+  <g s:x="7.879" s:y="11.816" s:pid="+" s:position="left"/>
+  <g s:x="15.758" s:y="11.816" s:pid="-" s:position="right"/>
+  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="c_v" s:class="capacitor" s:width="23.582" s:height="7.861">
+  <s:alias val="c_v"/>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-38.183376)">
+    <path class="symbol" d="M 11.905144 -38.551861 L -11.904463 -38.551861 M 11.905144 -46.487082 L -11.904463 -46.487082 " fill="none"/>
+  </g>
+  <g s:x="11.791" s:y="0.000" s:pid="+" s:position="left"/>
+  <g s:x="11.791" s:y="7.861" s:pid="-" s:position="right"/>
+  <text x="29.762" y="3.686" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="3.686" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="pz" s:class="piezoelectric" s:width="15.773" s:height="27.605">
+  <s:alias val="pz"/>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-34.367006,13.801975)">
+    <path class="symbol" d="M 34.583151 13.88878 L 34.583151 -13.890308 M 50.455792 13.88878 L 50.455792 -13.890308 " fill="none"/>
+  </g>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-34.367006,13.801975)">
+    <path class="symbol" d="M 37.759252 13.094755 L 47.283623 13.094755 L 47.283623 -13.096283 L 37.759252 -13.096283 Z M 37.759252 13.094755 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="13.803" s:pid="a" s:position="left"/>
+  <g s:x="15.773" s:y="13.803" s:pid="b" s:position="right"/>
+  <text x="7.887" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.887" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="sw" s:class="switch" s:width="13.709" s:height="11.039">
+  <s:alias val="sw"/>
+  <g transform="matrix(0.986941,0.000000,0.000000,-0.986941,-35.110610,8.223979)">
+    <path class="symbol" d="M 35.575186 0.00134149 L 46.685112 6.943561 " fill="none"/>
+  </g>
+  <g transform="matrix(0.986941,0.000000,0.000000,-0.986941,-35.110610,8.223979)">
+    <path class="symbol" d="M 35.575186 8.332797 C 38.551553 8.332797 41.302319 6.745664 42.790503 4.16509 C 43.498973 2.946046 43.871019 1.580558 43.906641 0.203196 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-40.550776,-17.253907)">
+    <path class="symbol" d="M 48.28125 28.292969 C 48.582031 27.023438 49.179688 24.742188 50.390625 23.253906 C 48.9375 24.480469 47.914062 24.441406 46.558594 23.109375 C 47.648438 24.6875 48.074219 27.003906 48.28125 28.292969 Z M 48.28125 28.292969 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="8.225" s:pid="+" s:position="left"/>
+  <g s:x="13.709" s:y="8.225" s:pid="-" s:position="right"/>
+  <text x="6.854" y="-2.363" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="6.854" y="17.531" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="sw_no" s:class="switch_no" s:width="13.680" s:height="5.863">
+  <s:alias val="sw_no"/>
+  <g transform="matrix(0.984840,0.000000,0.000000,-0.984840,-35.036270,5.863824)">
+    <path class="symbol" d="M 35.575596 0.00055143 L 48.771744 5.954088 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="5.863" s:pid="p" s:position="left"/>
+  <g s:x="13.680" s:y="5.863" s:pid="n" s:position="right"/>
+  <text x="6.840" y="-3.637" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="6.840" y="15.164" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="sw_nc" s:class="switch_nc" s:width="13.709" s:height="6.854">
+  <s:alias val="sw_nc"/>
+  <g transform="matrix(0.986941,0.000000,0.000000,-0.986941,-35.110610,6.852885)">
+    <path class="symbol" d="M 35.575186 0.00134149 L 48.770944 6.943561 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="6.854" s:pid="p" s:position="left"/>
+  <g s:x="13.709" s:y="6.854" s:pid="n" s:position="right"/>
+  <text x="6.854" y="-3.734" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="6.854" y="16.160" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="sw_push" s:class="switch_push" s:width="22.852" s:height="11.426">
+  <s:alias val="sw_push"/>
+  <g transform="matrix(0.992741,0.000000,0.000000,-0.992741,-30.784737,9.850494)">
+    <path class="symbol" d="M 32.599502 4.960722 L 52.442768 4.960722 M 42.519167 4.960722 L 42.519167 9.922522 " fill="none"/>
+  </g>
+  <g transform="matrix(0.992741,0.000000,0.000000,-0.992741,-30.784737,9.850494)">
+    <path class="symbol" d="M 34.185231 -0.00107867 C 34.185231 0.876385 33.476965 1.588586 32.599502 1.588586 C 31.722038 1.588586 31.009837 0.876385 31.009837 -0.00107867 C 31.009837 -0.874607 31.722038 -1.586809 32.599502 -1.586809 C 33.476965 -1.586809 34.185231 -0.874607 34.185231 -0.00107867 Z M 34.185231 -0.00107867 " fill="none"/>
+  </g>
+  <g transform="matrix(0.992741,0.000000,0.000000,-0.992741,-30.784737,9.850494)">
+    <path class="symbol" d="M 54.028498 -0.00107867 C 54.028498 0.876385 53.316296 1.588586 52.442768 1.588586 C 51.565304 1.588586 50.853103 0.876385 50.853103 -0.00107867 C 50.853103 -0.874607 51.565304 -1.586809 52.442768 -1.586809 C 53.316296 -1.586809 54.028498 -0.874607 54.028498 -0.00107867 Z M 54.028498 -0.00107867 " fill="none"/>
+  </g>
+  <g s:x="1.578" s:y="9.852" s:pid="p" s:position="left"/>
+  <g s:x="21.275" s:y="9.852" s:pid="n" s:position="right"/>
+  <text x="11.426" y="-4.020" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="11.426" y="19.184" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="sw_spdt" s:class="switch_spdt" s:width="33.094" s:height="20.633">
+  <s:alias val="sw_spdt"/>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-5.783203,-5.082034)">
+    <path class="symbol" d="M 31.332031 24.15625 C 31.332031 23.296875 30.636719 22.601562 29.777344 22.601562 C 28.914062 22.601562 28.21875 23.296875 28.21875 24.15625 C 28.21875 25.019531 28.914062 25.714844 29.777344 25.714844 C 30.636719 25.714844 31.332031 25.019531 31.332031 24.15625 Z M 31.332031 24.15625 " fill="none"/>
+  </g>
+  <g transform="matrix(0.981031,0.000000,0.000000,-0.981031,16.546928,10.316233)">
+    <path class="symbol" d="M -6.002587 -0.000174306 L 7.141267 6.896268 " fill="none"/>
+  </g>
+  <g transform="matrix(0.981031,0.000000,0.000000,-0.981031,16.546928,10.316233)">
+    <path class="symbol" d="M 16.864772 8.930957 L 7.591208 8.930957 M 16.864772 -8.927324 L 7.591208 -8.927324 M -16.864881 -0.000174306 L -7.591317 -0.000174306 " fill="none"/>
+  </g>
+  <g transform="matrix(0.981031,0.000000,0.000000,-0.981031,16.546928,10.316233)">
+    <path class="symbol" d="M 9.175956 8.930957 C 9.175956 9.806948 8.4672 10.515705 7.591208 10.515705 C 6.711235 10.515705 6.002478 9.806948 6.002478 8.930957 C 6.002478 8.050984 6.711235 7.342227 7.591208 7.342227 C 8.4672 7.342227 9.175956 8.050984 9.175956 8.930957 Z M 9.175956 8.930957 " fill="none"/>
+  </g>
+  <g transform="matrix(0.981031,0.000000,0.000000,-0.981031,16.546928,10.316233)">
+    <path class="symbol" d="M 9.175956 -8.927324 C 9.175956 -8.051332 8.4672 -7.342575 7.591208 -7.342575 C 6.711235 -7.342575 6.002478 -8.051332 6.002478 -8.927324 C 6.002478 -9.807297 6.711235 -10.516054 7.591208 -10.516054 C 8.4672 -10.516054 9.175956 -9.807297 9.175956 -8.927324 Z M 9.175956 -8.927324 " fill="none"/>
+  </g>
+  <g transform="matrix(0.981031,0.000000,0.000000,-0.981031,16.546928,10.316233)">
+    <path class="symbol" d="M -6.002587 -0.000174306 C -6.002587 0.875817 -6.711343 1.588556 -7.591317 1.588556 C -8.467308 1.588556 -9.176065 0.875817 -9.176065 -0.000174306 C -9.176065 -0.876166 -8.467308 -1.588904 -7.591317 -1.588904 C -6.711343 -1.588904 -6.002587 -0.876166 -6.002587 -0.000174306 Z M -6.002587 -0.000174306 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="10.316" s:pid="p" s:position="left"/>
+  <g s:x="33.094" s:y="1.557" s:pid="n" s:position="right"/>
+  <g s:x="33.094" s:y="19.076" s:pid="common" s:position="right"/>
+  <text x="16.547" y="-3.443" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="d_h" s:class="diode" s:width="15.652" s:height="19.566">
+  <s:alias val="d_h"/>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-34.104679,9.784180)">
+    <path class="symbol" d="M 50.455123 -0.000991023 L 34.583174 9.921453 L 34.583174 -9.919474 Z M 50.455123 -0.000991023 " fill="none"/>
+  </g>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-34.104679,9.784180)">
+    <path class="symbol" d="M 50.455123 -9.919474 L 50.455123 9.921453 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="9.785" s:pid="+" s:position="left"/>
+  <g s:x="15.652" s:y="9.785" s:pid="-" s:position="right"/>
+  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="d_led_h" s:class="diode_led" s:width="17.352" s:height="29.578">
+  <s:alias val="d_led_h"/>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-34.367006,19.719312)">
+    <path class="symbol" d="M 50.455792 0.000566038 L 34.583151 9.92195 L 34.583151 -9.920818 Z M 50.455792 0.000566038 " fill="none"/>
+  </g>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-34.367006,19.719312)">
+    <path class="symbol" d="M 50.455792 -9.920818 L 50.455792 9.92195 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-39.515625,-18.023438)">
+    <path class="symbol" d="M 52.136719 18.023438 C 51.363281 18.671875 49.941406 19.816406 48.5 20.1875 C 49.96875 20.097656 50.589844 20.589844 50.820312 22.042969 C 50.867188 20.558594 51.671875 18.921875 52.136719 18.023438 Z M 52.136719 18.023438 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-39.515625,-18.023438)">
+    <path class="symbol" d="M 56.867188 19.996094 C 56.09375 20.644531 54.671875 21.789062 53.234375 22.160156 C 54.703125 22.066406 55.320312 22.5625 55.554688 24.015625 C 55.597656 22.53125 56.402344 20.894531 56.867188 19.996094 Z M 56.867188 19.996094 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="19.719" s:pid="+" s:position="left"/>
+  <g s:x="15.773" s:y="19.719" s:pid="-" s:position="right"/>
+  <text x="7.887" y="-2.836" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.887" y="35.564" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="d_sk_h" s:class="diode_schottky" s:width="18.785" s:height="19.566">
+  <s:alias val="d_sk_h"/>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-34.104679,9.784180)">
+    <path class="symbol" d="M 50.455123 -0.000991023 L 34.583174 9.921453 L 34.583174 -9.919474 Z M 50.455123 -0.000991023 " fill="none"/>
+  </g>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-34.104679,9.784180)">
+    <path class="symbol" d="M 47.282317 -5.954457 L 47.282317 -9.919474 L 50.455123 -9.919474 L 50.455123 9.921453 L 53.631889 9.921453 L 53.631889 5.952475 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="9.785" s:pid="+" s:position="left"/>
+  <g s:x="15.652" s:y="9.785" s:pid="-" s:position="right"/>
+  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="d_zener_h" s:class="diode_zener" s:width="15.652" s:height="19.566">
+  <s:alias val="d_zener_h"/>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-34.104679,9.784180)">
+    <path class="symbol" d="M 50.455123 -0.000991023 L 34.583174 9.921453 L 34.583174 -9.919474 Z M 50.455123 -0.000991023 " fill="none"/>
+  </g>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-34.104679,9.784180)">
+    <path class="symbol" d="M 50.455123 -9.919474 L 50.455123 9.921453 L 47.282317 9.921453 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="9.785" s:pid="+" s:position="left"/>
+  <g s:x="15.652" s:y="9.785" s:pid="-" s:position="right"/>
+  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="d_photo_h" s:class="diode_photo" s:width="15.773" s:height="23.738">
+  <s:alias val="d_photo_h"/>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-34.367006,13.879469)">
+    <path class="symbol" d="M 50.455792 0.000566038 L 34.583151 9.92195 L 34.583151 -9.920818 Z M 50.455792 0.000566038 " fill="none"/>
+  </g>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-34.367006,13.879469)">
+    <path class="symbol" d="M 50.455792 -9.920818 L 50.455792 9.92195 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-39.515625,-23.863281)">
+    <path class="symbol" d="M 44.246094 27.882812 C 45.019531 27.234375 46.441406 26.089844 47.882812 25.71875 C 46.414062 25.8125 45.792969 25.316406 45.5625 23.863281 C 45.515625 25.347656 44.710938 26.988281 44.246094 27.882812 Z M 44.246094 27.882812 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-39.515625,-23.863281)">
+    <path class="symbol" d="M 48.980469 29.855469 C 49.753906 29.207031 51.175781 28.0625 52.613281 27.691406 C 51.144531 27.785156 50.527344 27.289062 50.292969 25.835938 C 50.246094 27.320312 49.445312 28.957031 48.980469 29.855469 Z M 48.980469 29.855469 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="13.879" s:pid="+" s:position="left"/>
+  <g s:x="15.773" s:y="13.879" s:pid="-" s:position="right"/>
+  <text x="7.887" y="-8.676" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.887" y="29.725" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="l_h" s:class="inductor" s:width="24.180" s:height="8.773">
+  <s:alias val="l_h"/>
+  <g transform="matrix(0.982673,0.000000,0.000000,-0.982673,-29.693487,5.694053)">
+    <path class="symbol" d="M 30.217058 -0.160283 C 30.217058 3.127145 31.850835 5.794454 33.866223 5.794454 C 35.881612 5.794454 37.519363 3.127145 37.519363 -0.160283 C 37.519363 -1.80201 36.851542 -3.133677 36.028691 -3.133677 C 35.209815 -3.133677 34.541994 -1.80201 34.541994 -0.160283 C 34.541994 3.127145 36.175771 5.794454 38.195134 5.794454 C 40.210523 5.794454 41.844299 3.127145 41.844299 -0.160283 C 41.844299 -1.80201 41.176478 -3.133677 40.357603 -3.133677 C 39.534752 -3.133677 38.866931 -1.80201 38.866931 -0.160283 C 38.866931 3.127145 40.504682 5.794454 42.520071 5.794454 C 44.535459 5.794454 46.169235 3.127145 46.169235 -0.160283 C 46.169235 -1.80201 45.50539 -3.133677 44.682539 -3.133677 C 43.859688 -3.133677 43.195842 -1.80201 43.195842 -0.160283 C 43.195842 3.127145 44.829618 5.794454 46.845007 5.794454 C 48.86437 5.794454 50.498147 3.127145 50.498147 -0.160283 C 50.498147 -1.80201 49.830326 -3.133677 49.007475 -3.133677 C 48.188599 -3.133677 47.520778 -1.80201 47.520778 -0.160283 C 47.520778 3.127145 49.154554 5.794454 51.173918 5.794454 C 53.189306 5.794454 54.823083 3.127145 54.823083 -0.160283 " fill="none"/>
+  </g>
+  <g s:x="0.389" s:y="5.693" s:pid="+" s:position="left"/>
+  <g s:x="23.789" s:y="5.693" s:pid="-" s:position="right"/>
+  <text x="12.090" y="-3.797" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="12.090" y="13.912" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="l_choke_h" s:class="inductor_choke" s:width="24.180" s:height="10.527">
+  <s:alias val="l_choke_h"/>
+  <g transform="matrix(0.982673,0.000000,0.000000,-0.982673,-29.693487,7.447959)">
+    <path class="symbol" d="M 30.217058 -0.160283 C 30.217058 3.127145 31.850835 5.794454 33.866223 5.794454 C 35.881612 5.794454 37.519363 3.127145 37.519363 -0.160283 C 37.519363 -1.80201 36.851542 -3.133677 36.028691 -3.133677 C 35.209815 -3.133677 34.541994 -1.80201 34.541994 -0.160283 C 34.541994 3.127145 36.175771 5.794454 38.195134 5.794454 C 40.210523 5.794454 41.844299 3.127145 41.844299 -0.160283 C 41.844299 -1.80201 41.176478 -3.133677 40.357603 -3.133677 C 39.534752 -3.133677 38.866931 -1.80201 38.866931 -0.160283 C 38.866931 3.127145 40.504682 5.794454 42.520071 5.794454 C 44.535459 5.794454 46.169235 3.127145 46.169235 -0.160283 C 46.169235 -1.80201 45.50539 -3.133677 44.682539 -3.133677 C 43.859688 -3.133677 43.195842 -1.80201 43.195842 -0.160283 C 43.195842 3.127145 44.829618 5.794454 46.845007 5.794454 C 48.86437 5.794454 50.498147 3.127145 50.498147 -0.160283 C 50.498147 -1.80201 49.830326 -3.133677 49.007475 -3.133677 C 48.188599 -3.133677 47.520778 -1.80201 47.520778 -0.160283 C 47.520778 3.127145 49.154554 5.794454 51.173918 5.794454 C 53.189306 5.794454 54.823083 3.127145 54.823083 -0.160283 " fill="none"/>
+  </g>
+  <g transform="matrix(0.982673,0.000000,0.000000,-0.982673,-29.693487,7.447959)">
+    <path class="symbol" d="M 30.614571 7.579285 L 54.42557 7.579285 " fill="none"/>
+  </g>
+  <g s:x="0.389" s:y="7.447" s:pid="+" s:position="left"/>
+  <g s:x="23.789" s:y="7.447" s:pid="-" s:position="right"/>
+  <text x="12.090" y="-2.043" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="12.090" y="15.666" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="l_var_h" s:class="inductor_var" s:width="24.453" s:height="17.746">
+  <s:alias val="l_var_h"/>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-30.027163,11.829244)">
+    <path class="symbol" d="M 37.759252 -5.954063 L 45.817428 9.163862 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-35.175782,-19.414062)">
+    <path class="symbol" d="M 52.136719 19.414062 C 51.300781 20.425781 49.757812 22.226562 48.007812 23.046875 C 49.863281 22.578125 50.773438 23.0625 51.414062 24.863281 C 51.121094 22.957031 51.757812 20.667969 52.136719 19.414062 Z M 52.136719 19.414062 " fill="none"/>
+  </g>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-30.027163,11.829244)">
+    <path class="symbol" d="M 30.216013 -0.160038 C 30.216013 3.130057 31.851233 5.795151 33.867742 5.795151 C 35.884252 5.795151 37.519472 3.130057 37.519472 -0.160038 C 37.519472 -1.803119 36.851233 -3.135667 36.029692 -3.135667 C 35.208151 -3.135667 34.543843 -1.803119 34.543843 -0.160038 C 34.543843 3.130057 36.175132 5.795151 38.191642 5.795151 C 40.208151 5.795151 41.843371 3.130057 41.843371 -0.160038 C 41.843371 -1.803119 41.179063 -3.135667 40.357522 -3.135667 C 39.535981 -3.135667 38.867742 -1.803119 38.867742 -0.160038 C 38.867742 3.130057 40.502962 5.795151 42.519472 5.795151 C 44.535981 5.795151 46.171201 3.130057 46.171201 -0.160038 C 46.171201 -1.803119 45.502962 -3.135667 44.681421 -3.135667 C 43.859881 -3.135667 43.195572 -1.803119 43.195572 -0.160038 C 43.195572 3.130057 44.830792 5.795151 46.847302 5.795151 C 48.863811 5.795151 50.499031 3.130057 50.499031 -0.160038 C 50.499031 -1.803119 49.830792 -3.135667 49.009252 -3.135667 C 48.187711 -3.135667 47.519472 -1.803119 47.519472 -0.160038 C 47.519472 3.130057 49.154692 5.795151 51.171201 5.795151 C 53.187711 5.795151 54.822931 3.130057 54.822931 -0.160038 " fill="none"/>
+  </g>
+  <g s:x="0.395" s:y="11.830" s:pid="+" s:position="left"/>
+  <g s:x="24.059" s:y="11.830" s:pid="-" s:position="right"/>
+  <text x="12.227" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="12.227" y="23.336" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="l_v" s:class="inductor" s:width="8.672" s:height="23.895">
+  <s:alias val="l_v"/>
+  <g transform="matrix(0.971074,0.000000,0.000000,-0.971074,3.046412,-29.342327)">
+    <path class="symbol" d="M -0.160427 -30.216366 C 3.130066 -30.216366 5.793032 -31.849544 5.793032 -33.868893 C 5.793032 -35.88422 3.130066 -37.517399 -0.160427 -37.517399 C -1.801651 -37.517399 -3.137157 -36.853668 -3.137157 -36.029034 C -3.137157 -35.208422 -1.801651 -34.540669 -0.160427 -34.540669 C 3.130066 -34.540669 5.793032 -36.17787 5.793032 -38.193197 C 5.793032 -40.208523 3.130066 -41.845724 -0.160427 -41.845724 C -1.801651 -41.845724 -3.137157 -41.177972 -3.137157 -40.35736 C -3.137157 -39.532725 -1.801651 -38.868995 -0.160427 -38.868995 C 3.130066 -38.868995 5.793032 -40.502173 5.793032 -42.521523 C 5.793032 -44.536849 3.130066 -46.170028 -0.160427 -46.170028 C -1.801651 -46.170028 -3.137157 -45.506297 -3.137157 -44.681663 C -3.137157 -43.861051 -1.801651 -43.193298 -0.160427 -43.193298 C 3.130066 -43.193298 5.793032 -44.830499 5.793032 -46.845826 C 5.793032 -48.861152 3.130066 -50.498353 -0.160427 -50.498353 C -1.801651 -50.498353 -3.137157 -49.830601 -3.137157 -49.009989 C -3.137157 -48.185354 -1.801651 -47.521624 -0.160427 -47.521624 C 3.130066 -47.521624 5.793032 -49.154803 5.793032 -51.174152 C 5.793032 -53.189478 3.130066 -54.822657 -0.160427 -54.822657 " fill="none"/>
+  </g>
+  <g s:x="3.047" s:y="0.387" s:pid="+" s:position="left"/>
+  <g s:x="3.047" s:y="23.508" s:pid="-" s:position="right"/>
+  <text x="14.406" y="11.707" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="-5.133" y="11.707" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="v" s:class="vsource" s:width="23.582" s:height="23.586">
+  <s:alias val="v"/>
+  <defs>
+  <g>
+    <g id="v-glyph-0-0">
+      <path d="M 6.5 -2.265625 C 6.671875 -2.265625 6.859375 -2.265625 6.859375 -2.46875 C 6.859375 -2.671875 6.671875 -2.671875 6.5 -2.671875 L 1.171875 -2.671875 C 1 -2.671875 0.8125 -2.671875 0.8125 -2.46875 C 0.8125 -2.265625 1 -2.265625 1.171875 -2.265625 Z M 6.5 -2.265625 "/>
+    </g>
+    <g id="v-glyph-1-0">
+      <path d="M 4.03125 -2.265625 L 6.796875 -2.265625 C 6.9375 -2.265625 7.125 -2.265625 7.125 -2.46875 C 7.125 -2.671875 6.9375 -2.671875 6.796875 -2.671875 L 4.03125 -2.671875 L 4.03125 -5.4375 C 4.03125 -5.5625 4.03125 -5.75 3.84375 -5.75 C 3.640625 -5.75 3.640625 -5.5625 3.640625 -5.4375 L 3.640625 -2.671875 L 0.875 -2.671875 C 0.734375 -2.671875 0.546875 -2.671875 0.546875 -2.46875 C 0.546875 -2.265625 0.734375 -2.265625 0.875 -2.265625 L 3.640625 -2.265625 L 3.640625 0.5 C 3.640625 0.625 3.640625 0.8125 3.84375 0.8125 C 4.03125 0.8125 4.03125 0.625 4.03125 0.5 Z M 4.03125 -2.265625 "/>
+    </g>
+  </g>
+  </defs>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-30.320100)">
+    <path class="symbol" d="M 11.905144 -42.519471 C 11.905144 -35.944912 6.576872 -30.612696 -0.00163126 -30.612696 C -6.576191 -30.612696 -11.904463 -35.944912 -11.904463 -42.519471 C -11.904463 -49.094031 -6.576191 -54.426247 -0.00163126 -54.426247 C 6.576872 -54.426247 11.905144 -49.094031 11.905144 -42.519471 Z M 11.905144 -42.519471 " fill="none"/>
+  </g>
+  <use xlink:href="#v-glyph-0-0" x="7.953" y="19.225"/>
+  <use xlink:href="#v-glyph-1-0" x="7.953" y="9.295"/>
+  <g s:x="11.791" s:y="0.002" s:pid="+" s:position="bottom"/>
+  <g s:x="11.791" s:y="23.584" s:pid="-" s:position="top"/>
+  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="sv" s:class="svsource" s:width="23.582" s:height="23.586">
+  <s:alias val="sv"/>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-30.320100)">
+    <path class="symbol" d="M 11.905144 -42.519471 C 11.905144 -35.944912 6.576872 -30.612696 -0.00163126 -30.612696 C -6.576191 -30.612696 -11.904463 -35.944912 -11.904463 -42.519471 C -11.904463 -49.094031 -6.576191 -54.426247 -0.00163126 -54.426247 C 6.576872 -54.426247 11.905144 -49.094031 11.905144 -42.519471 Z M 11.905144 -42.519471 " fill="none"/>
+  </g>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-30.320100)">
+    <path class="symbol" d="M -5.953047 -42.519471 C -4.982836 -40.997108 -4.052065 -39.541791 -2.975367 -39.541791 C -1.89867 -39.541791 -0.971842 -40.997108 -0.00163126 -42.519471 C 0.96858 -44.041835 1.899351 -45.497151 2.976049 -45.497151 C 4.052746 -45.497151 4.983517 -44.041835 5.953728 -42.519471 " fill="none"/>
+  </g>
+  <g s:x="11.791" s:y="0.002" s:pid="+" s:position="bottom"/>
+  <g s:x="11.791" s:y="23.584" s:pid="-" s:position="top"/>
+  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="vcvs_h" s:class="controlled_vsource" s:width="27.607" s:height="27.605">
+  <s:alias val="vcvs_h"/>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 28.631893 0.00120126 L 42.519472 13.88878 L 56.410981 0.00120126 L 42.519472 -13.890308 Z M 28.631893 0.00120126 " fill="none"/>
+  </g>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 28.631893 0.00120126 L 56.410981 0.00120126 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="13.803" s:pid="+" s:position="bottom"/>
+  <g s:x="27.605" s:y="13.803" s:pid="-" s:position="top"/>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="ccvs" s:class="controlled_vsource" s:width="27.607" s:height="27.605">
+  <s:alias val="ccvs"/>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 28.631893 0.00120126 L 42.519472 13.88878 L 56.410981 0.00120126 L 42.519472 -13.890308 Z M 28.631893 0.00120126 " fill="none"/>
+  </g>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 28.631893 0.00120126 L 56.410981 0.00120126 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="13.803" s:pid="+" s:position="bottom"/>
+  <g s:x="27.605" s:y="13.803" s:pid="-" s:position="top"/>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="i" s:class="isource" s:width="23.582" s:height="23.586">
+  <s:alias val="i"/>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-30.320100)">
+    <path class="symbol" d="M 11.905144 -42.519471 C 11.905144 -35.944912 6.576872 -30.612696 -0.00163126 -30.612696 C -6.576191 -30.612696 -11.904463 -35.944912 -11.904463 -42.519471 C -11.904463 -49.094031 -6.576191 -54.426247 -0.00163126 -54.426247 C 6.576872 -54.426247 11.905144 -49.094031 11.905144 -42.519471 Z M 11.905144 -42.519471 " fill="none"/>
+  </g>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-30.320100)">
+    <path class="symbol" d="M -0.00163126 -34.185912 L -0.00163126 -50.853031 " fill="none"/>
+  </g>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-30.320100)">
+    <path class="symbol" d="M -0.00163126 -46.73555 L -1.985436 -46.73555 L -0.00163126 -50.951629 L 1.986118 -46.73555 Z M -0.00163126 -46.73555 " fill="none"/>
+  </g>
+  <g s:x="11.791" s:y="0.002" s:pid="+" s:position="bottom"/>
+  <g s:x="11.791" s:y="23.584" s:pid="-" s:position="top"/>
+  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="si" s:class="sisource" s:width="23.582" s:height="23.586">
+  <s:alias val="si"/>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-30.320100)">
+    <path class="symbol" d="M 11.905144 -42.519471 C 11.905144 -49.094031 6.576872 -54.426247 -0.00163126 -54.426247 C -6.576191 -54.426247 -11.904463 -49.094031 -11.904463 -42.519471 M 11.905144 -42.519471 C 11.905144 -35.944912 6.576872 -30.612696 -0.00163126 -30.612696 C -6.576191 -30.612696 -11.904463 -35.944912 -11.904463 -42.519471 " fill="none"/>
+  </g>
+  <g transform="matrix(0.990442,0.000000,0.000000,-0.990442,11.790680,-30.320100)">
+    <path class="symbol" d="M -5.953047 -42.519471 C -4.982836 -40.997108 -4.052065 -39.541791 -2.975367 -39.541791 C -1.89867 -39.541791 -0.971842 -40.997108 -0.00163126 -42.519471 C 0.96858 -44.041835 1.899351 -45.497151 2.976049 -45.497151 C 4.052746 -45.497151 4.983517 -44.041835 5.953728 -42.519471 " fill="none"/>
+  </g>
+  <g s:x="11.791" s:y="0.002" s:pid="+" s:position="bottom"/>
+  <g s:x="11.791" s:y="23.584" s:pid="-" s:position="top"/>
+  <text x="29.762" y="11.549" text-anchor="start" dominant-baseline="middle"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="vccs_h" s:class="controlled_isource" s:width="27.607" s:height="27.605">
+  <s:alias val="vccs_h"/>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 28.631893 0.00120126 L 42.519472 13.88878 L 56.410981 0.00120126 L 42.519472 -13.890308 Z M 28.631893 0.00120126 " fill="none"/>
+  </g>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 42.519472 13.88878 L 42.519472 -13.890308 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="13.803" s:pid="+" s:position="bottom"/>
+  <g s:x="27.605" s:y="13.803" s:pid="-" s:position="top"/>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="cccs" s:class="controlled_isource" s:width="27.607" s:height="27.605">
+  <s:alias val="cccs"/>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 28.631893 0.00120126 L 42.519472 13.88878 L 56.410981 0.00120126 L 42.519472 -13.890308 Z M 28.631893 0.00120126 " fill="none"/>
+  </g>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 42.519472 13.88878 L 42.519472 -13.890308 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="13.803" s:pid="+" s:position="left"/>
+  <g s:x="27.605" s:y="13.803" s:pid="-" s:position="right"/>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="k_spring" s:class="spring" s:width="20.355" s:height="9.891">
+  <s:alias val="k_spring"/>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-31.753118,4.959960)">
+    <path class="symbol" d="M 32.198618 -0.000991023 L 33.042323 5.029549 C 33.497844 7.730989 34.143496 7.719106 34.492069 5.001822 L 35.767529 -4.999843 C 36.112141 -7.717127 36.674611 -7.717127 37.019223 -4.999843 L 38.294682 5.001822 C 38.643255 7.719106 39.205725 7.719106 39.550337 5.001822 L 40.825797 -4.999843 C 41.17437 -7.717127 41.732879 -7.717127 42.081451 -4.999843 L 43.356911 5.001822 C 43.701523 7.719106 44.263993 7.719106 44.612566 5.001822 L 45.888026 -4.999843 C 46.232638 -7.717127 46.795107 -7.717127 47.139719 -4.999843 L 48.415179 5.001822 C 48.763752 7.719106 49.326222 7.719106 49.670834 5.001822 L 50.946294 -4.999843 C 51.294866 -7.717127 51.853375 -7.717127 52.201948 -4.999843 L 52.839678 -0.000991023 " fill="none"/>
+  </g>
+  <g s:x="0.395" s:y="4.961" s:pid="+" s:position="left"/>
+  <g s:x="19.961" s:y="4.961" s:pid="-" s:position="right"/>
+  <text x="10.180" y="-8.852" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="10.180" y="20.723" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="m_mass" s:class="mass" s:width="19.533" s:height="18.559">
+  <s:alias val="m_mass"/>
+  <g transform="matrix(0.984400,0.000000,0.000000,-0.984400,-32.089696,10.744348)">
+    <path class="symbol" d="M 32.600212 -7.93808 L 48.472825 -7.93808 L 48.472825 7.938501 L 32.600212 7.938501 Z M 32.600212 -7.93808 " fill="none"/>
+  </g>
+  <g transform="matrix(0.984400,0.000000,0.000000,-0.984400,-32.089696,10.744348)">
+    <path class="symbol" d="M 52.440978 -7.93808 L 52.440978 10.914616 L 32.600212 10.914616 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="10.744" s:pid="+" s:position="left"/>
+  <g s:x="19.533" s:y="10.744" s:pid="-" s:position="right"/>
+  <text x="9.768" y="-4.125" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="9.768" y="24.340" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="r_damper" s:class="damper" s:width="15.758" s:height="13.789">
+  <s:alias val="r_damper"/>
+  <g transform="matrix(0.992741,0.000000,0.000000,-0.992741,-34.331604,6.893229)">
+    <path class="symbol" d="M 34.582648 -6.94626 L 50.455687 -6.94626 L 50.455687 6.943633 L 34.582648 6.943633 " fill="none"/>
+  </g>
+  <g transform="matrix(0.992741,0.000000,0.000000,-0.992741,-34.331604,6.893229)">
+    <path class="symbol" d="M 44.89973 -5.557271 L 44.89973 5.554644 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="6.895" s:pid="+" s:position="left"/>
+  <g s:x="15.758" s:y="6.895" s:pid="-" s:position="right"/>
+  <text x="7.879" y="-3.727" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.879" y="19.477" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="tp" s:class="twoport" s:width="15.652" s:height="19.566">
+  <s:alias val="tp"/>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-34.104679,9.784180)">
+    <path class="symbol" d="M 50.455123 -0.000991023 L 34.583174 9.921453 L 34.583174 -9.919474 Z M 50.455123 -0.000991023 " fill="none"/>
+  </g>
+  <g transform="matrix(0.986164,0.000000,0.000000,-0.986164,-34.104679,9.784180)">
+    <path class="symbol" d="M 50.455123 -9.919474 L 50.455123 9.921453 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="9.785" s:pid="+" s:position="left"/>
+  <g s:x="15.652" s:y="9.785" s:pid="-" s:position="right"/>
+  <text x="7.828" y="-4.027" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="7.828" y="25.547" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="ammeter" s:class="ammeter" s:width="23.635" s:height="22.453">
+  <s:alias val="ammeter"/>
+  <defs>
+  <g>
+    <g id="ammeter-glyph-0-0">
+      <path d="M 4.6875 -6.640625 C 4.578125 -6.90625 4.453125 -6.90625 4.296875 -6.90625 C 4.015625 -6.90625 3.96875 -6.828125 3.90625 -6.640625 L 1.453125 -0.6875 C 1.390625 -0.546875 1.359375 -0.46875 0.609375 -0.46875 L 0.40625 -0.46875 L 0.40625 0 C 0.78125 -0.015625 1.25 -0.03125 1.5625 -0.03125 C 1.953125 -0.03125 2.5 -0.03125 2.875 0 L 2.875 -0.46875 C 2.84375 -0.46875 1.984375 -0.46875 1.984375 -0.59375 C 1.984375 -0.609375 2.015625 -0.703125 2.03125 -0.71875 L 2.515625 -1.90625 L 5.171875 -1.90625 L 5.765625 -0.46875 L 4.828125 -0.46875 L 4.828125 0 C 5.203125 -0.03125 6.140625 -0.03125 6.5625 -0.03125 C 6.96875 -0.03125 7.828125 -0.03125 8.171875 0 L 8.171875 -0.46875 L 7.21875 -0.46875 Z M 3.84375 -5.125 L 4.96875 -2.375 L 2.71875 -2.375 Z M 3.84375 -5.125 "/>
+    </g>
+  </g>
+  </defs>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-30.389395,11.817901)">
+    <path class="symbol" d="M 53.234819 0.00150538 C 53.234819 5.916186 48.43775 10.713255 42.519134 10.713255 C 36.600518 10.713255 31.803449 5.916186 31.803449 0.00150538 C 31.803449 -5.91711 36.600518 -10.71418 42.519134 -10.71418 C 48.43775 -10.71418 53.234819 -5.91711 53.234819 0.00150538 Z M 53.234819 0.00150538 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-35.585938,-19.222656)">
+    <path class="symbol" d="M 59.21875 19.222656 C 58.335938 19.828125 56.703125 20.621094 55.375 20.972656 L 57.472656 23.070312 C 57.820312 21.738281 58.613281 20.109375 59.21875 19.222656 " fill="none"/>
+  </g>
+  <use xlink:href="#ammeter-glyph-0-0" x="7.517" y="15.211"/>
+  <g s:x="0.000" s:y="11.816" s:pid="+" s:position="left"/>
+  <g s:x="23.635" s:y="11.816" s:pid="-" s:position="right"/>
+  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="voltmeter" s:class="voltmeter" s:width="23.635" s:height="22.453">
+  <s:alias val="voltmeter"/>
+  <defs>
+  <g>
+    <g id="voltmeter-glyph-0-0">
+      <path d="M 7.3125 -6.109375 C 7.375 -6.234375 7.421875 -6.3125 8.140625 -6.3125 L 8.328125 -6.3125 L 8.328125 -6.78125 C 7.953125 -6.78125 7.484375 -6.75 7.203125 -6.75 C 6.8125 -6.75 6.296875 -6.75 5.921875 -6.78125 L 5.921875 -6.3125 C 6 -6.3125 6.78125 -6.3125 6.78125 -6.203125 C 6.78125 -6.15625 6.75 -6.109375 6.75 -6.078125 L 4.75 -1.578125 L 2.640625 -6.3125 L 3.578125 -6.3125 L 3.578125 -6.78125 C 3.1875 -6.75 2.25 -6.75 1.8125 -6.75 C 1.4375 -6.75 0.609375 -6.75 0.25 -6.78125 L 0.25 -6.3125 L 1.171875 -6.3125 L 3.890625 -0.171875 C 3.96875 0 4.015625 0.078125 4.296875 0.078125 C 4.453125 0.078125 4.578125 0.078125 4.6875 -0.15625 Z M 7.3125 -6.109375 "/>
+    </g>
+  </g>
+  </defs>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-30.389395,11.817901)">
+    <path class="symbol" d="M 53.234819 0.00150538 C 53.234819 5.916186 48.43775 10.713255 42.519134 10.713255 C 36.600518 10.713255 31.803449 5.916186 31.803449 0.00150538 C 31.803449 -5.91711 36.600518 -10.71418 42.519134 -10.71418 C 48.43775 -10.71418 53.234819 -5.91711 53.234819 0.00150538 Z M 53.234819 0.00150538 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-35.585938,-19.222656)">
+    <path class="symbol" d="M 59.21875 19.222656 C 58.335938 19.828125 56.703125 20.621094 55.375 20.972656 L 57.472656 23.070312 C 57.820312 21.738281 58.613281 20.109375 59.21875 19.222656 " fill="none"/>
+  </g>
+  <use xlink:href="#voltmeter-glyph-0-0" x="7.439" y="15.211"/>
+  <g s:x="0.000" s:y="11.816" s:pid="+" s:position="left"/>
+  <g s:x="23.635" s:y="11.816" s:pid="-" s:position="right"/>
+  <text x="11.816" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="11.816" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="battery" s:class="battery" s:width="11.820" s:height="23.637">
+  <s:alias val="battery"/>
+  <g transform="matrix(0.992631,0.000000,0.000000,-0.992631,-36.295653,11.817903)">
+    <path class="symbol" d="M 36.565101 11.905636 L 36.565101 -11.90656 M 40.535768 5.951603 L 40.535768 -5.952528 M 44.5025 11.905636 L 44.5025 -11.90656 M 48.473167 5.951603 L 48.473167 -5.952528 " fill="none"/>
+  </g>
+  <g s:x="0.002" s:y="11.816" s:pid="+" s:position="left"/>
+  <g s:x="11.820" s:y="11.816" s:pid="-" s:position="right"/>
+  <text x="5.910" y="-4.219" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="5.910" y="29.816" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="gnd" s:class="ground" s:width="11.734" s:height="15.645">
+  <s:alias val="gnd"/>
+  <g transform="matrix(0.985435,0.000000,0.000000,-0.985435,5.867153,0.000386)">
+    <path class="symbol" d="M -5.953871 -11.90346 L 5.953944 -11.90346 M -3.967913 -13.889417 L 3.967987 -13.889417 M -2.481419 -15.875374 L 2.481492 -15.875374 " fill="none"/>
+  </g>
+  <g transform="matrix(0.985435,0.000000,0.000000,-0.985435,5.867153,0.000386)">
+    <path class="symbol" d="M 0.0000368961 0.000390801 L 0.0000368961 -11.90346 " fill="none"/>
+  </g>
+  <g s:x="5.867" s:y="0.000" s:pid="A" s:position="left"/>
+  <text x="5.867" y="20.645" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="q_npn" s:class="npn" s:width="23.900" s:height="43.852">
+  <s:alias val="q_npn"/>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,23.899732,21.926360)">
+    <path class="symbol" d="M -11.906968 8.731664 L -11.906968 -8.730522 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-5.359363,-5.324208)">
+    <path class="symbol" d="M 21.582031 32.421875 L 22.53125 30.351562 L 26.207031 34.542969 L 20.632812 34.492188 Z M 21.582031 32.421875 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,23.899732,21.926360)">
+    <path class="symbol" d="M -0.00128881 22.02647 L -0.00128881 8.731664 L -11.906968 3.273259 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,23.899732,21.926360)">
+    <path class="symbol" d="M -11.906968 -3.272118 L -0.00128881 -8.730522 L -0.00128881 -22.025328 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,23.899732,21.926360)">
+    <path class="symbol" d="M -11.906968 0.000570776 L -24.008852 0.000570776 " fill="none"/>
+  </g>
+  <g s:x="0.197" s:y="21.928" s:pid="b" s:position="left"/>
+  <g s:x="23.900" s:y="0.197" s:pid="c" s:position="right"/>
+  <g s:x="23.900" s:y="43.654" s:pid="e" s:position="right"/>
+  <text x="12.049" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="q_pnp" s:class="pnp" s:width="23.900" s:height="43.852">
+  <s:alias val="q_pnp"/>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,23.899732,21.926360)">
+    <path class="symbol" d="M -11.906968 8.731664 L -11.906968 -8.730522 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-5.359363,-5.324208)">
+    <path class="symbol" d="M 25.085938 20.472656 L 26.03125 22.542969 L 20.460938 22.59375 L 24.136719 18.402344 Z M 25.085938 20.472656 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,23.899732,21.926360)">
+    <path class="symbol" d="M -0.00128881 22.02647 L -0.00128881 8.731664 L -11.906968 3.273259 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,23.899732,21.926360)">
+    <path class="symbol" d="M -11.906968 -3.272118 L -0.00128881 -8.730522 L -0.00128881 -22.025328 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,23.899732,21.926360)">
+    <path class="symbol" d="M -11.906968 0.000570776 L -24.008852 0.000570776 " fill="none"/>
+  </g>
+  <g s:x="0.197" s:y="21.928" s:pid="b" s:position="left"/>
+  <g s:x="23.900" s:y="43.654" s:pid="c" s:position="right"/>
+  <g s:x="23.900" s:y="0.197" s:pid="e" s:position="right"/>
+  <text x="12.049" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="jfet_n" s:class="njfet" s:width="27.654" s:height="43.852">
+  <s:alias val="jfet_n"/>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.654317,21.926360)">
+    <path class="symbol" d="M -13.891288 10.913456 L -13.891288 -10.912314 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-5.548828,-5.324208)">
+    <path class="symbol" d="M 11.917969 34.855469 L 11.917969 32.578125 L 17.007812 34.855469 L 11.917969 37.132812 Z M 11.917969 34.855469 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.654317,21.926360)">
+    <path class="symbol" d="M -0.0000205479 22.02647 L -0.0000205479 7.640768 L -13.891288 7.640768 M -13.891288 -7.639626 L -0.0000205479 -7.639626 L -0.0000205479 -22.025328 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.654317,21.926360)">
+    <path class="symbol" d="M -27.778631 -7.639626 L -13.891288 -7.639626 M -27.778631 -7.639626 L -27.778631 -7.639626 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="29.529" s:pid="g" s:position="left"/>
+  <g s:x="27.654" s:y="0.197" s:pid="d" s:position="right"/>
+  <g s:x="27.654" s:y="43.654" s:pid="s" s:position="right"/>
+  <text x="13.828" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="jfet_p" s:class="pjfet" s:width="27.654" s:height="43.852">
+  <s:alias val="jfet_p"/>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.654317,21.926360)">
+    <path class="symbol" d="M -13.891288 10.913456 L -13.891288 -10.912314 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-5.548828,-5.324208)">
+    <path class="symbol" d="M 15.773438 19.644531 L 15.773438 21.921875 L 10.6875 19.644531 L 15.773438 17.371094 Z M 15.773438 19.644531 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.654317,21.926360)">
+    <path class="symbol" d="M -0.0000205479 22.02647 L -0.0000205479 7.640768 L -13.891288 7.640768 M -13.891288 -7.639626 L -0.0000205479 -7.639626 L -0.0000205479 -22.025328 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.654317,21.926360)">
+    <path class="symbol" d="M -13.891288 7.640768 L -27.778631 7.640768 M -27.778631 7.640768 L -27.778631 7.640768 " fill="none"/>
+  </g>
+  <g s:x="0.000" s:y="14.322" s:pid="g" s:position="left"/>
+  <g s:x="27.654" s:y="43.654" s:pid="d" s:position="right"/>
+  <g s:x="27.654" s:y="0.197" s:pid="s" s:position="right"/>
+  <text x="13.828" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="mos_n" s:class="nmos" s:width="27.852" s:height="43.852">
+  <s:alias val="mos_n"/>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -13.891288 10.913456 L -13.891288 -10.912314 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -17.222837 7.640768 L -17.222837 -7.639626 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -0.0000205479 22.02647 L -0.0000205479 7.640768 L -13.891288 7.640768 M -13.891288 -7.639626 L -0.0000205479 -7.639626 L -0.0000205479 -22.025328 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -17.222837 0.000570776 L -27.978759 0.000570776 " fill="none"/>
+  </g>
+  <g s:x="0.197" s:y="21.928" s:pid="g" s:position="left"/>
+  <g s:x="27.852" s:y="0.197" s:pid="d" s:position="right"/>
+  <g s:x="27.852" s:y="43.654" s:pid="s" s:position="right"/>
+  <text x="14.025" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="mos_p" s:class="pmos" s:width="27.852" s:height="43.852">
+  <s:alias val="mos_p"/>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -13.891288 10.913456 L -13.891288 -10.912314 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -17.222837 7.640768 L -17.222837 -7.639626 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -0.0000205479 22.02647 L -0.0000205479 7.640768 L -13.891288 7.640768 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -13.891288 -7.639626 L -0.0000205479 -7.639626 L -0.0000205479 -22.025328 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -17.222837 0.000570776 L -27.978759 0.000570776 " fill="none"/>
+  </g>
+  <g transform="matrix(0.995455,0.000000,0.000000,-0.995455,27.851596,21.926360)">
+    <path class="symbol" d="M -17.222837 0.000570776 C -17.222837 0.875642 -17.933097 1.585902 -18.812092 1.585902 C -19.687164 1.585902 -20.397424 0.875642 -20.397424 0.000570776 C -20.397424 -0.878425 -19.687164 -1.588684 -18.812092 -1.588684 C -17.933097 -1.588684 -17.222837 -0.878425 -17.222837 0.000570776 Z M -17.222837 0.000570776 " fill="none"/>
+  </g>
+  <g s:x="0.197" s:y="21.928" s:pid="g" s:position="left"/>
+  <g s:x="27.852" s:y="43.654" s:pid="d" s:position="right"/>
+  <g s:x="27.852" s:y="0.197" s:pid="s" s:position="right"/>
+  <text x="14.025" y="-4.803" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="op" s:class="opamp" s:width="66.945" s:height="55.133">
+  <s:alias val="op"/>
+  <defs>
+  <g>
+    <g id="op-glyph-0-0">
+      <path d="M 7.4375 -2.171875 C 7.59375 -2.171875 7.875 -2.171875 7.875 -2.46875 C 7.875 -2.78125 7.59375 -2.78125 7.4375 -2.78125 L 1.390625 -2.78125 C 1.25 -2.78125 0.953125 -2.78125 0.953125 -2.484375 C 0.953125 -2.171875 1.234375 -2.171875 1.390625 -2.171875 Z M 7.4375 -2.171875 "/>
+    </g>
+    <g id="op-glyph-1-0">
+      <path d="M 4.71875 -2.171875 L 7.78125 -2.171875 C 7.90625 -2.171875 8.203125 -2.171875 8.203125 -2.46875 C 8.203125 -2.78125 7.90625 -2.78125 7.78125 -2.78125 L 4.71875 -2.78125 L 4.71875 -5.84375 C 4.71875 -5.96875 4.71875 -6.265625 4.421875 -6.265625 C 4.109375 -6.265625 4.109375 -5.96875 4.109375 -5.84375 L 4.109375 -2.78125 L 1.0625 -2.78125 C 0.921875 -2.78125 0.640625 -2.78125 0.640625 -2.46875 C 0.640625 -2.171875 0.9375 -2.171875 1.0625 -2.171875 L 4.109375 -2.171875 L 4.109375 0.890625 C 4.109375 1.015625 4.109375 1.3125 4.40625 1.3125 C 4.71875 1.3125 4.71875 1.015625 4.71875 0.890625 Z M 4.71875 -2.171875 "/>
+    </g>
+  </g>
+  </defs>
+  <g transform="matrix(0.992343,0.000000,0.000000,-0.992343,33.472340,27.564996)">
+    <path class="symbol" d="M 23.610784 -0.00141261 L -23.614085 27.77769 L -23.614085 -27.780516 Z M 23.610784 -0.00141261 " fill="none"/>
+  </g>
+  <g transform="matrix(0.992343,0.000000,0.000000,-0.992343,33.472340,27.564996)">
+    <path class="symbol" d="M -33.730606 13.890107 L -23.614085 13.890107 M -33.730606 -13.888996 L -23.614085 -13.888996 M 33.731242 -0.00141261 L 23.610784 -0.00141261 " fill="none"/>
+  </g>
+  <use xlink:href="#op-glyph-0-0" x="13.337" y="16.253"/>
+  <use xlink:href="#op-glyph-1-0" x="13.337" y="43.820"/>
+  <g s:x="0.000" s:y="41.348" s:pid="i+" s:position="top"/>
+  <g s:x="0.000" s:y="13.781" s:pid="i-" s:position="top"/>
+  <g s:x="66.945" s:y="27.566" s:pid="o+" s:position="bottom"/>
+  <text x="33.473" y="-5.000" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="pot" s:class="potentiometer" s:width="32.203" s:height="21.598">
+  <s:alias val="pot"/>
+  <g transform="matrix(0.989508,0.000000,0.000000,-0.989508,-25.970523,15.708408)">
+    <path class="symbol" d="M 26.245895 0.00139017 L 29.289548 5.954475 L 34.583373 -5.951695 L 39.873249 5.954475 L 45.167074 -5.951695 L 50.45695 5.954475 L 55.746827 -5.951695 L 58.79048 0.00139017 " fill="none"/>
+  </g>
+  <g transform="matrix(0.989508,0.000000,0.000000,-0.989508,-25.970523,15.708408)">
+    <path class="symbol" d="M 42.518188 15.874968 L 42.518188 9.061291 " fill="none"/>
+  </g>
+  <g transform="matrix(1.000000,0.000000,0.000000,1.000000,-31.300783,-19.554686)">
+    <path class="symbol" d="M 47.402344 29.371094 C 47.660156 28.089844 48.171875 25.785156 49.324219 24.246094 C 47.917969 25.527344 46.890625 25.527344 45.480469 24.246094 C 46.636719 25.785156 47.148438 28.089844 47.402344 29.371094 Z M 47.402344 29.371094 " fill="none"/>
+  </g>
+  <g s:x="0.396" s:y="15.709" s:pid="p" s:position="left"/>
+  <g s:x="31.811" s:y="15.709" s:pid="n" s:position="right"/>
+  <g s:x="16.104" s:y="0.002" s:pid="wiper" s:position="right"/>
+  <text x="16.104" y="-4.611" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="16.104" y="27.188" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="tf" s:class="transformer" s:width="59.215" s:height="59.215">
+  <s:alias val="tf"/>
+  <g transform="matrix(0.994704,0.000000,0.000000,-0.994704,29.607418,29.607418)">
+    <path class="symbol" d="M -12.063883 12.303433 C -8.776945 12.303433 -6.11048 10.669782 -6.11048 8.65128 C -6.11048 6.636705 -8.776945 5.003053 -12.063883 5.003053 C -13.709316 5.003053 -15.040585 5.666724 -15.040585 6.491404 C -15.040585 7.312157 -13.709316 7.975828 -12.063883 7.975828 C -8.776945 7.975828 -6.11048 6.342176 -6.11048 4.327601 C -6.11048 2.309099 -8.776945 0.675448 -12.063883 0.675448 C -13.709316 0.675448 -15.040585 1.343046 -15.040585 2.163798 C -15.040585 2.984551 -13.709316 3.652149 -12.063883 3.652149 C -8.776945 3.652149 -6.11048 2.018498 -6.11048 -0.00000441776 C -6.11048 -2.018506 -8.776945 -3.652158 -12.063883 -3.652158 C -13.709316 -3.652158 -15.040585 -2.98456 -15.040585 -2.163807 C -15.040585 -1.343054 -13.709316 -0.675456 -12.063883 -0.675456 C -8.776945 -0.675456 -6.11048 -2.309108 -6.11048 -4.32761 C -6.11048 -6.342185 -8.776945 -7.975836 -12.063883 -7.975836 C -13.709316 -7.975836 -15.040585 -7.312165 -15.040585 -6.491413 C -15.040585 -5.666733 -13.709316 -5.003062 -12.063883 -5.003062 C -8.776945 -5.003062 -6.11048 -6.636713 -6.11048 -8.651288 C -6.11048 -10.66979 -8.776945 -12.303442 -12.063883 -12.303442 " fill="none"/>
+  </g>
+  <g transform="matrix(0.994704,0.000000,0.000000,-0.994704,29.607418,29.607418)">
+    <path class="symbol" d="M 12.063892 -12.303442 C 8.776954 -12.303442 6.110489 -10.66979 6.110489 -8.651288 C 6.110489 -6.636713 8.776954 -5.003062 12.063892 -5.003062 C 13.709325 -5.003062 15.040593 -5.666733 15.040593 -6.491413 C 15.040593 -7.312165 13.709325 -7.975836 12.063892 -7.975836 C 8.776954 -7.975836 6.110489 -6.342185 6.110489 -4.32761 C 6.110489 -2.309108 8.776954 -0.675456 12.063892 -0.675456 C 13.709325 -0.675456 15.040593 -1.343054 15.040593 -2.163807 C 15.040593 -2.98456 13.709325 -3.652158 12.063892 -3.652158 C 8.776954 -3.652158 6.110489 -2.018506 6.110489 -0.00000441776 C 6.110489 2.018498 8.776954 3.652149 12.063892 3.652149 C 13.709325 3.652149 15.040593 2.984551 15.040593 2.163798 C 15.040593 1.343046 13.709325 0.675448 12.063892 0.675448 C 8.776954 0.675448 6.110489 2.309099 6.110489 4.327601 C 6.110489 6.342176 8.776954 7.975828 12.063892 7.975828 C 13.709325 7.975828 15.040593 7.312157 15.040593 6.491404 C 15.040593 5.666724 13.709325 5.003053 12.063892 5.003053 C 8.776954 5.003053 6.110489 6.636705 6.110489 8.65128 C 6.110489 10.669782 8.776954 12.303433 12.063892 12.303433 " fill="none"/>
+  </g>
+  <g transform="matrix(0.994704,0.000000,0.000000,-0.994704,29.607418,29.607418)">
+    <path class="symbol" d="M -29.763083 29.763083 L -11.906801 29.763083 L -11.906801 11.906801 M -11.906801 -11.90681 L -11.906801 -29.763092 L -29.763083 -29.763092 M 29.763092 29.763083 L 11.90681 29.763083 L 11.90681 11.906801 M 11.90681 -11.90681 L 11.90681 -29.763092 L 29.763092 -29.763092 " fill="none"/>
+  </g>
+  <g s:x="59.215" s:y="0.000" s:pid="sp" s:position="bottom"/>
+  <g s:x="59.215" s:y="59.215" s:pid="sm" s:position="bottom"/>
+  <g s:x="0.000" s:y="0.000" s:pid="pp" s:position="top"/>
+  <g s:x="0.000" s:y="59.215" s:pid="pm" s:position="top"/>
+  <text x="29.607" y="-5.000" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+<g s:type="adc" s:class="adc" s:width="27.607" s:height="27.605">
+  <s:alias val="adc"/>
+  <defs>
+  <g>
+    <g id="adc-glyph-0-0">
+      <path d="M 3.9375 -6.890625 C 3.890625 -7.03125 3.875 -7.09375 3.71875 -7.09375 C 3.5625 -7.09375 3.53125 -7.03125 3.484375 -6.890625 L 1.421875 -0.96875 C 1.25 -0.46875 0.859375 -0.3125 0.3125 -0.3125 L 0.3125 0 C 0.546875 -0.015625 0.96875 -0.03125 1.328125 -0.03125 C 1.640625 -0.03125 2.15625 -0.015625 2.46875 0 L 2.46875 -0.3125 C 1.96875 -0.3125 1.71875 -0.5625 1.71875 -0.8125 C 1.71875 -0.84375 1.734375 -0.9375 1.75 -0.953125 L 2.203125 -2.265625 L 4.640625 -2.265625 L 5.171875 -0.75 C 5.1875 -0.703125 5.203125 -0.640625 5.203125 -0.609375 C 5.203125 -0.3125 4.640625 -0.3125 4.375 -0.3125 L 4.375 0 C 4.734375 -0.03125 5.421875 -0.03125 5.8125 -0.03125 C 6.234375 -0.03125 6.6875 -0.015625 7.109375 0 L 7.109375 -0.3125 L 6.921875 -0.3125 C 6.328125 -0.3125 6.1875 -0.375 6.078125 -0.703125 Z M 3.421875 -5.78125 L 4.53125 -2.5625 L 2.3125 -2.5625 Z M 3.421875 -5.78125 "/>
+    </g>
+    <g id="adc-glyph-0-1">
+      <path d="M 0.34375 -6.765625 L 0.34375 -6.453125 L 0.578125 -6.453125 C 1.34375 -6.453125 1.359375 -6.34375 1.359375 -6 L 1.359375 -0.765625 C 1.359375 -0.421875 1.34375 -0.3125 0.578125 -0.3125 L 0.34375 -0.3125 L 0.34375 0 L 3.96875 0 C 5.640625 0 7 -1.46875 7 -3.328125 C 7 -5.203125 5.671875 -6.765625 3.96875 -6.765625 Z M 2.703125 -0.3125 C 2.234375 -0.3125 2.21875 -0.375 2.21875 -0.703125 L 2.21875 -6.0625 C 2.21875 -6.390625 2.234375 -6.453125 2.703125 -6.453125 L 3.6875 -6.453125 C 4.3125 -6.453125 5 -6.234375 5.5 -5.53125 C 5.921875 -4.953125 6.015625 -4.09375 6.015625 -3.328125 C 6.015625 -2.234375 5.828125 -1.640625 5.46875 -1.15625 C 5.265625 -0.875 4.703125 -0.3125 3.703125 -0.3125 Z M 2.703125 -0.3125 "/>
+    </g>
+  </g>
+  </defs>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 28.631893 13.88878 L 56.410981 13.88878 L 56.410981 -13.890308 L 28.631893 -13.890308 Z M 28.631893 13.88878 " fill="none"/>
+  </g>
+  <use xlink:href="#adc-glyph-0-0" x="3.879" y="10.973"/>
+  <use xlink:href="#adc-glyph-0-1" x="16.232" y="23.396"/>
+  <g s:x="0.000" s:y="13.803" s:pid="+" s:position="left"/>
+  <g s:x="27.605" s:y="13.803" s:pid="-" s:position="right"/>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="dac" s:class="dac" s:width="27.607" s:height="27.605">
+  <s:alias val="dac"/>
+  <defs>
+  <g>
+    <g id="dac-glyph-0-0">
+      <path d="M 0.34375 -6.765625 L 0.34375 -6.453125 L 0.578125 -6.453125 C 1.34375 -6.453125 1.359375 -6.34375 1.359375 -6 L 1.359375 -0.765625 C 1.359375 -0.421875 1.34375 -0.3125 0.578125 -0.3125 L 0.34375 -0.3125 L 0.34375 0 L 3.96875 0 C 5.640625 0 7 -1.46875 7 -3.328125 C 7 -5.203125 5.671875 -6.765625 3.96875 -6.765625 Z M 2.703125 -0.3125 C 2.234375 -0.3125 2.21875 -0.375 2.21875 -0.703125 L 2.21875 -6.0625 C 2.21875 -6.390625 2.234375 -6.453125 2.703125 -6.453125 L 3.6875 -6.453125 C 4.3125 -6.453125 5 -6.234375 5.5 -5.53125 C 5.921875 -4.953125 6.015625 -4.09375 6.015625 -3.328125 C 6.015625 -2.234375 5.828125 -1.640625 5.46875 -1.15625 C 5.265625 -0.875 4.703125 -0.3125 3.703125 -0.3125 Z M 2.703125 -0.3125 "/>
+    </g>
+    <g id="dac-glyph-0-1">
+      <path d="M 3.9375 -6.890625 C 3.890625 -7.03125 3.875 -7.09375 3.71875 -7.09375 C 3.5625 -7.09375 3.53125 -7.03125 3.484375 -6.890625 L 1.421875 -0.96875 C 1.25 -0.46875 0.859375 -0.3125 0.3125 -0.3125 L 0.3125 0 C 0.546875 -0.015625 0.96875 -0.03125 1.328125 -0.03125 C 1.640625 -0.03125 2.15625 -0.015625 2.46875 0 L 2.46875 -0.3125 C 1.96875 -0.3125 1.71875 -0.5625 1.71875 -0.8125 C 1.71875 -0.84375 1.734375 -0.9375 1.75 -0.953125 L 2.203125 -2.265625 L 4.640625 -2.265625 L 5.171875 -0.75 C 5.1875 -0.703125 5.203125 -0.640625 5.203125 -0.609375 C 5.203125 -0.3125 4.640625 -0.3125 4.375 -0.3125 L 4.375 0 C 4.734375 -0.03125 5.421875 -0.03125 5.8125 -0.03125 C 6.234375 -0.03125 6.6875 -0.015625 7.109375 0 L 7.109375 -0.3125 L 6.921875 -0.3125 C 6.328125 -0.3125 6.1875 -0.375 6.078125 -0.703125 Z M 3.421875 -5.78125 L 4.53125 -2.5625 L 2.3125 -2.5625 Z M 3.421875 -5.78125 "/>
+    </g>
+  </g>
+  </defs>
+  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
+    <path class="symbol" d="M 28.631893 13.88878 L 56.410981 13.88878 L 56.410981 -13.890308 L 28.631893 -13.890308 Z M 28.631893 13.88878 " fill="none"/>
+  </g>
+  <use xlink:href="#dac-glyph-0-0" x="3.810" y="10.973"/>
+  <use xlink:href="#dac-glyph-0-1" x="16.302" y="23.396"/>
+  <g s:x="0.000" s:y="13.803" s:pid="+" s:position="left"/>
+  <g s:x="27.605" s:y="13.803" s:pid="-" s:position="right"/>
+  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging"                    class="nodelabel" s:attribute="value">name</text>
+</g>
+
+<g s:type="antenna" s:class="antenna" s:width="19.590" s:height="58.762">
+  <s:alias val="antenna"/>
+  <g transform="matrix(0.987161,0.000000,0.000000,-0.987161,9.992403,58.762171)">
+    <path class="symbol" d="M -0.198074 59.526431 L 9.722259 59.526431 L -0.198074 39.685765 L -10.122364 59.526431 L -0.198074 59.526431 " fill="none"/>
+  </g>
+  <g transform="matrix(0.987161,0.000000,0.000000,-0.987161,9.992403,58.762171)">
+    <path class="symbol" d="M -0.198074 0.000475933 L -0.198074 59.526431 " fill="none"/>
+  </g>
+  <g s:x="9.992" s:y="58.762" s:pid="a" s:position="left"/>
+  <text x="9.992" y="-5.000" text-anchor="middle" dominant-baseline="baseline"                    class="nodelabel" s:attribute="ref">name</text>
+</g>
+
+</svg>

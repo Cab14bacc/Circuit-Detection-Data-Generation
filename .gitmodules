@@ -1,0 +1,3 @@
+[submodule "netlistsvg"]
+	path = netlistsvg
+	url = https://github.com/Cab14bacc/netlistsvg.git
