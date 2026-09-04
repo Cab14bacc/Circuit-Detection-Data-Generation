@@ -1,5 +1,6 @@
 __pycache__/
-circuit_data_gen/renders/
+circuit_data_gen/debug/
+dataset/
 
 *.egg-info/
 *.egg
@@ -7,3 +8,4 @@ __pycache__/
 
 .env
 .*
+_*.*
