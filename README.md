@@ -1,4 +1,4 @@
-# Circuit Detection Data Generation
+# Circuit Data Generation
 
 This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). The pipeline is:
 
