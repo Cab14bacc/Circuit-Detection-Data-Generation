@@ -106,7 +106,7 @@ cirdg render path/to/netlist.net path/to/out.png --annotation path/to/ann --debu
 
 ```jsonc
 {
-  "image": "render.json",          // path of the intermediate yosys json
+  "image": "image.png",          // path to the rendered image
   "canvas": { "width": 463, "height": 421 },  // output canvas in px (or svg units)
   "classes": ["vsource", "resistor", "..."],  // class registry snapshot
   "components": [
@@ -137,7 +137,7 @@ Notes:
 
 ## Centralized Configuration
 
-All tunable parameters live in `circuit_data_gen/configs/config.py`, accessed via `get_config_value(section, dotted_key)` (case-insensitive, e.g. `get_config_value("netlistsvg", "font_char_width")`). For example, to access `"cli.render.default_render_dir"`, write `get_config_value("cli", "render.default_render_dir")`. The sections are:
+All tunable parameters live in `circuit_data_gen/configs/config.py`. All path configs are either absolute paths or treated as relative to the `circuit_data_gen` directory, the package source directory. Config values are accessed via `get_config_value(section, dotted_key)` (case-insensitive, e.g. `get_config_value("netlistsvg", "font_char_width")`). For example, to access `"cli.render.default_render_dir"`, write `get_config_value("cli", "render.default_render_dir")`. The sections are:
 
 - **`build_skin`** — `LINE_WIDTH` (CircuitTikz line width; the skin's symbol stroke is `LINE_WIDTH * 2`), `SKIN_PATH` (where the skin is emitted).
 - **`netlistsvg`** — everything the renderer needs: `BIN_PATH` (node entry point), `SKIN_PATH` (shared skin), label font metrics (`FONT_SIZE`, `FONT_CHAR_WIDTH`, `FONT_CHAR_HEIGHT`, `FONT_CAP_HEIGHT`, `FONT_DESC_SHIFT`), `WIRE_STROKE_WIDTH`, and `ANNOTATION.CLASSES_PATH`.
