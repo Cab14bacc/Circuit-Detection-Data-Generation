@@ -1,6 +1,8 @@
 # Circuit Data Generation
 
-This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). The pipeline is:
+This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). 
+[An example dataset](https://github.com/Cab14bacc/spice-circuit-dataset.git).
+The pipeline is:
 
 1. Generate a random netlist using an LLM. The netlist is in a simplified [lcapy](https://github.com/mph-/lcapy) styled format (following `grammar.py` in lcapy), simplified as in supporting only a subset of components, and not reading lcapy hints (arguments after `;`). To see which components are supported, read the system prompt in `circuit_data_gen/netlist_gen/prompts/agent_system_prompt.md`.
 2. Validate the candidate with a smoke test: the netlist must parse, render, contain the required components, and form a single electrically-connected graph. Invalid candidates are fed back to the LLM with the error messages for regeneration.
