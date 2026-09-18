@@ -1,6 +1,6 @@
 # Circuit Data Generation
 
-This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). 
+This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). The current generated circuits are not electrically simulated, the validation is purely structural, in that all components are connected and the graph is a single connected component.
 [An example dataset](https://github.com/Cab14bacc/spice-circuit-dataset.git).
 The pipeline is:
 
