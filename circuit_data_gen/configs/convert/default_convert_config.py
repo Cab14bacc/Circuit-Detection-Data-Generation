@@ -1,10 +1,16 @@
 """
+Some general rules are:
+
+- parameters that starts with 'N' are node names.
+- parameters enclosed in square brackets are optional.
+- parameters that are specified as [param=something] are optional and are required to be specified in the form of a keyword argument, e.g., [Value=1k] or [Phase=0].
+- parameters that are specified as [param] are optional and are positional arguments, specified without key.
+- parameters without square brackets are required and are positional arguments, specified without key.
+- kind keyword refers to the keyword that specifies the type of the component, e.g., 'led' for light emitting diode, 'dc' for DC source, 'ac' for AC source, etc. In our particular parser, the position of the kind keyword doesn't matter.
+- Nodes in curly braces, e.g. {Ncp}, mark dropped ports: the node is still written in the netlist line (it is parsed and connected) but the skin has no pin for it, so it is not drawn.
+
 The following is a list of all the supported prefixes and their arguments, each line defines a rule.
 A full comprehensive list of all the meaning of the parameters is given right after this list.
-Some general rules are: parameters that starts with 'N' are node names, those that start with 'V' are values,
-and those that start with 'P' are pins, and most of others are keywords that are used to define the type of the component.
-There are exceptions for example, "fo" is a value param, it refers to Sinewave frequency.
-Optional arguments are in square brackets [key=value]. Here is the list to all the supported prefixes and their arguments:
 ================================================= start of list ================================================
 format:ADCname Np Nm                                                    , component:ADC
 format:AMname Np Nm                                                     , component:Ammeter
@@ -18,13 +24,13 @@ format:Dname Np Nm zener                                                , compon
 format:Dname Np Nm photo                                                , component:Photo diode
 format:Dname Np Nm tunnel                                               , component:Tunnel diode
 format:Dname Np Nm schottky                                             , component:Schottky diode
-format:Ename Np Nm Ncp Ncm [Value=name] [Ac=0]                          , component:Voltage controlled voltage source
-format:Ename Np Nm opamp Ncp Ncm [Ad=name] [Ac=0] [Ro=0]                , component:Opamp
-format:Ename Np Nm fdopamp Ncp Ncm Nocm [Ad=name] [Ac=0]                , component:Fully differential opamp
-format:Ename Np Nm inamp Ncp Ncm NRp NRm [Ad=name] [Ac=0] [Rf=Rf]       , component:Instrumentation opamp
-format:Ename Np Nm amp Ncp Ncm [Ad=name] [Ac=0]                         , component:Amplifier
+format:Ename Np Nm {Ncp} {Ncm} [Value=name] [Ac=0]                      , component:Voltage controlled voltage source
+format:Ename Np {Nm} opamp Ncp Ncm [Ad=name] [Ac=0] [Ro=0]              , component:Opamp
+format:Ename Np {Nm} fdopamp Ncp Ncm {Nocm} [Ad=name] [Ac=0]            , component:Fully differential opamp
+format:Ename Np {Nm} inamp Ncp Ncm {NRp} {NRm} [Ad=name] [Ac=0] [Rf=Rf] , component:Instrumentation opamp
+format:Ename Np {Nm} amp Ncp Ncm [Ad=name] [Ac=0]                       , component:Amplifier
 format:Fname Np Nm Vcontrol [Value=name]                                , component:Current controlled current source (note the control current is specified through a voltage source)
-format:Gname Np Nm Ncp Ncm [Value=name]                                 , component:Voltage controlled current source
+format:Gname Np Nm {Ncp} {Ncm} [Value=name]                             , component:Voltage controlled current source
 format:Hname Np Nm Vcontrol [Value=name]                                , component:Current controlled voltage source (note the control current is specified through a voltage source)
 format:Iname Np Nm [Value=name]                                         , component:Current source
 format:Iname Np Nm dc [Value=name]                                      , component:DC current source
@@ -52,7 +58,7 @@ format:SWname Np Nm no [Time=0]                                         , compon
 format:SWname Np Nm push [Time=0]                                       , component:Pushbutton switch
 format:SWname Nc Np Nm spdt [Time=0]                                    , component:SPDT switch
 format:TFname Np Nm Ncp Ncm [Ns1=name] [Np1=1]                          , component:Ideal transformer (works to DC!)
-format:TPname Np Nm Ncp Ncm                                             , component:Generic two-port
+format:TPname Np Nm {Ncp} {Ncm}                                         , component:Generic two-port
 format:Vname Np Nm [Value=name]                                         , component:Voltage source
 format:Vname Np Nm dc [Value=name]                                      , component:DC voltage source
 format:Vname Np Nm ac [Value=name] [Phase] [Omega]                      , component:AC voltage source
@@ -221,6 +227,12 @@ TO_SKIN_CONFIG = {
                     # When True, the value can be omitted, and either the default_value will be used.
                     # or if the default value is not specified, the label will be ommitted.
                     "is_optional": True,
+                    # Default True. When True, the value is positional, can still be
+                    # specified as like keyword e.g. (value=1.0), but must only be in
+                    # the position of the specified index.
+                    # When False, the value can only be specified as a keyword arg in any position, 
+                    # but must come after all the positional args.
+                    "is_positional": True,
                     # default value, used when is_optional is True and value is omitted.
                     # not used here as is_optional is False, but can be used in other cases.
                     "default_value": 1.0,
@@ -235,7 +247,7 @@ TO_SKIN_CONFIG = {
         # VCVS (default, no kind) - Ename Np Nm Ncp Ncm [Value=name] [Ac=0]
         {
             # None for not implemented
-            "skin_alias": ["vcvs_h"],
+            "skin_alias": ["cvs"],
             "arg_to_ports": {
                 0: {"alias": "+"},
                 1: {"alias": "-"},
@@ -402,7 +414,7 @@ TO_SKIN_CONFIG = {
     "G": [
         # voltage-controlled current source (VCCS) - Gname Np Nm Ncp Ncm [Value=name]
         {
-            "skin_alias": ["vccs_h"],
+            "skin_alias": ["ccs"],
             "arg_to_ports": {
                 0: {"alias": "+"},
                 1: {"alias": "-"},
@@ -1091,7 +1103,7 @@ TO_SKIN_CONFIG = {
     # current-controlled current source - Fname Np Nm Vcontrol [Value=name]
     "F": [
         {
-            "skin_alias": ["cccs"],
+            "skin_alias": ["ccs"],
             "arg_to_ports": {
                 0: {"alias": "+"},
                 1: {"alias": "-"},
@@ -1112,7 +1124,7 @@ TO_SKIN_CONFIG = {
     # current-controlled voltage source (CCVS) - Hname Np Nm Vcontrol [Value=name]
     "H": [
         {
-            "skin_alias": "ccvs",
+            "skin_alias": "cvs",
             "arg_to_ports": {
                 0: {"alias": "+"},
                 1: {"alias": "-"},

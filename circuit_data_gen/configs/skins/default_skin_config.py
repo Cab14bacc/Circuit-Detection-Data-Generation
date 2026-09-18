@@ -141,6 +141,13 @@ COMPONENTS = {
         "pin_ids": ["p", "n", "common"],
         "pin_sides": ["left", "right", "right"],
     },
+    # Current-controlled switch (ngspice W / .model CSW); circuitikz 'cspst'
+    "switch_csw": {
+        "cpt": "cspst",
+        "annotation_class": "switch_csw",
+        "skin_type": "csw",
+        "if_node": False,
+    },
     # ----------- Diodes ------------
     "diode": {
         "cpt": "D",
@@ -217,17 +224,10 @@ COMPONENTS = {
         "pin_sides": ("bottom", "top"),  # + drives
         "if_node": False,
     },
-    "vcvs_h": {
+    "cvs": {
         "annotation_class": "controlled_vsource",
         "cpt": "controlled voltage source",
-        "skin_type": "vcvs_h",
-        "pin_sides": ("bottom", "top"),  # + drives
-        "if_node": False,
-    },
-    "ccvs": {
-        "annotation_class": "controlled_vsource",
-        "cpt": "controlled voltage source",
-        "skin_type": "ccvs",
+        "skin_type": "cvs",
         "pin_sides": ("bottom", "top"),  # + drives
         "if_node": False,
     },
@@ -250,17 +250,11 @@ COMPONENTS = {
         "pin_sides": ("bottom", "top"),  # + drives
         "if_node": False,
     },
-    "vccs_h": {
+    "ccs": {
         "cpt": "controlled current source",
         "annotation_class": "controlled_isource",
-        "skin_type": "vccs_h",
+        "skin_type": "ccs",
         "pin_sides": ("bottom", "top"),  # + drives
-        "if_node": False,
-    },
-    "cccs": {
-        "annotation_class": "controlled_isource",
-        "cpt": "controlled current source",
-        "skin_type": "cccs",
         "if_node": False,
     },
     # ----------- Mechanical ------------
@@ -403,6 +397,13 @@ COMPONENTS = {
         "cpt": "dac",
         "annotation_class": "dac",
         "skin_type": "dac",
+        "if_node": False,
+    },
+    # --- transmission lines ---
+    "tline": {
+        "cpt": "tline",
+        "annotation_class": "transmission_line",
+        "skin_type": "tline",
         "if_node": False,
     },
     # --- 1-pin monopoles ---

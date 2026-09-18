@@ -1,4 +1,17 @@
-from .convert import _merge_nodes, WIRE, GROUND_NAMES
+from .convert import IS_SPICE, _merge_nodes, WIRE, GROUND_NAMES
+
+def undefined_components(parsed_netlist):
+    undefined_comp_names = []
+    for comp_name, comp_data in parsed_netlist.items():
+        if_generic = comp_data.get("if_generic", False)
+        prefix = comp_data.get("prefix", None)
+
+        # check for if prefix exist because some generics are explicit generics like
+        # "X" for subcircuits when dealing with spice netlists. 
+        if prefix is None and if_generic:
+            undefined_comp_names.append(comp_name)
+            
+    return undefined_comp_names
 
 
 def hanging_nodes(parsed_netlist):
@@ -117,3 +130,95 @@ def connected_component_groups(parsed_netlist) -> tuple[bool, list[list[str]]]:
     for component_name in comp_parent:
         groups.setdefault(cfind(component_name), []).append(component_name)
     return len(groups) == 1, list(groups.values())
+
+
+
+def full_validation(parsed_netlist, requirement, logger=None) -> dict:
+    errors = []
+
+    # ================================================================
+    # check if the circuit contains the correct number of components
+    # ================================================================
+    if not len(parsed_netlist) == requirement.num_components:
+        errors.append(
+            f"Netlist has {len(parsed_netlist)} components, "
+            f"which is not equal to the required number of "
+            f"{requirement.num_components}."
+        )
+
+    # ================================================================
+    # check for undefined components
+    # ================================================================
+    undefined_comp_names = undefined_components(parsed_netlist)
+    if undefined_comp_names:
+        errors.append(f"Some components are not using valid prefixes: {undefined_comp_names}.")
+
+    # ================================================================
+    # check for required components
+    # ================================================================
+    types_in_netlist = {(data["prefix"], tuple(map(str.lower, data["kind"])), tuple(map(str.lower, data["specifiers"]))) 
+                        for name, data in parsed_netlist.items()}
+    comps_in_netlist = {
+        (name, data["prefix"], tuple(map(str.lower, data["kind"])), tuple(map(str.lower, data["specifiers"]))) for name, data in parsed_netlist.items()
+    }
+
+    extra_components = [
+        cmp_type for cmp_type in types_in_netlist if cmp_type not in requirement.component_subset
+    ]
+
+    if logger:
+        logger.info(f"types_in_netlist: {types_in_netlist}")
+        logger.info(f"components_in_netlist: {comps_in_netlist}")
+    
+    # ================================================================
+    # check for required components that are missing from the netlist
+    # ================================================================
+    if len(extra_components) > 0:
+        no_specifer_str = ", and without specifiers" if IS_SPICE else ""
+        extra_components_str = ", ".join(
+            (
+                f"`{prefix}{' with kind keyword: ' + ", ".join(kind) if kind else ' without kind keyword.'}"
+                f"{' with specifiers: ' + ", ".join(specifiers) if specifiers else no_specifer_str}`"
+            )
+            for prefix, kind, specifiers in extra_components
+        )
+        errors.append(f"Netlist can not contain components that are not in the specified subset, "
+                      f"these components are not allowed: {extra_components_str}.")
+
+    (hanging_nodes_before_drop, hanging_nodes_after_drop, hanging_nodes_from_dropping) = hanging_nodes(
+        parsed_netlist
+    )
+
+    if logger:
+        logger.info(f"hanging_nodes_before_drop: {hanging_nodes_before_drop}")
+        logger.info(f"hanging_nodes_after_drop: {hanging_nodes_after_drop}")
+
+    # ================================================================
+    # check for hanging nodes after dropping unsupported connections due to skin limits
+    # realize dropping connections can also make a originally hanging node to become non-hanging
+    # by removing all connections to that node.
+    # ================================================================
+    if len(hanging_nodes_after_drop) > 0:
+        msg = (
+            f"Netlist has {len(hanging_nodes_after_drop)} "
+            f"hanging nodes: {', '.join(hanging_nodes_after_drop)}.\n"
+        )
+        hanging_nodes_from_dropping = hanging_nodes_after_drop - hanging_nodes_before_drop
+        if len(hanging_nodes_from_dropping) > 0:
+            msg += "Nodes that became hanging due to dropping (skin doesn't support this port): "
+            msg += f"{', '.join(hanging_nodes_from_dropping)}."
+        errors.append(msg)
+
+    # ================================================================
+    # check if circuit is a connected graph (i.e., no isolated subgraphs).
+    # ================================================================
+    is_connected, comp_groups = connected_component_groups(parsed_netlist)
+    if not is_connected:
+        subgraphs_str = "],[".join(", ".join(sorted(group)) for group in comp_groups)
+        errors.append(
+            f"Netlist is not a connected graph: it has {len(comp_groups)} "
+            f"isolated subgraphs: [{subgraphs_str}]. "
+            "Connect all components electrically."
+        )
+
+    return errors

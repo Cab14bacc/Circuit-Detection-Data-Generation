@@ -41,7 +41,7 @@ def _state(content: str, index: int = 0):
         "circuit_valid": False,
         "logger": logging.getLogger("test-graph"),
         "index": index,
-        "requirements": CircuitRequirements(min_components=1),
+        "requirements": CircuitRequirements(num_components=1),
     }
 
 

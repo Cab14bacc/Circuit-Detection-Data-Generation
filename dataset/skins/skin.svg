@@ -403,22 +403,8 @@
   <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
-<g s:type="vcvs_h" s:class="controlled_vsource" s:width="27.607" s:height="27.605">
-  <s:alias val="vcvs_h"/>
-  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
-    <path class="symbol" d="M 28.631893 0.00120126 L 42.519472 13.88878 L 56.410981 0.00120126 L 42.519472 -13.890308 Z M 28.631893 0.00120126 " fill="none"/>
-  </g>
-  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
-    <path class="symbol" d="M 28.631893 0.00120126 L 56.410981 0.00120126 " fill="none"/>
-  </g>
-  <g s:x="0.000" s:y="13.803" s:pid="+" s:position="bottom"/>
-  <g s:x="27.605" s:y="13.803" s:pid="-" s:position="top"/>
-  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
-  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
-</g>
-
-<g s:type="ccvs" s:class="controlled_vsource" s:width="27.607" s:height="27.605">
-  <s:alias val="ccvs"/>
+<g s:type="cvs" s:class="controlled_vsource" s:width="27.607" s:height="27.605">
+  <s:alias val="cvs"/>
   <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
     <path class="symbol" d="M 28.631893 0.00120126 L 42.519472 13.88878 L 56.410981 0.00120126 L 42.519472 -13.890308 Z M 28.631893 0.00120126 " fill="none"/>
   </g>
@@ -462,8 +448,8 @@
   <text x="-6.180" y="11.549" text-anchor="end" dominant-baseline="middle" class="nodelabel" s:attribute="value">name</text>
 </g>
 
-<g s:type="vccs_h" s:class="controlled_isource" s:width="27.607" s:height="27.605">
-  <s:alias val="vccs_h"/>
+<g s:type="ccs" s:class="controlled_isource" s:width="27.607" s:height="27.605">
+  <s:alias val="ccs"/>
   <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
     <path class="symbol" d="M 28.631893 0.00120126 L 42.519472 13.88878 L 56.410981 0.00120126 L 42.519472 -13.890308 Z M 28.631893 0.00120126 " fill="none"/>
   </g>
@@ -472,20 +458,6 @@
   </g>
   <g s:x="0.000" s:y="13.803" s:pid="+" s:position="bottom"/>
   <g s:x="27.605" s:y="13.803" s:pid="-" s:position="top"/>
-  <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
-  <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
-</g>
-
-<g s:type="cccs" s:class="controlled_isource" s:width="27.607" s:height="27.605">
-  <s:alias val="cccs"/>
-  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
-    <path class="symbol" d="M 28.631893 0.00120126 L 42.519472 13.88878 L 56.410981 0.00120126 L 42.519472 -13.890308 Z M 28.631893 0.00120126 " fill="none"/>
-  </g>
-  <g transform="matrix(0.993750,0.000000,0.000000,-0.993750,-28.450990,13.801975)">
-    <path class="symbol" d="M 42.519472 13.88878 L 42.519472 -13.890308 " fill="none"/>
-  </g>
-  <g s:x="0.000" s:y="13.803" s:pid="+" s:position="left"/>
-  <g s:x="27.605" s:y="13.803" s:pid="-" s:position="right"/>
   <text x="13.803" y="-4.416" text-anchor="middle" dominant-baseline="baseline" class="nodelabel" s:attribute="ref">name</text>
   <text x="13.803" y="33.984" text-anchor="middle" dominant-baseline="hanging" class="nodelabel" s:attribute="value">name</text>
 </g>

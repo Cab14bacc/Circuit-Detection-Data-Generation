@@ -1,0 +1,252 @@
+{
+  "modules": {
+    "circuit": {
+      "cells": {
+        "gnd": {
+          "type": "gnd",
+          "port_directions": {
+            "A": "input"
+          },
+          "connections": {
+            "A": [
+              2
+            ]
+          },
+          "attributes": {
+            "name": "GND"
+          }
+        },
+        "L1": {
+          "type": "l_v",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              3
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "L1",
+            "value": "10u"
+          }
+        },
+        "Q1": {
+          "type": "q_npn",
+          "port_directions": {
+            "c": "input",
+            "b": "input",
+            "e": "output"
+          },
+          "connections": {
+            "c": [
+              3
+            ],
+            "b": [
+              4
+            ],
+            "e": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "Q1"
+          }
+        },
+        "M1": {
+          "type": "mos_p",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              6
+            ],
+            "g": [
+              7
+            ],
+            "s": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "M1"
+          }
+        },
+        "J1": {
+          "type": "jfet_n",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              4
+            ],
+            "g": [
+              6
+            ],
+            "s": [
+              7
+            ]
+          },
+          "attributes": {
+            "ref": "J1"
+          }
+        },
+        "L2": {
+          "type": "l_h",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              4
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "L2",
+            "value": "5u"
+          }
+        },
+        "Q2": {
+          "type": "q_pnp",
+          "port_directions": {
+            "c": "input",
+            "b": "input",
+            "e": "output"
+          },
+          "connections": {
+            "c": [
+              6
+            ],
+            "b": [
+              4
+            ],
+            "e": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "Q2"
+          }
+        },
+        "M2": {
+          "type": "mos_p",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              5
+            ],
+            "g": [
+              3
+            ],
+            "s": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "M2"
+          }
+        },
+        "J2": {
+          "type": "jfet_p",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              3
+            ],
+            "g": [
+              4
+            ],
+            "s": [
+              6
+            ]
+          },
+          "attributes": {
+            "ref": "J2"
+          }
+        },
+        "L3": {
+          "type": "l_v",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              6
+            ]
+          },
+          "attributes": {
+            "ref": "L3",
+            "value": "2u"
+          }
+        },
+        "L4": {
+          "type": "l_v",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              7
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "L4",
+            "value": "1u"
+          }
+        },
+        "M3": {
+          "type": "mos_p",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              4
+            ],
+            "g": [
+              6
+            ],
+            "s": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "M3"
+          }
+        }
+      }
+    }
+  }
+}

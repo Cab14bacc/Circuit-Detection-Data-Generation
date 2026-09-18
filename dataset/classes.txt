@@ -36,11 +36,13 @@ sisource
 spring
 svsource
 switch
+switch_csw
 switch_nc
 switch_no
 switch_push
 switch_spdt
 transformer
+transmission_line
 twoport
 voltmeter
 vsource

@@ -1,0 +1,110 @@
+{
+  "modules": {
+    "circuit": {
+      "cells": {
+        "V1": {
+          "type": "sv",
+          // specific to the ELK algorithm used in netlistsvg
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              3
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "V1"
+          }
+        },
+        "TF1": {
+          "type": "tf",
+          "port_directions": {
+            "sp": "input",
+            "sm": "input",
+            "pp": "output",
+            "pm": "output"
+          },
+          "connections": {
+            "sp": [
+              3
+            ],
+            "sm": [
+              2
+            ],
+            "pp": [
+              4
+            ],
+            "pm": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "TF1"
+          }
+        },
+        "R1": {
+          "type": "r_v",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              4
+            ],
+            "-": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "R1",
+            "value": "1k"
+          }
+        },
+        "C1": {
+          "type": "c_v",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              4
+            ]
+          },
+          "attributes": {
+            "ref": "C1",
+            "value": "1u"
+          }
+        },
+        "L1": {
+          "type": "l_h",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "L1",
+            "value": "10m"
+          }
+        }
+      }
+    }
+  }
+}

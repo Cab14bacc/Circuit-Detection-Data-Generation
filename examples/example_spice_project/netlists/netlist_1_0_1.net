@@ -1,0 +1,29 @@
+.model Dmod D
+.model Jmod NJF
+.model Qmod NPN
+.model Zmod NMF
+.model Omod LTRA
+.model Ymod TXL
+V1 nV 0 DC 12
+F1 nV 0 V1 1
+B1 nV 0 V={12}
+D1 nV nD off Dmod
+J1 nV 0 nJ1s off Jmod
+Q1 nV nJ1s nE Qmod
+Q2 nV nJ1s nE2 off Qmod
+Z1 nV 0 nJ1s off Zmod
+O1 nV 0 {nJ1s} {0} Omod
+Y1 nV 0 {nJ1s} {0} Ymod
+I1 nV 0 DC 2m AC 1m
+I2 nV 0 DC 1m AC 0.5m
+B2 nD 0 V=1
+B3 nJ1s 0 V=1
+B4 nE 0 V=1
+B5 nE2 0 V=1
+D2 nV 0 off Dmod
+J2 nV 0 nJ1s off Jmod
+Q3 nV nJ1s nV Qmod
+Z2 nV 0 nJ1s off Zmod
+O2 nV 0 {nJ1s} {0} Omod
+Y2 nV 0 {nJ1s} {0} Ymod
+B6 nV 0 V=1

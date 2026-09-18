@@ -4,6 +4,8 @@ Hanging nodes = nets touching only one component. Some appear from skin
 port drops, some are genuine netlist mistakes.
 """
 
+import pytest
+
 from circuit_data_gen.convert import _parse_netlist
 from circuit_data_gen.validate import hanging_nodes
 
@@ -20,7 +22,7 @@ class TestHangingNodes:
 
     def test_floating_node_is_hanging(self):
         # N2 touches only R1
-        parsed = _parse_netlist("V1 N1 0 dc 5\nR1 N1 N2 1k\n")
+        parsed = _parse_netlist("V1 N1 0 5\nR1 N1 N2 1k\n")
         before, after, _ = hanging_nodes(parsed)
         assert "N2" in before
         assert "N2" in after
@@ -31,7 +33,7 @@ class TestHangingNodes:
         # before AND after; the drop-delta is empty. A fully-dropped node
         # vanishes from the post-drop count (zero connections) rather than
         # staying 'hanging'.
-        parsed = _parse_netlist("V1 N1 0 dc 5\nG1 N1 0 M1 0 1m\n")
+        parsed = _parse_netlist("V1 N1 0 5\nG1 N1 0 M1 0 1m\n")
         before, after, from_drop = hanging_nodes(parsed)
         assert "M1" in before
         assert "M1" not in after
@@ -43,15 +45,17 @@ class TestHangingNodes:
         # Post-drop: only G2.+ remains (1 connection) -> M1 IS hanging, and
         # the drop caused the count to fall from 3 to 1, so it's in the
         # drop-caused delta.
-        parsed = _parse_netlist("V1 N1 0 dc 5\nG1 N1 0 M1 0 1m\nG2 M1 0 M1 0 1m\n")
+        parsed = _parse_netlist("V1 N1 0 5\nG1 N1 0 M1 0 1m\nG2 M1 0 M1 0 1m\n")
         before, after, from_drop = hanging_nodes(parsed)
         assert "M1" not in before  # 3 connections pre-drop
         assert "M1" in after  # 1 kept connection (G2.+)
         assert "M1" in from_drop  # drops pushed 3 -> 1
 
-    def test_wire_shared_nodes_not_hanging(self):
+    def test_wire_shared_nodes_not_hanging(self, convert):
+        if convert.IS_SPICE:
+            pytest.skip("W is not a wire in the SPICE dialect")
         # three components on one net via a wire: not hanging
-        parsed = _parse_netlist("V1 A 0 dc 5\nW1 A B\nR1 B C 1k\nC1 C 0 1u\n")
+        parsed = convert._parse_netlist("V1 A 0 5\nW1 A B\nR1 B C 1k\nC1 C 0 1u\n")
         before, after, _ = hanging_nodes(parsed)
         assert "A" not in after
         assert "C" not in after

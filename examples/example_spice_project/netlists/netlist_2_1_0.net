@@ -1,0 +1,19 @@
+L1 n1 0 10u
+Q1 n1 n2 n3 Qmodel
+M1 n4 n5 n3 0 Mmodel
+J1 n2 n4 n5 Jmodel
+L2 n2 0 5u
+Q2 n4 n2 0 Qmodel2
+M2 n3 n1 0 0 Mmodel2
+J2 n1 n2 n4 Jmodel2
+L3 n3 n4 2u
+L4 n5 0 1u
+M3 n2 n4 0 0 Mmodel3
+.model Qmodel NPN
+.model Qmodel2 PNP
+.model Mmodel PMOS
+.model Mmodel2 PMOS
+.model Mmodel3 PMOS
+.model Jmodel NJF
+.model Jmodel2 PJF
+.end

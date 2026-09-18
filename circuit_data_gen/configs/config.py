@@ -23,7 +23,7 @@ LOGGING_CONFIG = {
 
 BUILD_SKIN_CONFIG = {
     "DEBUG_DIR": "debug/circuitikz_renders",
-    "SKIN_PATH": f"{DATASET_DIR}/skins/lcapy.svg",
+    "SKIN_PATH": f"{DATASET_DIR}/skins/skin.svg",
     "SKIN_CONFIG_PATH": "configs/skins/default_skin_config.py",
     # line width in pt for circuitikz render,
     # this means the component will have stroke-width of LINE_WIDTH * 2 pt in the svg,
@@ -35,7 +35,7 @@ BUILD_SKIN_CONFIG = {
 NETLIST_SVG_CONFIG = {
     "BIN_PATH": "../netlistsvg/bin/netlistsvg.js",
     # Same skin build_skin.py emits to; single shared skin for renders.
-    "SKIN_PATH": f"{DATASET_DIR}/skins/lcapy.svg",
+    "SKIN_PATH": f"{DATASET_DIR}/skins/skin.svg",
     # Label font
     "FONT_SIZE": 10,
     "FONT_CHAR_WIDTH": 6,
@@ -69,9 +69,24 @@ CLI_CONFIG = {
 
 
 CONVERT_CONFIG = {
-    "CONVERT_CONFIG_PATH": "configs/convert/default_convert_config.py",
+    "CONVERT_LCAPY_CONFIG_PATH": "configs/convert/default_convert_config.py",
+    "CONVERT_SPICE_CONFIG_PATH": "configs/convert/spice_convert_config.py",
+    # Input netlist dialect: "lcapy" (default, simplified lcapy grammar) or
+    # "spice" (SPICE/ngspice/LTspice grammar).
+    "NETLIST_FORMAT": "spice",
+    # SPICE only.  When the model name is well defined, this does nothing.
+    # When the model name is not well defined. This setting attempts to 
+    # remove the model name by dropping the last token, and attempts to parse 
+    # it with specs that doesn't require a model name, i.e. a config that doesn't have 
+    # the kind field.
+    "ALLOW_UNKNOWN_MODELS": False,
 }
 
+
+NETLIST_GEN_CONFIG = {
+    "LLM_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt.md",
+    # "LLM_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/lcapy_agent_system_prompt.md",
+}
 
 CONFIGS = {
     "build_skin": BUILD_SKIN_CONFIG,
@@ -79,6 +94,7 @@ CONFIGS = {
     "cli": CLI_CONFIG,
     "convert": CONVERT_CONFIG,
     "logging": LOGGING_CONFIG,
+    "netlist_gen": NETLIST_GEN_CONFIG,
 }
 
 

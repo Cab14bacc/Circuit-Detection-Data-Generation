@@ -1,0 +1,17 @@
+.model Zmod NMF
+.model Ymod TXL
+B1 n1 0 V=5
+C1 n1 n2 1u
+C2 n2 n3 10n
+G1 n3 n4 {n1} {n2} 1m
+C3 n4 n5 100p
+G2 n5 n6 {n2} {n3} 2m
+C4 n6 n7 2u
+T1 n7 n8 0 0 Z0=50
+Y1 n8 n11 0 0 Ymod
+Z1 n11 0 n14 off Zmod
+C5 n14 n15 5n
+G3 n15 0 {n5} {n6} 0.5m
+B2 n14 0 V=1
+B3 n15 0 V=1
+B4 n1 0 V=1

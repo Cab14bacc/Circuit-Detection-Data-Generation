@@ -1,10 +1,12 @@
 # Circuit Data Generation
 
-This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). The pipeline is:
+This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). 
+[An example dataset](https://github.com/Cab14bacc/spice-circuit-dataset.git).
+The pipeline is:
 
-1. Generate a random netlist using an LLM. The netlist is in a simplified [lcapy](https://github.com/mph-/lcapy) styled format (following `grammar.py` in lcapy), simplified as in supporting only a subset of components, and not reading lcapy hints (arguments after `;`). To see which components are supported, read the system prompt in `circuit_data_gen/netlist_gen/prompts/agent_system_prompt.md`.
+1. Generate a random netlist using an LLM. The netlist is in either a Spice Netlist or a simplified [lcapy](https://github.com/mph-/lcapy) styled format (following `grammar.py` in lcapy), simplified as in supporting only a subset of components, and not reading lcapy hints (arguments after `;`). To see which components are supported, read the docstring in `circuit_data_gen/config/spice_convert_config.py` for the supported Spice grammar, and `default_convert_config.py` for the lcapy grammar.
 2. Validate the candidate with a smoke test: the netlist must parse, render, contain the required components, and form a single electrically-connected graph. Invalid candidates are fed back to the LLM with the error messages for regeneration.
-3. Render the validated netlist to a schematic using our [netlistsvg fork](https://github.com/Cab14bacc/netlistsvg). netlistsvg lays out the netlist with ELK (a multipurpose graph layout algorithm) and draws components from a **skin file** (SVG). The default skin is `dataset/skins/lcapy.svg`, built by `circuit_data_gen/build_skin.py`. Read more about skins in [docs/SKIN_STRUCTURE.md](docs/SKIN_STRUCTURE.md).
+3. Render the validated netlist to a schematic using our [netlistsvg fork](https://github.com/Cab14bacc/netlistsvg). netlistsvg lays out the netlist with ELK (a multipurpose graph layout algorithm) and draws components from a **skin file** (SVG). The default skin is `dataset/skins/skin.svg`, built by `circuit_data_gen/build_skin.py`. Read more about skins in [docs/SKIN_STRUCTURE.md](docs/SKIN_STRUCTURE.md).
 4. Emit structured **annotations** alongside the render: component bounding boxes, nested label (ref/value) boxes, and exact pin coordinates — all in output-image coordinates.
 
 ## Prerequisites
@@ -83,9 +85,9 @@ Per-worker logs (Initial seed prompt, LLM responses, validation errors) are writ
 cirdg build_skin --all --write-classes
 ```
 
-This renders every supported component via CircuitTikZ and emits the skin to `dataset/skins/lcapy.svg`. `--write-classes` also writes the shared class registry `dataset/classes.txt` (one annotation class per skin type). Renders validate their components against this registry, so it must exist before rendering.
+This renders every supported component via CircuitTikZ and emits the skin to `dataset/skins/skin.svg` by default. `--write-classes` also writes the shared class registry `dataset/classes.txt` (one annotation class per skin type). Renders validate their components against this registry, so it must exist before rendering.
 
-### 3. Render an existing lcapy-styled netlist
+### 3. Render an existing Spice or lcapy-styled netlist
 
 ```bash
 cirdg render path/to/netlist.net path/to/out.png --annotation path/to/ann --debug path/to/debug
@@ -98,7 +100,7 @@ cirdg render path/to/netlist.net path/to/out.png --annotation path/to/ann --debu
 | `cirdg gen_data` | Full pipeline: LLM generation → validation → rendering. |
 | `cirdg render <in> [out]` | Render a netlist file or a directory of them (`*.net`, `*.sch`). |
 | `cirdg build_skin [name] --all [--write-classes]` | Build the skin SVG from the CircuitTikz component specs. |
-| `cirdg convert <in> [out]` | Convert lcapy-style netlist(s) to yosys JSON without rendering. |
+| `cirdg convert <in> [out]` | Convert Spice or lcapy-style (specified in `config.py`) netlist(s) into yosys JSON without rendering. |
 
 ## Annotation Format
 
@@ -142,7 +144,7 @@ All tunable parameters live in `circuit_data_gen/configs/config.py`. All path co
 - **`build_skin`** — `LINE_WIDTH` (CircuitTikz line width; the skin's symbol stroke is `LINE_WIDTH * 2`), `SKIN_PATH` (where the skin is emitted).
 - **`netlistsvg`** — everything the renderer needs: `BIN_PATH` (node entry point), `SKIN_PATH` (shared skin), label font metrics (`FONT_SIZE`, `FONT_CHAR_WIDTH`, `FONT_CHAR_HEIGHT`, `FONT_CAP_HEIGHT`, `FONT_DESC_SHIFT`), `WIRE_STROKE_WIDTH`, and `ANNOTATION.CLASSES_PATH`.
 - **`cli`** — default output dirs for each command.
-- **`convert`** — path to `TO_SKIN_CONFIG` (the per-component skin mapping: lcapy prefix → skin alias, ports, value specs, drop rules).
+- **`convert`** — path to `TO_SKIN_CONFIG` (the per-component skin mapping: netlist prefix → skin alias, ports, value specs, drop rules. Whether the netlist is in lcapy or Spice format is specified in `config.py`).
 
 Font metrics and stroke widths are **emitted into the skin** as `<s:properties ...>` attributes by `build_skin.py`; netlistsvg reads them from there at render time. The skin is the single runtime source of truth — after changing `config.py`, rebuild with `cirdg build_skin --all` or the new values won't take effect.
 
@@ -154,7 +156,7 @@ Font metrics and stroke widths are **emitted into the skin** as `<s:properties .
     │   ├── build_skin.py                      # Skin svg builder using latex package CircuitTikz
     │   ├── validate.py                        # hanging-node + connectivity checks
     │   ├── render_netlist.py                  # A python interface to the netlistsvg
-    │   ├── convert.py                         # lcapy-style netlist -> yosys JSON
+    │   ├── convert.py                         # netlist -> yosys JSON
     │   ├── convert_old.py                     # Spice netlist -> yosys JSON (not guranteed to work, kept for reference)
     │   ├── cli.py                             # Interface to package, typer CLI (defines the cirdg command)
     │   ├── configs/
@@ -181,7 +183,7 @@ Font metrics and stroke widths are **emitted into the skin** as `<s:properties .
     │   │   └── annotations/
     │   │       ├── annotation_<id>.json       # structured annotations
     │   │       └── overlay_<id>.png           # debug overlay (boxes on render)
-    │   ├── skins/lcapy.svg                    # the built skin
+    │   ├── skins/skin.svg                     # the built skin
     │   └── renders_default/                   # default `cirdg render` output
     ├── netlistsvg/                            # netlistsvg fork (git submodule)
     │   ├── bin/netlistsvg.js                  # CLI entry (called by render_netlist)
@@ -193,7 +195,7 @@ Font metrics and stroke widths are **emitted into the skin** as `<s:properties .
 
 ### Dataset concept
 
-A **dataset** is the `dataset/` directory (relocate via `DATASET_DIR` in `config.py`). Everything a model consumes is scoped to it: the skin (`dataset/skins/lcapy.svg`), the class registry (`dataset/classes.txt`), and the generated `projects/`. One skin per dataset: the skin defines which components exist and how they render, and `classes.txt` is derived from it — so all projects in a dataset share one component vocabulary. If you regenerate the skin, the vocabulary changes; rebuild it (`cirdg build_skin --all --write-classes`) before generating more data, and keep skin + registry consistent per dataset.
+A **dataset** is the `dataset/` directory (relocate via `DATASET_DIR` in `config.py`). Everything a model consumes is scoped to it: the skin (`dataset/skins/skin.svg` by default), the class registry (`dataset/classes.txt` by default), and the generated `projects/`. One skin per dataset: the skin defines which components exist and how they render, and `classes.txt` is derived from it — so all projects in a dataset share one component vocabulary. If you regenerate the skin, the vocabulary changes; rebuild it (`cirdg build_skin --all --write-classes`) before generating more data, and keep skin + registry consistent per dataset.
 
 ## The netlistsvg Fork
 
@@ -236,5 +238,7 @@ ruff format
 - After changing any `netlistsvg` config value, rebuild the skin (`cirdg build_skin --all`); after changing `netlistsvg/lib/*.ts`, rebuild the JS (`npx tsc`).
 
 ## Example Output
-![Example Overlay 0](examples/example_project/annotations/overlay_0.png)
-![Example Overlay 4](examples/example_project/annotations/overlay_4.png)
+
+![Example Overlay 0](examples/example_lcapy_project/annotations/overlay_0.png)
+![Example Overlay 4](examples/example_lcapy_project/annotations/overlay_4.png)
+![Example Overlay 1_0_1](examples/example_spice_project/annotations/overlay_1_0_1.png)

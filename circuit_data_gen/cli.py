@@ -38,7 +38,7 @@ def render_cmd(
         "Defaults to the extension, or svg when no output is given.",
     ),
     scale: float = typer.Option(
-        1.0,
+        5.0,
         "--scale",
         help="Raster scale for png/jpg output: "
         "pixels = SVG units * scale. Annotations follow the output space.",
@@ -200,12 +200,12 @@ def convert_cmd(
             raise typer.BadParameter("When input is a directory, output must also be a directory.")
         extensions = ["*.net", "*.sch"]
         for netlist_path in [f for ext in extensions for f in input_file_or_dir.glob(ext)]:
-            with open(netlist_path, "r") as f:
+            with open(netlist_path, "r", encoding="utf-8") as f:
                 netlist_content = f.read()
             output_file_path = output_file_or_dir / (Path(netlist_path).stem + ".json")
             yosys_json = to_yosys_json(netlist_content)
 
-            with open(output_file_path, "w") as f:
+            with open(output_file_path, "w", encoding="utf-8") as f:
                 json.dump(yosys_json, f, indent=2)
 
             logger.info(f"Wrote {output_file_path}")
@@ -234,6 +234,12 @@ def generate_data_cmd(
         help="Name of the project (also used to compute default output dir)",
     ),
     num_of_netlists: int = typer.Option(1, "--num", "-n", help="Number of netlists to generate"),
+    gen_count_per_session: int = typer.Option(
+        1,
+        "--gen-count-per-session",
+        "-g",
+        help="Number of netlists to generate per session",
+    ),
     concurrency: int = typer.Option(4, "--concurrency", "-c", help="Max simultaneous LLM calls"),
     min_components: int = typer.Option(
         5, "--min-components", "-cmin", help="Minimum number of components in a netlist"
@@ -267,16 +273,17 @@ def generate_data_cmd(
     results = asyncio.run(
         scale_generation(
             output_dir=output_dir,
-            batch_size=num_of_netlists,
+            num_netlists=num_of_netlists,
             concurrency=concurrency,
             num_components_range=(min_components, max_components),
+            gen_count_per_session=gen_count_per_session,
             gen_seed=gen_seed,
             temperature=temperature,
             project_name=project_name,
         )
     )
 
-    failures = [r for r in results if not r.ok]
+    failures = [_r for r in results for _r in r if not _r.ok]
     if failures:
         for r in failures[:5]:
             why = r.exception or r.render_error or "; ".join(r.sanity_errors[:2])

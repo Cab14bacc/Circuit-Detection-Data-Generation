@@ -26,7 +26,7 @@ def state():
     return {
         "logger": logging.getLogger("test-validate"),
         "index": 0,
-        "requirements": CircuitRequirements(min_components=1),
+        "requirements": CircuitRequirements(num_components=1),
     }
 
 
@@ -85,7 +85,7 @@ class TestSmokeTestRenderErrors:
         assert any("not a connected graph" in e and "isolated subgraphs" in e for e in errors), errors
 
     def test_min_components_enforced(self, state, tmp_netlist, tmp_path):
-        state["requirements"] = CircuitRequirements(min_components=10)
+        state["requirements"] = CircuitRequirements(num_components=10)
         net_path = tmp_netlist(CONNECTED_NETLIST)
         valid, errors = smoke_test_render(
             state,
@@ -99,8 +99,8 @@ class TestSmokeTestRenderErrors:
 
     def test_missing_required_component_rejected(self, state, tmp_netlist, tmp_path):
         state["requirements"] = CircuitRequirements(
-            min_components=1,
-            required_components=[("L", "")],  # inductor not in CONNECTED_NETLIST
+            num_components=1,
+            component_subset=[("L", "")],  # inductor not in CONNECTED_NETLIST
         )
         net_path = tmp_netlist(CONNECTED_NETLIST)
         valid, errors = smoke_test_render(
@@ -115,7 +115,7 @@ class TestSmokeTestRenderErrors:
 
     def test_hanging_node_rejected(self, state, tmp_netlist, tmp_path):
         # N2 touches only R1 -> hanging
-        net_path = tmp_netlist("V1 N1 0 dc 5\nR1 N1 N2 1k\n")
+        net_path = tmp_netlist("V1 N1 0 5\nR1 N1 N2 1k\n")
         valid, errors = smoke_test_render(
             state,
             net_path,
@@ -141,8 +141,8 @@ class TestSmokeTestRenderErrors:
     def test_multiple_errors_reported_together(self, state, tmp_netlist, tmp_path):
         # isolated AND below min components AND missing a required kind
         state["requirements"] = CircuitRequirements(
-            min_components=20,
-            required_components=[("L", "")],
+            num_components=20,
+            component_subset=[("L", "")],
         )
         net_path = tmp_netlist(ISOLATED_NETLIST)
         valid, errors = smoke_test_render(

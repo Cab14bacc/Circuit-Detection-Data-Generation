@@ -1,0 +1,14 @@
+V1 in 0 DC 12 AC 1
+R1 in n1 1k
+D1 n1 n2 off Dmod1
+D2 n2 n3 Dmod2
+Q1 n3 n4 n5 off Qmod1
+Q2 n5 n6 n7 Qmod2
+R2 n4 0 2k
+R3 n6 0 3k
+R4 n7 0 4k
+.model Dmod1 D
+.model Dmod2 D
+.model Qmod1 NPN
+.model Qmod2 PNP
+.end
