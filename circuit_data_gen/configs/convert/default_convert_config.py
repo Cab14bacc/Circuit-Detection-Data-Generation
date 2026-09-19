@@ -230,7 +230,7 @@ TO_SKIN_CONFIG = {
                     # Default True. When True, the value is positional, can still be
                     # specified as like keyword e.g. (value=1.0), but must only be in
                     # the position of the specified index.
-                    # When False, the value can only be specified as a keyword arg in any position, 
+                    # When False, the value can only be specified as a keyword arg in any position,
                     # but must come after all the positional args.
                     "is_positional": True,
                     # default value, used when is_optional is True and value is omitted.

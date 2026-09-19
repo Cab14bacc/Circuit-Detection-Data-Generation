@@ -29,10 +29,7 @@ logger = get_logger(__name__)
 # --- dialect selection (set once at import; config is static) ----------------
 NETLIST_FORMAT = str(get_config_value("convert", "netlist_format")).lower()
 if NETLIST_FORMAT not in ("lcapy", "spice"):
-    raise ValueError(
-        f"CONVERT_CONFIG.NETLIST_FORMAT must be 'lcapy' or 'spice', "
-        f"got '{NETLIST_FORMAT}'"
-    )
+    raise ValueError(f"CONVERT_CONFIG.NETLIST_FORMAT must be 'lcapy' or 'spice', got '{NETLIST_FORMAT}'")
 IS_SPICE = NETLIST_FORMAT == "spice"
 # SPICE only: tolerate models not declared in-file (external .lib models).
 # When False, model-typed components must reference an in-file .model.
@@ -74,15 +71,51 @@ def _get_all_kind_keywords():
 
 @cache
 def _get_spice_directive_prefixes():
-    """SPICE dot-directive prefixes that are filtered before parsing. 
+    """SPICE dot-directive prefixes that are filtered before parsing.
     Element lines never start with '.'."""
     return {
-        ".model", ".lib", ".include", ".inc", ".tran", ".ac", ".dc", ".op",
-        ".four", ".fourier", ".param", ".params", ".step", ".temp", ".ic",
-        ".nodeset", ".measure", ".meas", ".noise", ".save", ".probe",
-        ".options", ".option", ".plot", ".print", ".pz", ".sens", ".tf",
-        ".disto", ".global", ".func", ".if", ".elseif", ".else", ".endif",
-        ".endc", ".backanno", ".end", ".wave", ".net", ".title", ".width",
+        ".model",
+        ".lib",
+        ".include",
+        ".inc",
+        ".tran",
+        ".ac",
+        ".dc",
+        ".op",
+        ".four",
+        ".fourier",
+        ".param",
+        ".params",
+        ".step",
+        ".temp",
+        ".ic",
+        ".nodeset",
+        ".measure",
+        ".meas",
+        ".noise",
+        ".save",
+        ".probe",
+        ".options",
+        ".option",
+        ".plot",
+        ".print",
+        ".pz",
+        ".sens",
+        ".tf",
+        ".disto",
+        ".global",
+        ".func",
+        ".if",
+        ".elseif",
+        ".else",
+        ".endif",
+        ".endc",
+        ".backanno",
+        ".end",
+        ".wave",
+        ".net",
+        ".title",
+        ".width",
     }
 
 
@@ -255,7 +288,7 @@ def _preprocess_lines(text_lines: list[str]):
     model_table: dict[str, dict] = {}  # model name (upper) -> model type (upper)
     # SPICE: ignore lines inside .subckt/.ends blocks (we treat subckt as generics, only nodes are parsed)
     subckt_table: dict[str, list[str]] = {}  # subckt name (upper) -> list of port names
-    in_subckt = False  
+    in_subckt = False
     for line in text_lines:
         stripped_line = _strip_hints(line)
         if not stripped_line:
@@ -274,7 +307,7 @@ def _preprocess_lines(text_lines: list[str]):
                 if directive == ".ends":
                     in_subckt = False
                 continue  # ignore all lines inside a .subckt block
-            
+
             if directive == ".model":
                 parts = stripped_line.split()
                 # .model <name> <type>(pname1=pval1 pname2=pval2 ... )
@@ -289,15 +322,12 @@ def _preprocess_lines(text_lines: list[str]):
                     # parens present, _get_tokens paren-joins the entire arg
                     # list into a single token (SPICE function-value joining)
                     joined = (model_args + " " + " ".join(parts[3:])).strip().strip("()").strip()
-                    model_table[parts[1].upper()]["args"] = [
-                        tok for tok in _get_tokens(joined) if tok
-                    ]
+                    model_table[parts[1].upper()]["args"] = [tok for tok in _get_tokens(joined) if tok]
                 else:
                     raise NetlistError(
                         f"Malformed .model directive: {stripped_line}, "
                         f"should follow the '.model <name> <type>' format"
                     )
-
 
             if directive == ".subckt":
                 parts = stripped_line.split()
@@ -327,7 +357,7 @@ def _preprocess_lines(text_lines: list[str]):
         if IS_SPICE and stripped_line[0] in COUPLED_INDUCTOR_PREFIXES:
             # SPICE coupled inductors (Kname Lname1 Lname2 ... k): args are
             # INDUCTOR REFERENCES, not nodes — the coupling has no visual
-            # form for now, therefore the line is dropped entirely. 
+            # form for now, therefore the line is dropped entirely.
             # The skin has no cell for it, and
             # A generic cell would fabricate fake nodes named "L1", "L2",
             # so the line is dropped entirely here.
@@ -427,15 +457,15 @@ def _extract_values(
                 )
             # skip if there is no corresponding alias in the spec
             continue
-        
+
         skin_label = arg_spec.get("skin_label", None)
         # value spec must have skin_label, unless it is optional, then it's dropped.
         # if skin_label is None:
-            # if not is_optional:
-            #     raise SpecError(
-            #         f"Missing 'skin_label' for arg index {arg_idx} in "
-            #         f"args_to_values for prefix '{prefix}' spec index {spec_idx}"
-            #     )
+        # if not is_optional:
+        #     raise SpecError(
+        #         f"Missing 'skin_label' for arg index {arg_idx} in "
+        #         f"args_to_values for prefix '{prefix}' spec index {spec_idx}"
+        #     )
 
         if not is_positional:
             # check for arguments specified with key=value format,
@@ -457,9 +487,9 @@ def _extract_values(
                         cur_elem["values"][skin_label] = {"value": value, "alias": value_alias}
                         found_arg = True
                         break
-            
+
             if not found_arg:
-                default_value = arg_spec.get("default_value", None) 
+                default_value = arg_spec.get("default_value", None)
                 if not is_optional:
                     raise NetlistError(
                         f"Missing required value for non-positional argument with alias: {value_alias} for "
@@ -468,7 +498,7 @@ def _extract_values(
                 elif default_value is not None:
                     skin_label = skin_label if skin_label is not None else f"unknown_{value_alias[0]}"
                     cur_elem["values"][skin_label] = {"value": default_value, "alias": value_alias}
-        else:    
+        else:
             # if the argument is specified as positional, it can only be provided in that position.
             # we take the value from that position in the non_kind_args list.
             arg_idx = int(arg_idx)
@@ -525,7 +555,7 @@ def _extract_values(
 
             found_value_alias = found_value_alias if found_value_alias is not None else [key]
             skin_label = skin_label if skin_label is not None else f"unknown_{key}"
-  
+
             if skin_label not in cur_elem["values"]:
                 cur_elem["values"][skin_label] = {"value": value, "alias": found_value_alias}
 
@@ -539,7 +569,7 @@ def _extract_values(
                     f"in netlist for prefix '{prefix}' spec index {spec_idx}. "
                     f"Model arguments must be in key=value format."
                 )
-            
+
             key, value = arg.split("=", 1)
 
             # look if this model arg is defined
@@ -558,10 +588,11 @@ def _extract_values(
 
             found_value_alias = found_value_alias if found_value_alias is not None else [key]
             skin_label = skin_label if skin_label is not None else f"unknown_{key}"
-  
+
             if skin_label not in cur_elem["values"]:
                 cur_elem["values"][skin_label] = {"value": value, "alias": found_value_alias}
-    
+
+
 def _get_tokens(line: str):
     """
     Split a line into tokens, separated by whitespaces, handling quoted strings and curly braces.
@@ -608,6 +639,7 @@ def _get_tokens(line: str):
         tokens.append(current_token)
     return tokens
 
+
 def _filter_spice_model_args(prefix, spec_idx, args, model_types, model_table):
     resolved_model_name = None
     resolved_model_types = [
@@ -640,7 +672,7 @@ def _filter_spice_model_args(prefix, spec_idx, args, model_types, model_table):
             f"No model type found in args for prefix '{prefix}' spec index {spec_idx}, "
             f"but spec requires kind {model_types}. (no matching .model directive)"
         )
-    
+
     if len(resolved_model_types) == 1:
         resolved_model_type, resolved_model_arg_idx = resolved_model_types[0]
         # the resolved model type must match this spec's kind
@@ -650,12 +682,13 @@ def _filter_spice_model_args(prefix, spec_idx, args, model_types, model_table):
                 f"spec kind {model_types} for prefix '{prefix}' spec index {spec_idx} "
             )
         non_model_args = copy.copy(args)
-        resolved_model_name = args[resolved_model_arg_idx]  
+        resolved_model_name = args[resolved_model_arg_idx]
         non_model_args.pop(resolved_model_arg_idx)
     else:
         non_model_args = args
 
     return non_model_args, resolved_model_name
+
 
 def _match_spec(
     spec_idx,
@@ -667,7 +700,7 @@ def _match_spec(
 ):
     errors: list[str] = []
     warnings: list[str] = []
-    
+
     try:
         cur_elem = {"connections": {}, "values": {}, "kind": [], "specifiers": [], "skin_alias": None}
         skin_alias = component_spec.get("skin_alias", None)
@@ -692,14 +725,9 @@ def _match_spec(
         # mapping from non kind argument index to value spec,
         args_to_values = component_spec.get("args_to_values", {})
         args_to_values_positional = [
-            key
-            for key, value in args_to_values.items()
-            if value.get("is_positional", True)
+            key for key, value in args_to_values.items() if value.get("is_positional", True)
         ]
-        arg_indices_set = {
-            key
-            for key, value in arg_to_ports.items()
-        }
+        arg_indices_set = {key for key, value in arg_to_ports.items()}
         arg_indices_set.update(args_to_values_positional)
 
         if len(arg_indices_set) != len(arg_to_ports) + len(args_to_values_positional):
@@ -780,18 +808,18 @@ def _match_spec(
             raise NetlistError(
                 f"Did not find kind keyword in arguments for component {component_name} "
                 f"in netlist for prefix '{prefix}' spec index {spec_idx}"
-            )        
+            )
 
         # preliminary check for positional arguments after keyword arguments
         # positional_arg_end is the length of the positional args, note that we allow
-        # positional args that are specified in a keyword arg form as long as they 
+        # positional args that are specified in a keyword arg form as long as they
         # are in the correct position.
         positional_arg_end = len(filtered_args)
         for arg_idx, arg in enumerate(filtered_args):
             if "=" in arg:
                 key, value = arg.split("=", 1)
                 arg_spec = args_to_values.get(arg_idx, None)
-                
+
                 if arg_spec is None:
                     # undeclared keyword (instance param) — positional section
                     # ends here (exclusive). Keywords at/after that point are
@@ -812,8 +840,8 @@ def _match_spec(
                         positional_arg_end = arg_idx
                 # now definitely a keyword arg
                 elif arg_idx < positional_arg_end:
-                        positional_arg_end = arg_idx
-                            
+                    positional_arg_end = arg_idx
+
             elif arg_idx > positional_arg_end:
                 raise NetlistError(
                     f"Positional argument after keyword argument in netlist "
@@ -832,17 +860,24 @@ def _match_spec(
             )
 
         # extract connections
-        _extract_connections(
-            cur_elem, filtered_args, arg_to_ports, component_spec, prefix, spec_idx
-        )
+        _extract_connections(cur_elem, filtered_args, arg_to_ports, component_spec, prefix, spec_idx)
         # extract values/label
-        _extract_values(cur_elem, filtered_args, args_to_values, 
-                        component_name, prefix, spec_idx, model_table, resolved_model_name)
+        _extract_values(
+            cur_elem,
+            filtered_args,
+            args_to_values,
+            component_name,
+            prefix,
+            spec_idx,
+            model_table,
+            resolved_model_name,
+        )
 
         return cur_elem, errors, warnings
     except (SpecError, NetlistError, IndexError) as e:
         errors.append(str(e))
         return None, errors, warnings
+
 
 def _parse_line(
     line: str,
@@ -940,7 +975,7 @@ def _parse_line(
                 if candidates_retry
                 else (None, [], [])
             )
-            
+
             if best_elem_retry is not None:
                 logger.warning(
                     f"Unknown model name in last token for component {component_name} "
@@ -965,30 +1000,24 @@ def _parse_line(
                 )
         else:
             patterns = [
-                _render_spec_grammar(
-                    prefix, component_specs[spec_idx], show_skin=False, mark_dropped=True
-                )
+                _render_spec_grammar(prefix, component_specs[spec_idx], show_skin=False, mark_dropped=True)
                 for spec_idx in range(len(candidates))
             ]
             msg = [
                 (
-                    f"Spec {spec_idx}: {patterns[spec_idx]}\n"
-                    f"- Errors: {'; '.join(errs)}\n" if errs else ""
-                    f"- Warnings: {'; '.join(warns)}\n" if warns else ""
+                    f"Spec {spec_idx}: {patterns[spec_idx]}\n- Errors: {'; '.join(errs)}\n"
+                    if errs
+                    else f"- Warnings: {'; '.join(warns)}\n"
+                    if warns
+                    else ""
                 )
                 for spec_idx, (elem, errs, warns) in enumerate(candidates)
                 if errs
             ]
 
-            logger.error(
-                f"All specs failed for prefix '{prefix}' on line '{line}'\n" 
-                f"{"".join(msg)}"
-            )
+            logger.error(f"All specs failed for prefix '{prefix}' on line '{line}'\n{''.join(msg)}")
             # All specs failed, raise the error from the best candidate.
-            raise ValueError(
-                f"All specs failed for prefix '{prefix}' on line '{line}'\n" 
-                f"{"".join(msg)}"
-            )
+            raise ValueError(f"All specs failed for prefix '{prefix}' on line '{line}'\n{''.join(msg)}")
     else:  # if generic
         # take the last arg and kwargs as value, and all else connections.
         elem = {
@@ -1015,7 +1044,7 @@ def _parse_line(
                 if "=" in token:
                     key, value = token.split("=", 1)
                     elem["values"][key] = {"value": value, "alias": [key]}
-                else: # node
+                else:  # node
                     if subckt_def is not None and idx < len(subckt_def):
                         port_name = subckt_def[idx]
                         elem["connections"][port_name] = {"node_name": token, "port_direction": "input"}
@@ -1027,10 +1056,10 @@ def _parse_line(
             for idx, token in enumerate(args):
                 if "=" in token:
                     key, value = token.split("=", 1)
-                    elem["values"][key] = {"value": value, "alias": [key]} 
+                    elem["values"][key] = {"value": value, "alias": [key]}
                 elif idx == len(args) - 1:
                     elem["values"]["value"] = {"value": token, "alias": ["value"]}
-                else: # node
+                else:  # node
                     # bare-number pin keys; the generic skin template draws these
                     # verbatim next to each port, so keys == drawn pin text
                     elem["connections"][f"{idx + 1}"] = {"node_name": token, "port_direction": "input"}
@@ -1440,9 +1469,7 @@ def config_to_grammar(
     grammar_lines: list[str] = []
     for prefix, component_specs in TO_SKIN_CONFIG.items():
         for spec in component_specs:
-            pattern = _render_spec_grammar(
-                prefix, spec, show_skin=show_skin, mark_dropped=mark_dropped
-            )
+            pattern = _render_spec_grammar(prefix, spec, show_skin=show_skin, mark_dropped=mark_dropped)
             grammar_lines.append(f"format:{pattern}")
     return grammar_lines
 

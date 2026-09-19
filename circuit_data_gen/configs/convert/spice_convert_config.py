@@ -179,11 +179,7 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                2: {
-                    "skin_label": "value",
-                    "alias": ["r", "resistance"],
-                    "is_optional": False
-                },
+                2: {"skin_label": "value", "alias": ["r", "resistance"], "is_optional": False},
             },
             "port_directions": {"+": "input", "-": "input"},
         },
@@ -199,12 +195,12 @@ TO_SKIN_CONFIG = {
                     "skin_label": "value",
                     "alias": ["r", "resistance"],
                     "is_optional": True,
-                    "default_value": "1e-3"
+                    "default_value": "1e-3",
                 },
             },
             "model_type": ["R", "RES"],
             "port_directions": {"+": "input", "-": "input"},
-        }
+        },
     ],
     # Capacitor — Cname N+ N- <value> [mname] <ic=v>  (ngspice §3.3.6)
     "C": [
@@ -234,7 +230,7 @@ TO_SKIN_CONFIG = {
                     "skin_label": "value",
                     # CAP is model capacitance
                     "alias": ["CAP", "C"],
-                    "default_value": "0"
+                    "default_value": "0",
                 },
             },
             "model_type": ["C"],
@@ -248,16 +244,11 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                "Q": {
-                    "skin_label": "value",
-                    "alias": ["Q"],
-                    "is_positional": False,
-                    "is_optional": False
-                },
+                "Q": {"skin_label": "value", "alias": ["Q"], "is_positional": False, "is_optional": False},
                 # 3rd arg may be a model name (mname) — consumed, not shown
             },
             "port_directions": {"+": "input", "-": "output"},
-        }
+        },
     ],
     # Inductor — Lname N+ N- <value> [mname]  (ngspice §3.3.10)
     "L": [
@@ -271,11 +262,10 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": "value",
                     "alias": ["L", "IND"],
-                },       
+                },
             },
             "port_directions": {"+": "input", "-": "input"},
         },
-
         {
             "skin_alias": ["l_h", "l_v"],
             "arg_to_ports": {
@@ -283,16 +273,11 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                2: {
-                    "skin_label": "value",
-                    "alias": ["L", "IND"],
-                    "is_optional": True,
-                    "default_value": "0"
-                },
+                2: {"skin_label": "value", "alias": ["L", "IND"], "is_optional": True, "default_value": "0"},
             },
             "model_type": ["L"],
             "port_directions": {"+": "input", "-": "input"},
-        }
+        },
     ],
     # Voltage source — Vname N+ N- <value|function|specifier stream>  (ngspice §4.1)
     # SPICE value forms are single tokens once parens are joined:
@@ -359,8 +344,7 @@ TO_SKIN_CONFIG = {
                 "DC": {"refs": [2], "is_optional": True},
                 # AC [ACMAG [ACPHASE]] — bare AC == AC 1 (default injected at
                 # expansion time when the specifier opens with no operands)
-                "AC": {"refs": ["AC", "phase"], "is_optional": False,
-                       "default": "1"},
+                "AC": {"refs": ["AC", "phase"], "is_optional": False, "default": "1"},
             },
             "port_directions": {"+": "output", "-": "input"},
         },
@@ -410,11 +394,10 @@ TO_SKIN_CONFIG = {
             },
             "specifiers": {
                 "DC": {"refs": [2], "is_optional": True},
-                "AC": {"refs": ["AC", "phase"], "is_optional": False,
-                       "default": "1"},
+                "AC": {"refs": ["AC", "phase"], "is_optional": False, "default": "1"},
             },
             "port_directions": {"+": "output", "-": "input"},
-        }
+        },
     ],
     # Diode — Dname N+ N- mname [area]  (ngspice §7.2)
     # model name is the LAST token; its .model TYPE (in-file table) must be
@@ -427,9 +410,7 @@ TO_SKIN_CONFIG = {
                 0: {"alias": "+"},
                 1: {"alias": "-"},
             },
-            "args_to_values": {
-
-            },
+            "args_to_values": {},
             "model_type": ["D"],
             "port_directions": {"+": "input", "-": "output"},
         },
@@ -439,9 +420,7 @@ TO_SKIN_CONFIG = {
                 0: {"alias": "+"},
                 1: {"alias": "-"},
             },
-            "args_to_values": {
-
-            },
+            "args_to_values": {},
             "model_type": ["D"],
             "kind": ["off"],
             "port_directions": {"+": "input", "-": "output"},
@@ -474,8 +453,7 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "b"},
                 2: {"alias": "e"},
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["NPN"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
         },
@@ -487,8 +465,7 @@ TO_SKIN_CONFIG = {
                 2: {"alias": "e"},
                 3: {"alias": "ns", "drop": True},  # substrate: no skin pin
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["NPN"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
         },
@@ -499,8 +476,7 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "b"},
                 2: {"alias": "e"},
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["NPN"],
             "kind": ["off"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
@@ -513,8 +489,7 @@ TO_SKIN_CONFIG = {
                 2: {"alias": "e"},
                 3: {"alias": "ns", "drop": True},  # substrate: no skin pin
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["NPN"],
             "kind": ["off"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
@@ -526,8 +501,7 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "b"},
                 2: {"alias": "e"},
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["LPNP"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
         },
@@ -539,20 +513,18 @@ TO_SKIN_CONFIG = {
                 2: {"alias": "e"},
                 3: {"alias": "ns", "drop": True},  # substrate: no skin pin
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["LPNP"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
         },
         {
-            "skin_alias": ["q_pnp"], 
+            "skin_alias": ["q_pnp"],
             "arg_to_ports": {
                 0: {"alias": "c"},
                 1: {"alias": "b"},
                 2: {"alias": "e"},
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["LPNP"],
             "kind": ["off"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
@@ -565,8 +537,7 @@ TO_SKIN_CONFIG = {
                 2: {"alias": "e"},
                 3: {"alias": "ns", "drop": True},  # substrate: no skin pin
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["LPNP"],
             "kind": ["off"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
@@ -578,8 +549,7 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "b"},
                 2: {"alias": "e"},
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["PNP"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
         },
@@ -591,8 +561,7 @@ TO_SKIN_CONFIG = {
                 2: {"alias": "e"},
                 3: {"alias": "ns", "drop": True},  # substrate: no skin pin
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["PNP"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
         },
@@ -603,8 +572,7 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "b"},
                 2: {"alias": "e"},
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["PNP"],
             "kind": ["off"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
@@ -617,8 +585,7 @@ TO_SKIN_CONFIG = {
                 2: {"alias": "e"},
                 3: {"alias": "ns", "drop": True},  # substrate: no skin pin
             },
-            "args_to_values": {
-            },
+            "args_to_values": {},
             "model_type": ["PNP"],
             "kind": ["off"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
@@ -796,13 +763,7 @@ TO_SKIN_CONFIG = {
                 2: {"alias": "c+", "drop": True},
                 3: {"alias": "c-", "drop": True},
             },
-            "args_to_values": {
-                4: {
-                    "skin_label": "value",
-                    "alias": ["voltage_gain"],
-                    "is_optional": False
-                }
-            },
+            "args_to_values": {4: {"skin_label": "value", "alias": ["voltage_gain"], "is_optional": False}},
             "port_directions": {"+": "output", "-": "input"},
         },
         # Non-linear (2-node): the expression keyword is the only argument.
@@ -863,7 +824,7 @@ TO_SKIN_CONFIG = {
                 }
             },
             "port_directions": {"+": "output", "-": "input"},
-        }
+        },
     ],
     # CCCS — Fname N+ N- Vname value  (ngspice §4.2.3)
     # Vname is a controlling VOLTAGE SOURCE reference (not a node); the lcapy
@@ -984,7 +945,7 @@ TO_SKIN_CONFIG = {
             },
             "args_to_values": {
                 "Z0": {
-                    "skin_label": None, 
+                    "skin_label": None,
                     "alias": ["Z0"],
                     "is_positional": False,
                     "is_optional": False,
@@ -1028,7 +989,6 @@ TO_SKIN_CONFIG = {
                     "skin_label": None,
                     "alias": ["Vcontrol", "VNAM"],
                     "is_optional": False,
-
                 },
             },
             "model_type": ["CSW"],
@@ -1138,7 +1098,7 @@ TO_SKIN_CONFIG = {
             },
             "args_to_values": {},
             "port_directions": {"+": "input", "-": "input"},
-        }
+        },
     ],
     # KSPICE single lossy transmission line (TXL) — Yname N1 0 N2 0 mname
     # <LEN=len>  (ngspice §6.4.1). Same bipole tline symbol; the second node
@@ -1170,7 +1130,7 @@ TO_SKIN_CONFIG = {
                 4: {"skin_label": None, "alias": ["LEN", "len"]},
             },
             "port_directions": {"+": "input", "-": "input"},
-        }
+        },
     ],
     # MESFET — Zname D G S mname  (ngspice NMF/PMF). The model TYPE (NMF =
     # n-channel, PMF = p-channel) selects the JFET symbol via the model

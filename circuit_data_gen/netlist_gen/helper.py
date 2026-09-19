@@ -1,10 +1,7 @@
-import random
 from ..convert import IS_SPICE
 
-def generate_seed_prompt(
-        gen_count_per_session: int, 
-        circuit_requirements
-    ):
+
+def generate_seed_prompt(gen_count_per_session: int, circuit_requirements):
 
     final_seed_prompt = (
         "# Special Instructions For This Task Instance:\n"
@@ -20,12 +17,12 @@ def generate_seed_prompt(
         no_specifer_str = ", and without specifiers" if IS_SPICE else ""
         component_list = ", ".join(
             (
-                f"`{prefix}{' with kind keyword: ' + ", ".join(kind) if kind else ' without kind keyword'}"
-                f"{', and with specifiers: ' + ", ".join(specifiers) if specifiers else no_specifer_str}`"
+                f"`{prefix}{' with kind keyword: ' + ', '.join(kind) if kind else ' without kind keyword'}"
+                f"{', and with specifiers: ' + ', '.join(specifiers) if specifiers else no_specifer_str}`"
             )
             for prefix, kind, specifiers in component_subset
         )
-        
+
         prompt_seed = (
             f"## Contraints for Netlist {idx}:\n"
             f"This is the exact number of components for this instance: "

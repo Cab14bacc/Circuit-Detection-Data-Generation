@@ -1,5 +1,6 @@
 from .convert import IS_SPICE, _merge_nodes, WIRE, GROUND_NAMES
 
+
 def undefined_components(parsed_netlist):
     undefined_comp_names = []
     for comp_name, comp_data in parsed_netlist.items():
@@ -7,10 +8,10 @@ def undefined_components(parsed_netlist):
         prefix = comp_data.get("prefix", None)
 
         # check for if prefix exist because some generics are explicit generics like
-        # "X" for subcircuits when dealing with spice netlists. 
+        # "X" for subcircuits when dealing with spice netlists.
         if prefix is None and if_generic:
             undefined_comp_names.append(comp_name)
-            
+
     return undefined_comp_names
 
 
@@ -132,7 +133,6 @@ def connected_component_groups(parsed_netlist) -> tuple[bool, list[list[str]]]:
     return len(groups) == 1, list(groups.values())
 
 
-
 def full_validation(parsed_netlist, requirement, logger=None) -> dict:
     errors = []
 
@@ -156,10 +156,13 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
     # ================================================================
     # check for required components
     # ================================================================
-    types_in_netlist = {(data["prefix"], tuple(map(str.lower, data["kind"])), tuple(map(str.lower, data["specifiers"]))) 
-                        for name, data in parsed_netlist.items()}
+    types_in_netlist = {
+        (data["prefix"], tuple(map(str.lower, data["kind"])), tuple(map(str.lower, data["specifiers"])))
+        for name, data in parsed_netlist.items()
+    }
     comps_in_netlist = {
-        (name, data["prefix"], tuple(map(str.lower, data["kind"])), tuple(map(str.lower, data["specifiers"]))) for name, data in parsed_netlist.items()
+        (name, data["prefix"], tuple(map(str.lower, data["kind"])), tuple(map(str.lower, data["specifiers"])))
+        for name, data in parsed_netlist.items()
     }
 
     extra_components = [
@@ -169,7 +172,7 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
     if logger:
         logger.info(f"types_in_netlist: {types_in_netlist}")
         logger.info(f"components_in_netlist: {comps_in_netlist}")
-    
+
     # ================================================================
     # check for required components that are missing from the netlist
     # ================================================================
@@ -177,13 +180,15 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
         no_specifer_str = ", and without specifiers" if IS_SPICE else ""
         extra_components_str = ", ".join(
             (
-                f"`{prefix}{' with kind keyword: ' + ", ".join(kind) if kind else ' without kind keyword.'}"
-                f"{' with specifiers: ' + ", ".join(specifiers) if specifiers else no_specifer_str}`"
+                f"`{prefix}{' with kind keyword: ' + ', '.join(kind) if kind else ' without kind keyword.'}"
+                f"{' with specifiers: ' + ', '.join(specifiers) if specifiers else no_specifer_str}`"
             )
             for prefix, kind, specifiers in extra_components
         )
-        errors.append(f"Netlist can not contain components that are not in the specified subset, "
-                      f"these components are not allowed: {extra_components_str}.")
+        errors.append(
+            f"Netlist can not contain components that are not in the specified subset, "
+            f"these components are not allowed: {extra_components_str}."
+        )
 
     (hanging_nodes_before_drop, hanging_nodes_after_drop, hanging_nodes_from_dropping) = hanging_nodes(
         parsed_netlist

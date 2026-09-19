@@ -40,7 +40,6 @@ class CircuitState(TypedDict):
     output_yosys: list[Path]
 
 
-
 def smoke_test_render(
     state: CircuitState,
     gen_idx: int,
@@ -64,7 +63,7 @@ def smoke_test_render(
             debug_overlay=True,
             debug_overlay_path=temp_overlay_path,
         )
-        
+
         # check if the rendered schematic file exists and is not empty
         if not (temp_schematic_path.exists() and temp_schematic_path.stat().st_size > 0):
             errors.append("Rendering produced an empty or missing SVG.")
@@ -136,11 +135,7 @@ def netlist_gen_setup(
             init_state["gen_count_per_session"] = 1 or len(state.get("requirements", ["dummy"]))
 
         if not state.get("circuits_valid"):
-            count = (
-                1
-                if state.get("gen_count_per_session") is None
-                else init_state["gen_count_per_session"]
-            )
+            count = 1 if state.get("gen_count_per_session") is None else init_state["gen_count_per_session"]
             init_state["circuits_valid"] = [False] * count
 
         init_state["output_netlists"] = ["" for _ in range(init_state["gen_count_per_session"])]
@@ -148,7 +143,6 @@ def netlist_gen_setup(
         init_state["output_annotations"] = ["" for _ in range(init_state["gen_count_per_session"])]
         init_state["output_overlays"] = ["" for _ in range(init_state["gen_count_per_session"])]
         init_state["output_yosys"] = ["" for _ in range(init_state["gen_count_per_session"])]
-
 
         return init_state
 
@@ -259,7 +253,7 @@ def netlist_gen_setup(
         if all(state["circuits_valid"]):
             message = HumanMessage(
                 content=(
-                    f"Running Circuit Validation...\nCircuit validation result for " 
+                    f"Running Circuit Validation...\nCircuit validation result for "
                     f"{state['gen_count_per_session']} netlist: {state['circuits_valid']}"
                 )
             )
@@ -267,9 +261,7 @@ def netlist_gen_setup(
             final_msg = "Running Circuit Validation...\n"
             for idx, (if_valid, errors) in enumerate(zip(state["circuits_valid"], list_of_errors)):
                 if if_valid:
-                    final_msg += (
-                        f"Circuit validation result for netlist {idx}: {if_valid}\n\n"
-                    )
+                    final_msg += f"Circuit validation result for netlist {idx}: {if_valid}\n\n"
                     continue
                 error_str = "\n".join(errors) if errors else "Unknown validation error."
                 final_msg += (
@@ -281,13 +273,13 @@ def netlist_gen_setup(
         logger.info(f"{type(message).__name__}:\n {message.content}\n")
 
         return {
-            "messages": [message], 
-            "circuits_valid": state["circuits_valid"], 
-            "output_netlists": state["output_netlists"], 
-            "output_schematics": state["output_schematics"], 
-            "output_annotations": state["output_annotations"], 
-            "output_overlays": state["output_overlays"], 
-            "output_yosys": state["output_yosys"]
+            "messages": [message],
+            "circuits_valid": state["circuits_valid"],
+            "output_netlists": state["output_netlists"],
+            "output_schematics": state["output_schematics"],
+            "output_annotations": state["output_annotations"],
+            "output_overlays": state["output_overlays"],
+            "output_yosys": state["output_yosys"],
         }
 
     def route_for_regeneration(state: CircuitState) -> str:

@@ -14,6 +14,7 @@ from ..configs.config import get_logger, get_config_value
 @dataclass
 class GenResult:
     """Result of a single netlist generation worker."""
+
     ok: bool = False
     worker_id: int = 0
     gen_idx_in_session: int = 0
@@ -53,7 +54,7 @@ async def run_pipeline_worker(
     rng_base_seed = f"{gen_seed}_{worker_id}"
 
     # Generate unique seed constraints
-    
+
     constraints = []
     for idx in range(gen_count_per_session):
         rng_seed = f"{rng_base_seed}_{idx}"
@@ -67,8 +68,7 @@ async def run_pipeline_worker(
         component_subset = rng.sample(all_components, num_required)
 
         constraints.append(
-            CircuitRequirements(num_components=num_components, 
-                                component_subset=component_subset)
+            CircuitRequirements(num_components=num_components, component_subset=component_subset)
         )
 
     final_seed_prompt = generate_seed_prompt(gen_count_per_session, constraints)
@@ -93,7 +93,7 @@ async def run_pipeline_worker(
         "index": worker_id,
         "logger": netlist_logger,
         "gen_count_per_session": gen_count_per_session,
-        "requirements": constraints
+        "requirements": constraints,
     }
 
     netlist_logger.info(f"Worker {worker_id} starting (gen_seed={gen_seed})")
@@ -108,13 +108,19 @@ async def run_pipeline_worker(
         output_overlays = final_state.get("output_overlays", ["" for _ in range(gen_count_per_session)])
         output_yosyss = final_state.get("output_yosys", ["" for _ in range(gen_count_per_session)])
 
-        result = [GenResult(ok=k, 
-                            output_netlist=output_netlists[idx],
-                            output_schematic=output_schematics[idx],
-                            output_annotation=output_annotations[idx],
-                            output_overlay=output_overlays[idx],
-                            output_yosys=output_yosyss[idx],
-                            worker_id=worker_id, gen_idx_in_session=idx) for idx, k in enumerate(ok)]
+        result = [
+            GenResult(
+                ok=k,
+                output_netlist=output_netlists[idx],
+                output_schematic=output_schematics[idx],
+                output_annotation=output_annotations[idx],
+                output_overlay=output_overlays[idx],
+                output_yosys=output_yosyss[idx],
+                worker_id=worker_id,
+                gen_idx_in_session=idx,
+            )
+            for idx, k in enumerate(ok)
+        ]
         if not all(ok):
             # Extract last error message if available
             msgs = final_state.get("messages", [])
@@ -129,11 +135,13 @@ async def run_pipeline_worker(
 
     except Exception as e:
         netlist_logger.error(f"Worker {worker_id} failed with exception: {e}")
-        return [GenResult(
-            ok=False,
-            worker_id=worker_id,
-            exception=str(e),
-        )]
+        return [
+            GenResult(
+                ok=False,
+                worker_id=worker_id,
+                exception=str(e),
+            )
+        ]
 
 
 async def scale_generation(
@@ -178,14 +186,12 @@ async def scale_generation(
     schematic_dir.mkdir(parents=True, exist_ok=True)
     annotation_dir.mkdir(parents=True, exist_ok=True)
 
-
     is_spice = get_config_value("convert", "netlist_format").lower() == "spice"
-    
+
     if is_spice:
         to_skin_config = get_config_value("convert", "convert_spice_config_path", "TO_SKIN_CONFIG")
     else:
         to_skin_config = get_config_value("convert", "convert_lcapy_config_path", "TO_SKIN_CONFIG")
-
 
     all_components = []
     for prefix, component_specs in to_skin_config.items():
@@ -194,7 +200,6 @@ async def scale_generation(
         for spec in component_specs:
             kinds = spec.get("kind", [])
             specifiers = spec.get("specifiers", [])
-
 
             all_components.append((prefix, tuple(map(str.lower, kinds)), tuple(map(str.lower, specifiers))))
 
@@ -230,6 +235,7 @@ async def scale_generation(
                     all_components=all_components,
                     log_dir=log_dir,
                 )
+
         batch_size = num_netlists // gen_count_per_session
         last_gen_count = gen_count_per_session
         if num_netlists % gen_count_per_session != 0:
@@ -237,7 +243,7 @@ async def scale_generation(
             last_gen_count = num_netlists % gen_count_per_session
 
         tasks = [
-            bounded_worker(i, gen_count_per_session if i < batch_size - 1 else last_gen_count) 
+            bounded_worker(i, gen_count_per_session if i < batch_size - 1 else last_gen_count)
             for i in range(batch_size)
         ]
         results: list[list[GenResult]] = await asyncio.gather(*tasks)
