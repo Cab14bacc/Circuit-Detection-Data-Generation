@@ -9,6 +9,8 @@ The pipeline is:
 3. Render the validated netlist to a schematic using our [netlistsvg fork](https://github.com/Cab14bacc/netlistsvg). netlistsvg lays out the netlist with ELK (a multipurpose graph layout algorithm) and draws components from a **skin file** (SVG). The default skin is `dataset/skins/skin.svg`, built by `circuit_data_gen/build_skin.py`. Read more about skins in [docs/SKIN_STRUCTURE.md](docs/SKIN_STRUCTURE.md).
 4. Emit structured **annotations** alongside the render: component bounding boxes, nested label (ref/value) boxes, and exact pin coordinates — all in output-image coordinates.
 
+![Example Overlay 4](examples/example_lcapy_project/annotations/overlay_4.png)
+
 ## Prerequisites
 
 - **Python >= 3.12**
