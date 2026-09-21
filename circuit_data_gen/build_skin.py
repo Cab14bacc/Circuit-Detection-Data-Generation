@@ -687,6 +687,12 @@ def emit_full_skin(component_names, work_dir: Path | None = None, if_write_class
     font_desc_shift = get_config_value("netlistsvg", "font_desc_shift")
     wire_stroke_width = get_config_value("netlistsvg", "wire_stroke_width")
     symbol_stroke_width = LINE_WIDTH * 2
+    # ELK Layered options -> the skin's <s:layoutEngine> block. netlistsvg's
+    # Skin.getProperties() turns this into the layoutOptions object passed
+    # to elk.layout(), so the config directly drives the layout engine.
+    layout_options: dict = get_config_value("netlistsvg", "layout_engine") or {}
+    layout_attrs = "\n".join(f'      {key}="{value}"' for key, value in layout_options.items())
+    layout_engine_block = "  <s:layoutEngine" + (f"\n{layout_attrs}" if layout_attrs else "") + "\n  />"
 
     try:
         parts = [
@@ -696,6 +702,9 @@ def emit_full_skin(component_names, work_dir: Path | None = None, if_write_class
             f' fontCharWidth="{font_char_width}" fontCharHeight="{font_char_height}"'
             f' fontDescShift="{font_desc_shift}"'
             f' wireStrokeWidth="{wire_stroke_width}"/>',
+            # ELK layout options (netlistsvg reads <s:layoutEngine> attrs
+            # into the layoutOptions object handed to elk.layout()).
+            layout_engine_block,
             "  <style>",
             "    svg { stroke: #000; fill: none; }",
             f'    text {{ fill: #000; stroke: none; font-size: {font_size}px; font-weight: bold; font-family: "Courier New", monospace; }}',

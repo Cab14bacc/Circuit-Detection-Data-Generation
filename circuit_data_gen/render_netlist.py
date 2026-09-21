@@ -7,7 +7,7 @@ coupling statements, subcircuit bodies) lives in convert.py.
 import json
 import subprocess
 from pathlib import Path
-from .convert import to_yosys_json
+from .parser.convert import to_yosys_json
 from .configs.config import get_config_path_value, get_logger
 
 logger = get_logger(__name__)
@@ -42,6 +42,8 @@ def render_netlist(
     format: str | None = None,
     debug_overlay: bool = False,
     debug_overlay_path: Path | None = None,
+    strict: bool | None = None,
+    elk_seed: str | int | None = None,
 ) -> tuple[Path, dict]:
     """Render a netlist via convert.py + netlistsvg.
 
@@ -67,6 +69,15 @@ def render_netlist(
     debug_overlay_path : Path | None
         Where to write the overlay PNG. When None, netlistsvg writes it
         next to the output as <stem>.debug.png.
+    strict : bool | None
+        SPICE strict parsing, forwarded to convert.py. None uses the
+        convert.strict_parsing config value.
+    elk_seed : str | int | None
+        ELK randomization seed (org.eclipse.elk.randomizationSeed), passed
+        as --seed to netlistsvg. The same netlist + skin + seed always
+        yields the same layout; vary it per sample for layout variety while
+        keeping renders reproducible. None leaves the skin's seed (or the
+        ELK default) in effect.
     """
     netlistsvg_bin = get_config_path_value("netlistsvg", "bin_path")
 
@@ -86,7 +97,7 @@ def render_netlist(
     out_file.parent.mkdir(parents=True, exist_ok=True)
     json_path = out_file.with_suffix(".json")
 
-    yosys, parsed_netlist = to_yosys_json(netlist_text, module_name)
+    yosys, parsed_netlist = to_yosys_json(netlist_text, module_name, strict=strict)
 
     logger.debug(f"writing yosys json to: {json_path}")
     json_path.write_text(json.dumps(yosys, indent=2))
@@ -116,6 +127,8 @@ def render_netlist(
         cmd += ["--classes", str(classes_path)]
     if scale != 1.0:
         cmd += ["--scale", str(scale)]
+    if elk_seed is not None:
+        cmd += ["--seed", str(elk_seed)]
     if debug_overlay:
         if debug_overlay_path is not None:
             cmd += ["--debug-overlay", str(debug_overlay_path)]

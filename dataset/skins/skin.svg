@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:s="https://github.com/nturley/netlistsvg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <s:properties constants="false" splitsAndJoins="false" genericsLaterals="true" fontCharWidth="6" fontCharHeight="11" fontDescShift="0.3" wireStrokeWidth="0.8"/>
+  <s:layoutEngine
+  />
   <style>
     svg { stroke: #000; fill: none; }
     text { fill: #000; stroke: none; font-size: 10px; font-weight: bold; font-family: "Courier New", monospace; }

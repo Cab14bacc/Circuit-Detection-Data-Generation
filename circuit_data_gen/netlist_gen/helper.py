@@ -1,4 +1,4 @@
-from ..convert import IS_SPICE
+from ..parser.convert import IS_SPICE
 
 
 def generate_seed_prompt(gen_count_per_session: int, circuit_requirements):

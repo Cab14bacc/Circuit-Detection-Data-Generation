@@ -14,48 +14,53 @@ Two netlist dialects are supported, selected by CONVERT_CONFIG.NETLIST_FORMAT
     SPICE-specific logic in this module (directive filtering, paren-joined
     function values like SINE(...), model-name args) is guarded by IS_SPICE;
     the shared parsing skeleton is dialect-agnostic.
+
+This module holds the parsing pipeline (preprocessing, spec matching, line
+and netlist parsing, net merging, yosys JSON). Its helpers live next to it:
+  - dialect.py : dialect selection (IS_SPICE, TO_SKIN_CONFIG, ...) and constants
+  - errors.py  : NetlistError, SpecError
+  - tokens.py  : Token, _get_tokens and the lexical repairs of SPICE args
+  - strict.py  : strict SPICE parsing checks (_strict_violations)
+  - grammar.py : TO_SKIN_CONFIG -> grammar listing (config_to_grammar)
+The names below are re-exported, so `convert.X` keeps working.
 """
 
 from __future__ import annotations
-from .configs.config import get_config_value, get_logger
+from ..configs.config import get_logger
 from functools import cache
 from uuid import uuid4
 import random
-import string
+import re
 import copy
 
+# dialect state is bound here at import: reload dialect, then this module, to
+# switch dialect (see tests/conftest.py::_reload_convert)
+from .dialect import (  # noqa: F401 (re-exported)
+    ALLOW_UNKNOWN_MODELS,
+    COUPLED_INDUCTOR_PREFIXES,
+    EXPLICIT_SPICE_GENERICS,
+    EXPRESSION_CONSTANTS,
+    GROUND_NAMES,
+    IS_SPICE,
+    NETLIST_FORMAT,
+    STRICT_PARSING,
+    SUBCKT_PREFIX,
+    TO_SKIN_CONFIG,
+    WIRE,
+)
+from .errors import NetlistError, SpecError
+from .grammar import _render_spec_grammar, config_to_grammar  # noqa: F401 (re-exported)
+from .strict import STRICT_ALLOWED_DIRECTIVES, _strict_violations  # noqa: F401 (re-exported)
+from .tokens import (
+    Token,  # noqa: F401 (re-exported)
+    _get_tokens,
+    _glue_comma_values,
+    _glue_paren_values,
+    _strip_hints,
+    _token_origin,
+)
+
 logger = get_logger(__name__)
-
-# --- dialect selection (set once at import; config is static) ----------------
-NETLIST_FORMAT = str(get_config_value("convert", "netlist_format")).lower()
-if NETLIST_FORMAT not in ("lcapy", "spice"):
-    raise ValueError(f"CONVERT_CONFIG.NETLIST_FORMAT must be 'lcapy' or 'spice', got '{NETLIST_FORMAT}'")
-IS_SPICE = NETLIST_FORMAT == "spice"
-# SPICE only: tolerate models not declared in-file (external .lib models).
-# When False, model-typed components must reference an in-file .model.
-ALLOW_UNKNOWN_MODELS = bool(get_config_value("convert", "allow_unknown_models"))
-if IS_SPICE:
-    TO_SKIN_CONFIG = get_config_value("convert", "convert_spice_config_path", "TO_SKIN_CONFIG")
-else:
-    TO_SKIN_CONFIG = get_config_value("convert", "convert_lcapy_config_path", "TO_SKIN_CONFIG")
-
-WIRE = "W"
-SUBCKT_PREFIX = "X"
-EXPLICIT_SPICE_GENERICS = [SUBCKT_PREFIX, "A", "U", "P"]
-# SPICE: coupled-inductor lines (K...) are dropped during preprocessing —
-# their args are inductor references, not nodes, so there is nothing to draw.
-COUPLED_INDUCTOR_PREFIXES = "Kk"
-# lcapy uses "0"/"GND"; SPICE additionally allows lowercase "gnd"
-GROUND_NAMES = {"0", "GND", "gnd"}
-
-
-class NetlistError(Exception):
-    """Raised when a netlist line is malformed or cannot be parsed into a component."""
-
-
-class SpecError(Exception):
-    """Raised when a skin spec in LCAPY_TO_SKIN is malformed (e.g. duplicate
-    argument indices between arg_to_ports and args_to_values)."""
 
 
 @cache
@@ -119,40 +124,7 @@ def _get_spice_directive_prefixes():
     }
 
 
-# --- SPICE arg normalization (lexical repair + specifier expansion) ---------
-def _glue_paren_values(args: list[str]) -> list[str]:
-    """LTspice allows a space between a function name and its argument list
-    (PWL (0,0 10m,12)). _get_tokens can only paren-join without the space,
-    so re-join bare-word + '(' pairs into one token here.
-
-    Node names, model names and keywords never start with '(' and '=' may
-    not be spaced, so a token starting with '(' always continues the previous
-    bare word. The guard against gluing onto an already ')'-closed token
-    keeps consecutive groups separate: `(0,0) (1m,5)` stays two tokens.
-    """
-    out: list[str] = []
-    for tok in args:
-        if out and tok.startswith("(") and not out[-1].endswith(")"):
-            out[-1] += tok
-        else:
-            out.append(tok)
-    return out
-
-
-def _glue_comma_values(args: list[str]) -> list[str]:
-    """SPICE writes multi-element values as comma lists that may span
-    whitespace: IC=V1, I1, V2, I2. A comma is never a token boundary in this
-    grammar (node names etc. never end with ','), so a token ending in ','
-    continues the same value, as does a token starting with one."""
-    out: list[str] = []
-    for tok in args:
-        if out and (out[-1].endswith(",") or tok.startswith(",")):
-            out[-1] += tok
-        else:
-            out.append(tok)
-    return out
-
-
+# --- SPICE arg normalization (specifier expansion; lexical repair: tokens.py) --
 def _expand_specifiers(args: list[str], component_spec: dict, prefix: str) -> list[str] | None:
     """SPICE only: rewrite V/I mode-segment streams into the uniform
     key=value token form that args_to_values slots bind.
@@ -243,10 +215,6 @@ def _expand_specifiers(args: list[str], component_spec: dict, prefix: str) -> li
     return out
 
 
-def _strip_hints(line: str) -> str | None:
-    return line.split(";", 1)[0].split("#", 1)[0].strip()
-
-
 def _get_prefix(component_name: str) -> str | None:
     # Mechanical analogues are case-sensitive single-letter (k, m, r)
     prefix_list = [str(p) for p in TO_SKIN_CONFIG.keys()]
@@ -282,13 +250,32 @@ def _preprocess_lines(text_lines: list[str]):
     that the schematic render does not use. The `.model mname type` mappings
     are extracted into a model table FIRST (returned alongside the lines) —
     the model type is the specialization that spec `kind` matching uses.
+    The bodies of .subckt/.ends and .control/.endc blocks are skipped.
+
+    Returns
+    -------
+    merged_stripped_lines : list[str]
+        The element lines, continuation lines merged.
+    model_table : dict[str, dict]
+        SPICE: model name (upper) -> {"model_type", "args"}.
+    subckt_table : dict[str, list[str]]
+        SPICE: subckt name (upper) -> list of port names.
+    meta : dict
+        SPICE netlist-level information used by strict parsing:
+        "params" (.param name (upper) -> value text), "directives" (list of
+        (directive, line) for every top-level dot-directive) and "coupling"
+        (the K coupled-inductor lines, which are not parsed as elements).
     """
     merged_stripped_lines = []
     current_line = ""
     model_table: dict[str, dict] = {}  # model name (upper) -> model type (upper)
     # SPICE: ignore lines inside .subckt/.ends blocks (we treat subckt as generics, only nodes are parsed)
     subckt_table: dict[str, list[str]] = {}  # subckt name (upper) -> list of port names
+    meta: dict = {"params": {}, "directives": [], "coupling": []}
     in_subckt = False
+    # SPICE: .control/.endc blocks hold ngspice scripts (run, plot, shell ...),
+    # not elements, so their lines are skipped as well.
+    in_control = False
     for line in text_lines:
         stripped_line = _strip_hints(line)
         if not stripped_line:
@@ -297,16 +284,40 @@ def _preprocess_lines(text_lines: list[str]):
         if stripped_line[0] in "*#":
             continue
 
+        if IS_SPICE and (in_subckt or in_control):
+            # ignore all lines inside a .subckt or .control block
+            directive = stripped_line.split()[0].lower()
+            if in_subckt and directive == ".ends":
+                in_subckt = False
+            if in_control and directive == ".endc":
+                in_control = False
+            continue
+
         if IS_SPICE and stripped_line[0] == ".":
             # SPICE dot-directives: .model lines populate the model table
-            # (name -> type), the rest are simulation info the schematic
-            # render does not use. (.subckt expansion not supported yet.)
+            # (name -> type), .param lines the parameter table, the rest are
+            # simulation info the schematic render does not use.
+            # (.subckt expansion not supported yet.)
             directive = stripped_line.split()[0].lower()
+            meta["directives"].append((directive, stripped_line))
 
-            if in_subckt:
-                if directive == ".ends":
-                    in_subckt = False
-                continue  # ignore all lines inside a .subckt block
+            if directive == ".control":
+                in_control = True
+                continue
+
+            if directive in (".param", ".params"):
+                # .param a=1k b={2*a}; spaces around '=' are tolerated here
+                assignments = re.sub(r"\s*=\s*", "=", stripped_line[len(directive) :])
+                for tok in _get_tokens(assignments):
+                    if "=" in tok:
+                        key, value = tok.split("=", 1)
+                        meta["params"][key.upper()] = value
+                    else:
+                        raise NetlistError(
+                            f"Malformed .param directive: {stripped_line}, "
+                            f"should follow the '.param <name>=<value> ...' format"
+                        )
+                continue
 
             if directive == ".model":
                 parts = stripped_line.split()
@@ -360,8 +371,10 @@ def _preprocess_lines(text_lines: list[str]):
             # form for now, therefore the line is dropped entirely.
             # The skin has no cell for it, and
             # A generic cell would fabricate fake nodes named "L1", "L2",
-            # so the line is dropped entirely here.
+            # so the line is dropped entirely here. It is kept in meta so
+            # strict parsing can check the inductor references.
             logger.debug(f"Dropping coupled-inductor line (no visual form, no nodes): {stripped_line[:60]}")
+            meta["coupling"].append(stripped_line)
             continue
 
         if stripped_line.startswith("+"):
@@ -380,7 +393,7 @@ def _preprocess_lines(text_lines: list[str]):
     if current_line:
         merged_stripped_lines.append(current_line)
 
-    return merged_stripped_lines, model_table, subckt_table
+    return merged_stripped_lines, model_table, subckt_table, meta
 
 
 def _extract_connections(
@@ -426,9 +439,10 @@ def _extract_connections(
         if_drop = arg_spec.get("drop", False)
         port_direction = component_spec.get("port_directions", {}).get(port_id, "input")
         cur_elem["connections"][port_id] = {
-            "node_name": node_name,
+            "node_name": str(node_name),
             "port_direction": port_direction,
             "drop": if_drop,
+            **_token_origin(node_name),
         }
 
 
@@ -534,7 +548,12 @@ def _extract_values(
             else:
                 fallback_key = key if key is not None else value_alias[0]
                 skin_label = skin_label if skin_label is not None else f"unknown_{fallback_key}"
-                cur_elem["values"][skin_label] = {"value": value, "alias": value_alias}
+                cur_elem["values"][skin_label] = {"value": str(value), "alias": value_alias}
+                # for value args that reference another element (e.g. F/H/W's controlling V source)
+                if arg_spec.get("is_reference"):
+                    # names another element (e.g. F/H/W's controlling V source);
+                    # strict parsing checks that it exists
+                    cur_elem["values"][skin_label]["reference"] = arg_spec["is_reference"]
 
     # add in arguments that are not specified in the spec but are keyword args
     for arg in filtered_args:
@@ -591,53 +610,6 @@ def _extract_values(
 
             if skin_label not in cur_elem["values"]:
                 cur_elem["values"][skin_label] = {"value": value, "alias": found_value_alias}
-
-
-def _get_tokens(line: str):
-    """
-    Split a line into tokens, separated by whitespaces, handling quoted strings and curly braces.
-    Returns a list of tokens.
-    """
-    stack = []
-    tokens = []
-    current_token = ""
-    for char in line:
-        if char in string.whitespace and not stack:
-            if current_token:
-                tokens.append(current_token)
-                current_token = ""
-        else:
-            if char == '"':
-                if stack and stack[-1] == '"':
-                    stack.pop()  # closing quote
-                else:
-                    stack.append('"')  # opening quote
-                continue
-            elif char == "'":
-                if stack and stack[-1] == "'":
-                    stack.pop()
-                else:
-                    stack.append("'")
-                continue
-            elif char == "{":
-                stack.append("{")
-                continue
-            elif char == "}":
-                if stack and stack[-1] == "{":
-                    stack.pop()
-                continue
-            elif char == "(" and IS_SPICE:
-                # SPICE: function-call values (SINE(...), PULSE(...)) must stay
-                # one token — the whole parenthesised group is a single value.
-                stack.append("(")
-            elif char == ")" and IS_SPICE and stack and stack[-1] == "(":
-                stack.pop()
-
-            current_token += char
-
-    if current_token:
-        tokens.append(current_token)
-    return tokens
 
 
 def _filter_spice_model_args(prefix, spec_idx, args, model_types, model_table):
@@ -749,6 +721,8 @@ def _match_spec(
             non_model_args, resolved_model_name = _filter_spice_model_args(
                 prefix, spec_idx, args, model_types, model_table
             )
+            cur_elem["model_name"] = str(resolved_model_name) if resolved_model_name is not None else None
+            cur_elem["model_span"] = getattr(resolved_model_name, "span", None)
 
             # declared specifiers must be present (unless optional). Only the
             # bare keyword proves presence: the doc grammar has no key=value
@@ -785,6 +759,9 @@ def _match_spec(
         # case-insensitive, so ON/On/on/OFF/off all match.
         kind_l = [k.lower() for k in kind]
         filtered_args = [t for t in non_model_args if t.lower() not in kind_l]
+        cur_elem["kind_spans"] = {
+            str(t): t.span for t in non_model_args if t.lower() in kind_l and isinstance(t, Token)
+        }
 
         if len(filtered_args) == 0:
             raise NetlistError(
@@ -883,6 +860,7 @@ def _parse_line(
     line: str,
     model_table: dict[str, str] | None = None,
     subckt_table: dict[str, list[str]] | None = None,
+    strict: bool = False,
 ):
     """Parse a single line of the netlist into a component name and its tokens.
 
@@ -901,6 +879,9 @@ def _parse_line(
         directives (upper-cased). Used to resolve args marked `is_subckt` in
         the spec: the subckt name token is looked up to obtain its port names,
         which are used to populate the component's connections.
+    strict : bool
+        SPICE only: strict parsing. Disables the ALLOW_UNKNOWN_MODELS retry,
+        so every model reference needs an in-file .model card.
 
 
     Returns
@@ -912,7 +893,7 @@ def _parse_line(
 
     tokens = _get_tokens(line)
     args = tokens[1:]
-    component_name = tokens[0]
+    component_name = str(tokens[0])
     prefix = _get_prefix(component_name)
     # lcapy only: make sure wires are unique, they will be dropped after merging
     # nodes anyways. SPICE has no wire element (W is a switch there).
@@ -950,7 +931,7 @@ def _parse_line(
         # the model table, so retry with the trailing token stripped — but ONLY
         # against specs of the same prefix that declare NO kind. Matching a kind-
         # requiring spec here would guess a model type we don't actually know.
-        elif IS_SPICE and ALLOW_UNKNOWN_MODELS and len(args) > 0:
+        elif IS_SPICE and ALLOW_UNKNOWN_MODELS and not strict and len(args) > 0:
             specs_without_model = [
                 (spec_idx, spec)
                 for spec_idx, spec in enumerate(component_specs)
@@ -999,8 +980,10 @@ def _parse_line(
                     f"Retry Warnings: {'; '.join(best_warnings_retry)}"
                 )
         else:
+            # dropped ports are NOT marked ({NC+}) here: this message is fed
+            # back to the LLM, which must write plain node names
             patterns = [
-                _render_spec_grammar(prefix, component_specs[spec_idx], show_skin=False, mark_dropped=True)
+                _render_spec_grammar(prefix, component_specs[spec_idx], show_skin=False)
                 for spec_idx in range(len(candidates))
             ]
             msg = [
@@ -1032,43 +1015,69 @@ def _parse_line(
 
         if prefix == SUBCKT_PREFIX and IS_SPICE:
             # assume last non keyword arg is the subckt name
-            subckt_name = args[-1]
+            subckt_idx = len(args) - 1
             for idx in range(len(args) - 1, -1, -1):
                 if "=" in args[idx]:
                     continue
-                subckt_name = args[idx]
+                subckt_idx = idx
                 break
+            subckt_name = str(args[subckt_idx])
             subckt_def = subckt_table.get(subckt_name.upper(), None)
+            elem["subckt"] = subckt_name
 
             for idx, token in enumerate(args):
                 if "=" in token:
                     key, value = token.split("=", 1)
                     elem["values"][key] = {"value": value, "alias": [key]}
+                elif idx == subckt_idx:
+                    # the subckt name is the cell's label, not a pin
+                    elem["values"]["value"] = {"value": subckt_name, "alias": ["value"]}
                 else:  # node
                     if subckt_def is not None and idx < len(subckt_def):
                         port_name = subckt_def[idx]
-                        elem["connections"][port_name] = {"node_name": token, "port_direction": "input"}
                     else:
                         # bare-number pin keys; the generic skin template draws these
                         # verbatim next to each port, so keys == drawn pin text
-                        elem["connections"][f"{idx + 1}"] = {"node_name": token, "port_direction": "input"}
+                        port_name = f"{idx + 1}"
+                    elem["connections"][port_name] = {
+                        "node_name": str(token),
+                        "port_direction": "input",
+                        **_token_origin(token),
+                    }
         else:
             for idx, token in enumerate(args):
                 if "=" in token:
                     key, value = token.split("=", 1)
                     elem["values"][key] = {"value": value, "alias": [key]}
                 elif idx == len(args) - 1:
-                    elem["values"]["value"] = {"value": token, "alias": ["value"]}
+                    elem["values"]["value"] = {"value": str(token), "alias": ["value"]}
                 else:  # node
                     # bare-number pin keys; the generic skin template draws these
                     # verbatim next to each port, so keys == drawn pin text
-                    elem["connections"][f"{idx + 1}"] = {"node_name": token, "port_direction": "input"}
+                    elem["connections"][f"{idx + 1}"] = {
+                        "node_name": str(token),
+                        "port_direction": "input",
+                        **_token_origin(token),
+                    }
 
     return component_name, elem
 
 
-def _parse_netlist(text: str):
-    text_lines, model_table, subckt_table = _preprocess_lines(text.splitlines())
+def _parse_netlist(text: str, strict: bool | None = None):
+    """Parse netlist text into {component_name: element}.
+
+    Parameters
+    ----------
+    text : str
+        The netlist text.
+    strict : bool | None
+        SPICE only: strict parsing (see _strict_violations). All violations
+        are collected and raised together as one NetlistError, one per line,
+        so they can be fed back to the LLM in a single round. None uses the
+        STRICT_PARSING config default.
+    """
+    strict = (STRICT_PARSING if strict is None else strict) and IS_SPICE
+    text_lines, model_table, subckt_table, meta = _preprocess_lines(text.splitlines())
 
     parsed_netlist = {}
     # "component_name": {
@@ -1079,6 +1088,8 @@ def _parse_netlist(text: str):
     #         "port id": {
     #             "node_name": node name,
     #             "port_direction": direction,
+    #             "braced": written as {node},
+    #             "span": (start, end) of the token in its element line,
     #         },
     #     },
     #     "values": {
@@ -1089,10 +1100,20 @@ def _parse_netlist(text: str):
 
     for line in text_lines:
         logger.debug(f"Parsing line: {line}")
-        component_name, element = _parse_line(line, model_table=model_table, subckt_table=subckt_table)
+        component_name, element = _parse_line(
+            line, model_table=model_table, subckt_table=subckt_table, strict=strict
+        )
         if component_name in parsed_netlist:
             raise NetlistError(f"Duplicate component name '{component_name}' found in netlist.")
         parsed_netlist[component_name] = element
+
+    if strict:
+        violations = _strict_violations(parsed_netlist, subckt_table, meta)
+        if violations:
+            raise NetlistError(
+                f"Strict parsing found {len(violations)} problem(s):\n"
+                + "\n".join(f"- {v}" for v in violations)
+            )
 
     return parsed_netlist
 
@@ -1156,8 +1177,15 @@ def _assign_net_ids(parsed_netlist):
     return id_map, find, ground_net_id
 
 
-def to_yosys_json(netlist_text: str, module_name: str = "circuit") -> tuple[dict, dict]:
-    parsed_netlist = _parse_netlist(netlist_text)
+def to_yosys_json(
+    netlist_text: str, module_name: str = "circuit", strict: bool | None = None
+) -> tuple[dict, dict]:
+    """Parse a netlist and convert it to yosys JSON for netlistsvg.
+
+    `strict` is forwarded to _parse_netlist (None = STRICT_PARSING config).
+    Returns (yosys_json, parsed_netlist).
+    """
+    parsed_netlist = _parse_netlist(netlist_text, strict=strict)
     id_map, find, ground_net_id = _assign_net_ids(parsed_netlist)
 
     cells = {}
@@ -1236,242 +1264,6 @@ def to_yosys_json(netlist_text: str, module_name: str = "circuit") -> tuple[dict
         }
 
     return ({"modules": {module_name: {"cells": cells}}}, parsed_netlist)
-
-
-# --- grammar rendering: TO_SKIN_CONFIG -> human-readable grammar listing -----
-def _render_slots(arg_to_ports: dict, mark_dropped: bool = False) -> list[str]:
-    """Positional port placeholders for one spec, sorted by index.
-
-    Node placeholders are capitalised and N-prefixed (grammar convention:
-    N* = node): `+`/`-` render as N+/N-, existing N-aliases (ns) render as
-    N-prefixed, other aliases get an N prefix. Dropped ports are still
-    required tokens in the element line — only the skin pin is missing, so
-    they are NOT marked optional in the grammar.
-
-    When `mark_dropped` is True, dropped ports are additionally wrapped in
-    curly braces — `{NC+}` — so a reader can tell which node tokens are
-    parsed but not drawn by the skin.
-    """
-    slots = []
-    for idx in sorted(arg_to_ports.keys(), key=int):
-        entry = arg_to_ports[idx]
-        alias = entry.get("alias", f"arg{idx}")
-        if alias in ("+", "-"):
-            node_name = f"N{alias}"
-        elif alias.upper().startswith("N"):
-            node_name = alias.upper()  # already a node alias (ns → NS)
-        else:
-            node_name = f"N{alias[0].upper()}{alias[1:]}"
-        if mark_dropped and entry.get("drop", False):
-            node_name = f"{{{node_name}}}"
-        slots.append(node_name)
-    return slots
-
-
-def _render_value_slot(entry: dict, idx) -> str | None:
-    """Render ONE value/keyword slot as its grammar token.
-
-    A positional slot is a VALUE: the token written on the line IS the
-    value (`1k`), so the placeholder is shown in angle brackets — `<r>`
-    required, `[<C>]` optional. A silent REQUIRED positional slot
-    (consumed token like F/W's Vcontrol, skin_label None) also renders
-    `<alias>` — dropping it would make the rendered grammar unparseable.
-
-    A keyword-only slot (is_positional False) is written in Key=<value>
-    form: required ones unbracketed (`V=<value>`, `Z0=<value>`), optional
-    ones as `[Key=<value>|Key2=<value>]` showing every accepted alias.
-
-    Returns None when the slot has nothing writable (no alias, no label).
-    """
-    aliases = entry.get("alias", [])
-    skin_label = entry.get("skin_label", None)
-    is_optional = entry.get("is_optional", True)
-    first = aliases[0] if aliases else skin_label
-    if first is None:
-        return None
-    if entry.get("is_positional", True):
-        return f"[<{first}>]" if is_optional else f"<{first}>"
-    if not is_optional:
-        return f"{first}=<value>"
-    if not aliases:
-        return None
-    return "[" + "|".join(f"{a}=<value>" for a in aliases) + "]"
-
-
-def _render_specifiers(spec: dict) -> list[str]:
-    """Specifier placeholders: `[DC [<Value>]] AC [<AC>] [<phase>]`.
-
-    Each specifier renders as the bare keyword followed by one bracketed
-    placeholder per ref. A str ref renders just the ref key: the expander
-    emits `<ref>=<operand>`, so the ref key is the only spelling that
-    reaches the slot (other aliases are never produced). Positional (int)
-    refs render their slot's first alias as the operand name.
-
-    A specifier whose SINGLE ref is an int is an alternative spelling of
-    that positional slot (DC 5 == bare 5); it is rendered as a slot
-    alternation by the caller and skipped here.
-
-    A specifier with `is_optional: False` (the AC segment of the
-    AC-source spec) is REQUIRED on the line and therefore renders
-    UNBRACKETED; optional ones keep the surrounding `[...]`.
-    """
-    specifiers = spec.get("specifiers", {})
-    if not specifiers:
-        return []
-    arg_specs = spec.get("args_to_values", {})
-    parts = []
-    for sp_key, sp_def in specifiers.items():
-        refs = sp_def.get("refs", [])
-        if len(refs) == 1 and isinstance(refs[0], int):
-            continue  # rendered as a slot alternation by the caller
-        seg = [sp_key]
-        for ref in refs:
-            if isinstance(ref, int):
-                aliases = arg_specs.get(ref, {}).get("alias", [])
-                seg.append(f"[<{aliases[0] if aliases else 'value'}>]")
-            else:
-                seg.append(f"[<{ref}>]")
-        rendered = " ".join(seg)
-        if sp_def.get("is_optional", False):
-            parts.append(f"[{rendered}]")
-        else:
-            parts.append(rendered)
-    return parts
-
-
-def _render_spec_grammar(
-    prefix: str,
-    spec: dict,
-    show_skin: bool = False,
-    mark_dropped: bool = False,
-) -> str:
-    """Render one spec as a single `format:`-style grammar string.
-
-    With `show_skin` the trailing ` , skin:<skin_alias>` annotation is
-    appended; with `mark_dropped` dropped port slots render as `{NC+}`.
-    """
-    parts = [f"{prefix}name"]
-
-    # interleaving: the consecutive-index guarantee means port slots and
-    # positional value slots share one index space — merge them by index.
-    indexed: dict[int, str] = {}
-    # specifiers whose operand binds a positional slot by INDEX are
-    # alternative spellings of that slot (DC VALUE == bare VALUE); they are
-    # rendered as an alternation on the slot itself, not as a segment.
-    alternations: dict[int, str] = {}
-    for sp_key, sp_def in spec.get("specifiers", {}).items():
-        refs = sp_def.get("refs", [])
-        if len(refs) == 1 and isinstance(refs[0], int):
-            alternations[refs[0]] = sp_key
-    port_slots = _render_slots(spec.get("arg_to_ports", {}), mark_dropped=mark_dropped)
-    for idx_str, alias in zip(
-        sorted(spec.get("arg_to_ports", {}).keys(), key=int),
-        port_slots,
-    ):
-        indexed[int(idx_str)] = alias
-    for idx_str, entry in sorted(
-        ((k, v) for k, v in spec.get("args_to_values", {}).items() if str(k).isdigit()),
-        key=lambda kv: int(kv[0]),
-    ):
-        # positional value slots occupy their index (required slots render
-        # bare, optional ones bracketed). Keyword-only slots are appended
-        # after all positional content instead.
-        if not entry.get("is_positional", True):
-            continue
-        slot = _render_value_slot(entry, idx_str)
-        if slot is None:
-            continue
-        first = (entry.get("alias") or [None])[0]
-        alt_key = alternations.get(int(idx_str))
-        if alt_key and first:
-            # a specifier whose single operand binds THIS positional slot by
-            # index is an alternative SPELLING of the same value rather than
-            # a separate keyword (DC 5 == 5). Render the slot once, as an
-            # alternation, instead of printing the value slot twice.
-            slot = f"[<{first}>|{alt_key} <{first}>]"
-        indexed[int(idx_str)] = slot
-
-    for idx in sorted(indexed.keys()):
-        parts.append(indexed[idx])
-
-    # keyword-only value slots (is_positional False, any key type) go last
-    # in declaration order. Slots that a specifier references are EXCLUDED
-    # here: they are binding targets for the segment expansion, not
-    # user-facing spellings — the specifier renderer below already prints
-    # them (with operand arity).
-    spec_bound = {
-        ref
-        for sp_def in spec.get("specifiers", {}).values()
-        for ref in sp_def.get("refs", [])
-        if isinstance(ref, str)
-    }
-    for k, entry in spec.get("args_to_values", {}).items():
-        if str(k).isdigit() and entry.get("is_positional", True):
-            continue  # already interleaved by index above
-        if k in spec_bound:
-            continue
-        slot = _render_value_slot(entry, k)
-        if slot is not None:
-            parts.append(slot)
-
-    # declared specifiers render as optional bare-keyword segments
-    parts.extend(_render_specifiers(spec))
-
-    if spec.get("kind"):
-        parts.append("|".join(spec["kind"]))
-    if spec.get("model_type"):
-        parts.append("mname")
-
-    pattern = " ".join(parts)
-    if show_skin:
-        skin_alias = spec.get("skin_alias", None)
-        if skin_alias is None:
-            skin = "none (wire/parse-only)"
-        elif isinstance(skin_alias, list):
-            # lcapy specs alternate skin variants (r_h|r_v); random.choice
-            # picks one at render time, so the grammar shows the full set.
-            skin = "|".join(str(s) for s in skin_alias)
-        else:
-            skin = str(skin_alias)
-        pattern = f"{pattern} , skin:{skin}"
-    return pattern
-
-
-def config_to_grammar(
-    show_skin: bool = False,
-    mark_dropped: bool = False,
-) -> list[str]:
-    """Render TO_SKIN_CONFIG into a list of grammar strings, one per spec.
-
-    Each entry has the shape used by the docstring grammar listing:
-
-        format:<prefix>name <slots...> [keyword...]
-
-    Options
-    -------
-    show_skin : append ` , skin:<skin_alias>` to each line (default False —
-        the LLM grammar does not need the skin mapping).
-    mark_dropped : wrap port slots whose connection is DROPPED at render
-        time (the skin has no pin for it) in curly braces — `{NC+}` — so a
-        reader can tell which node tokens are written but not drawn.
-        Dropped nodes are still REQUIRED tokens in the element line; the
-        braces are documentation, not optionality.
-
-    Positional slots come from `arg_to_ports`, value slots from
-    `args_to_values`: optional slots render bracketed (`[Value=val]`,
-    keyword-only ones as `[KEY=val|KEY2=val]`), required slots render
-    unbracketed (positional values and consumed tokens like F/W's
-    Vcontrol as the bare alias, keyword-only ones as `Key=val`), and a
-    required specifier segment (AC on the AC-source spec) drops its
-    surrounding brackets. The spec's `kind` and `model_type` are
-    appended when declared.
-    """
-    grammar_lines: list[str] = []
-    for prefix, component_specs in TO_SKIN_CONFIG.items():
-        for spec in component_specs:
-            pattern = _render_spec_grammar(prefix, spec, show_skin=show_skin, mark_dropped=mark_dropped)
-            grammar_lines.append(f"format:{pattern}")
-    return grammar_lines
 
 
 if __name__ == "__main__":

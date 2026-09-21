@@ -11,7 +11,7 @@ which would go stale across a reload).
 
 import pytest
 
-from circuit_data_gen.convert import (
+from circuit_data_gen.parser.convert import (
     _get_prefix,
     _get_tokens,
     _parse_netlist,
@@ -28,7 +28,7 @@ def test_preprocess_model_table_extracted(convert_spice):
         "Q1 C B E QN3904",
         ".model DP D",
     ]
-    out, model_table, subckt_table = convert_spice._preprocess_lines(lines)
+    out, model_table, subckt_table, _ = convert_spice._preprocess_lines(lines)
     # directives filtered out of the element lines
     assert out == ["Q1 C B E QN3904"]
     # name -> {model_type, args} mapping (upper-cased, level suffix stripped)
@@ -56,12 +56,12 @@ class TestStripHints:
 class TestPreprocessLines:
     def test_drops_blank_and_comment_lines(self):
         lines = ["", "V1 N1 0 dc 5", "* full comment", "  ", "R1 N1 0 1k"]
-        out, model_table, subckt_table = _preprocess_lines(lines)
+        out, model_table, subckt_table, _ = _preprocess_lines(lines)
         assert out == ["V1 N1 0 dc 5", "R1 N1 0 1k"]
 
     def test_continuation_lines_are_joined(self):
         lines = ["V1 N1 0 dc", "+ 5"]
-        out, model_table, subckt_table = _preprocess_lines(lines)
+        out, model_table, subckt_table, _ = _preprocess_lines(lines)
         assert len(out) == 1
         assert "5" in out[0]
 

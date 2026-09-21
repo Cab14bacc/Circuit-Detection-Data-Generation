@@ -70,6 +70,7 @@ cirdg gen_data -n 20 -c 4                   # 20 samples, 4 parallel LLM calls
 cirdg gen_data -n 20 --gen-seed myseed      # reproducible batch (seeded prompts)
 cirdg gen_data -n 10 -cmin 8 -cmax 15       # component-count range
 cirdg gen_data -n 5 -o path/to/out -p myproj  # custom output root + project name
+cirdg gen_data -n 5 --strict                # strict SPICE parsing + strict system prompt (overrides config)
 ```
 
 Each generation worker:
@@ -146,7 +147,8 @@ All tunable parameters live in `circuit_data_gen/configs/config.py`. All path co
 - **`build_skin`** — `LINE_WIDTH` (CircuitTikz line width; the skin's symbol stroke is `LINE_WIDTH * 2`), `SKIN_PATH` (where the skin is emitted).
 - **`netlistsvg`** — everything the renderer needs: `BIN_PATH` (node entry point), `SKIN_PATH` (shared skin), label font metrics (`FONT_SIZE`, `FONT_CHAR_WIDTH`, `FONT_CHAR_HEIGHT`, `FONT_CAP_HEIGHT`, `FONT_DESC_SHIFT`), `WIRE_STROKE_WIDTH`, and `ANNOTATION.CLASSES_PATH`.
 - **`cli`** — default output dirs for each command.
-- **`convert`** — path to `TO_SKIN_CONFIG` (the per-component skin mapping: netlist prefix → skin alias, ports, value specs, drop rules. Whether the netlist is in lcapy or Spice format is specified in `config.py`).
+- **`convert`** — path to `TO_SKIN_CONFIG` (the per-component skin mapping: netlist prefix → skin alias, ports, value specs, drop rules. Whether the netlist is in lcapy or Spice format is specified in `config.py`). `STRICT_PARSING` (SPICE only) makes the parser reject anything ngspice would misread or refuse: braced node tokens (`{n1}`), directives other than `.model`/`.param`/`.subckt`/`.ends`/`.end`, undefined symbols in `{expressions}`, and references to elements, inductors, subcircuits or models that don't exist. All problems are reported in one error.
+- **`simulation`** — `ENABLED` turns on the ngspice simulation step for `cirdg gen_data` (the step itself is not implemented yet). `gen_data` parses strictly when `convert.STRICT_PARSING` **or** `simulation.ENABLED` is set; `cirdg render`/`convert` stay lenient unless `STRICT_PARSING` is set, so external netlists (with `.tran`, `.lib`, ...) still render.
 
 Font metrics and stroke widths are **emitted into the skin** as `<s:properties ...>` attributes by `build_skin.py`; netlistsvg reads them from there at render time. The skin is the single runtime source of truth — after changing `config.py`, rebuild with `cirdg build_skin --all` or the new values won't take effect.
 
@@ -158,7 +160,13 @@ Font metrics and stroke widths are **emitted into the skin** as `<s:properties .
     │   ├── build_skin.py                      # Skin svg builder using latex package CircuitTikz
     │   ├── validate.py                        # hanging-node + connectivity checks
     │   ├── render_netlist.py                  # A python interface to the netlistsvg
-    │   ├── convert.py                         # netlist -> yosys JSON
+    │   ├── parser/                            # netlist parser
+    │   │   ├── convert.py                     # netlist -> yosys JSON (parsing pipeline)
+    │   │   ├── dialect.py                     # lcapy/spice dialect selection + shared constants
+    │   │   ├── tokens.py                      # tokenizer + lexical repairs of SPICE args
+    │   │   ├── strict.py                      # strict SPICE parsing checks
+    │   │   ├── grammar.py                     # config -> grammar listing (LLM docs, parse errors)
+    │   │   └── errors.py                      # NetlistError, SpecError
     │   ├── convert_old.py                     # Spice netlist -> yosys JSON (not guranteed to work, kept for reference)
     │   ├── cli.py                             # Interface to package, typer CLI (defines the cirdg command)
     │   ├── configs/

@@ -10,7 +10,7 @@ SPICE netlists use this syntax:
 - **Prefix**: The start of the component name determines the component type. For example, "R" for resistor, "C" for capacitor, etc. 
 - **Node Naming:** Must match `[A-Za-z][A-Za-z0-9_]*` (or `0` for ground). Do not use punctuation, hyphens, dots, or curly braces: write `n1`, never `{n1}`.
 - **Values:** Passives and sources should have a value. Prefer plain numbers (`1k`, `2.2u`, `1e-6`, `10Meg`). Note that `M` means milli; write `Meg` for mega.
-- **Expressions:** A value that contains operators or symbols must be enclosed in curly braces, e.g. `R1 in out {2*Rbase}`. Define the names you use with a `.param` line (`.param Rbase=1k`); besides those, use only built-in constants (`pi`, `time`), functions (`sin`, `exp`, `sqrt`, ...), `v(node)` and `i(Vname)`.
+- **Expressions:** A value that contains operators or symbols must be enclosed in curly braces, e.g. `R1 in out {2*Rbase}`. Every name used in an expression must be either defined by a `.param` line (`.param Rbase=1k`), a built-in constant (`pi`, `time`, `temper`), a function (`sin`, `exp`, `sqrt`, ...), `v(node)` for the voltage of a node in the netlist, or `i(Vname)` for the current through a V source of the netlist. Undefined names are rejected.
 - **Function values:** Time-domain source shapes are single tokens written without spaces before the parenthesis: `SIN(0 1 1k)`, `PULSE(0 5 100u 10n 10n 500u 1m)`, `PWL(0,0 1m,5)`.
 
 ## 2. Supported Prefixes and Arguments
@@ -164,24 +164,23 @@ not drawn — the bipole symbol has one pin pair):
 
 Generic elements (pin count depends on a definition; drawn as a generic box
 with numbered pins; the last non-keyword token is the definition name):
-    Xname N1 ... Nn SUBNAM [param=value ...]   subcircuit instance; when a
+    Xname N1 ... Nn SUBNAM [param=value ...]   subcircuit instance; a
                                           .subckt SUBNAM N1 ... Nn ... .ends
-                                          block is given, its port names
-                                          label the pins (body not drawn)
+                                          block defining it is REQUIRED
     Aname ...                             XSPICE code model
     Nname ...                             OSDI (Verilog-A) device
     Pname ...                             coupled multiconductor line (CPL)
     Uname ...                             uniform RC line / digital device
 
-Directives — none of them is drawn; only these are used:
+Directives — ONLY these may appear, none of them is drawn:
     .model mname TYPE(param=val ...)      REQUIRED for every model-typed
                                           element reference
     .param name=value [name2=value2 ...]  defines names used in {expressions}
     .subckt SUBNAM N1 ... Nn / .ends      subcircuit definition for X lines
     .end                                  optional last line
-Every other directive is ignored, so do not write any: no analyses (.op,
-.tran, .ac, .dc), no file access (.lib, .include) and no .control ... .endc
-blocks.
+Every other directive is REJECTED, in particular analyses (.op, .tran, .ac,
+.dc — the validator adds its own), file access (.lib, .include) and
+.control ... .endc blocks. Do not write them.
 Continuation lines start with '+'; comments start with '*' or ';'.
 =================================== end of list ========================================
 
@@ -268,7 +267,20 @@ R is the prefix for a resistor, and this says that the netlist is using a resist
 
 The second message is saying that the netlist is using a switch component without a kind keyword, which is again not in the allowed subset. The fix is to remove or replace it with a allowed component.
 
-6. Other Errors:
+6. Strict Parsing Errors:
+The netlist must be valid ngspice input. All problems of this kind are reported together, one per line:
+
+```
+Strict parsing found 4 problem(s):
+- Directive '.tran 1u 1m' is not allowed; remove it. Only .model, .param, .subckt/.ends and .end may appear (the validator adds its own analysis).
+- Component G1: node {n1} is written in curly braces; write it as n1. Braces are not allowed on node names.
+- Component R2: value 'R_2' uses undefined symbol(s) R_2; define them with .param (e.g. .param R_2=1k) or write a number.
+- Component F1: 'V9' must name a V element of the netlist.
+```
+
+Fix each line as it says: delete forbidden directives (and whole `.control ... .endc` blocks), write node names without braces, define every symbol used in an expression with `.param` (or replace it with a number), and make references point at existing elements: `Vcontrol` of F/H/W and `i(...)` must name a V source, `v(...)` must name a node, K lines must name L inductors, X lines must name a `.subckt` defined in the netlist.
+
+7. Other Errors:
 You might receive other errors, attempt to figure it out from context and fix it.
 
 ## 5. Output Format

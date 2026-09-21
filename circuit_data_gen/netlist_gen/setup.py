@@ -16,13 +16,18 @@ from langchain_core.messages import SystemMessage, HumanMessage, AnyMessage
 from langgraph.graph import add_messages
 from langgraph.graph import StateGraph, START, END
 
-from ..configs.config import get_logger, get_config_path_value
+from ..configs.config import get_logger, get_config_path_value, get_config_value
 from ..validate import full_validation
 from ..render_netlist import render_netlist
 from .parallel import CircuitRequirements
 
 
 SKIN_PATH = get_config_path_value("netlistsvg", "skin_path").resolve()
+# generation parses strictly when asked to, and always when the generated
+# netlists will be simulated (ngspice needs the strict guarantees)
+GEN_STRICT = bool(get_config_value("convert", "strict_parsing")) or bool(
+    get_config_value("simulation", "enabled")
+)
 
 
 class CircuitState(TypedDict):
@@ -40,6 +45,22 @@ class CircuitState(TypedDict):
     output_yosys: list[Path]
 
 
+def _resolve_strict(strict: bool | None) -> bool:
+    """Generation strictness: the explicit value (e.g. `cirdg gen_data
+    --strict/--no-strict`), else the config-derived GEN_STRICT."""
+    return GEN_STRICT if strict is None else strict
+
+
+def system_prompt_key(strict: bool | None = None) -> str:
+    """Config key (under netlist_gen) of the LLM system prompt: the strict
+    SPICE prompt when generation parses strictly, else the default one.
+    Strict parsing is SPICE only, so the lcapy dialect always uses the default."""
+    is_spice = str(get_config_value("convert", "netlist_format")).lower() == "spice"
+    if _resolve_strict(strict) and is_spice:
+        return "LLM_STRICT_SYSTEM_PROMPT_PATH"
+    return "LLM_SYSTEM_PROMPT_PATH"
+
+
 def smoke_test_render(
     state: CircuitState,
     gen_idx: int,
@@ -47,8 +68,16 @@ def smoke_test_render(
     temp_schematic_path: Path,
     temp_annotation_path: Path,
     temp_overlay_path: Path,
+    strict: bool | None = None,
+    elk_seed: str | int | None = None,
 ) -> tuple[bool, list[str]]:
-    """Attempt to render the netlist and return (valid, errors)."""
+    """Attempt to render the netlist and return (valid, errors).
+
+    `strict` selects strict SPICE parsing (None = config-derived GEN_STRICT).
+    `elk_seed` fixes the ELK randomization seed for the render; None keeps
+    the skin's seed. Callers pass the worker's rng_seed so the smoke-test
+    layout matches the persisted render layout for the same sample.
+    """
     logger = state["logger"]
     if_valid = False
     errors: list[str] = []
@@ -62,6 +91,8 @@ def smoke_test_render(
             format="png",
             debug_overlay=True,
             debug_overlay_path=temp_overlay_path,
+            strict=_resolve_strict(strict),
+            elk_seed=elk_seed,
         )
 
         # check if the rendered schematic file exists and is not empty
@@ -82,6 +113,7 @@ def netlist_gen_setup(
     schematic_dir: str | Path,
     annotation_dir: str | Path,
     temperature: float = 0.9,
+    strict: bool | None = None,
 ):
     """Build the LangGraph state machine for netlist generation.
 
@@ -96,7 +128,12 @@ def netlist_gen_setup(
     annotation_dir : str | Path | None
         If given, annotations (component/label/pin boxes) are written
         here as <stem>.txt alongside a shared classes.txt registry.
+    strict : bool | None
+        SPICE strict parsing for the smoke test, and the matching (strict)
+        system prompt. None = config-derived GEN_STRICT
+        (convert.strict_parsing or simulation.enabled).
     """
+    strict = _resolve_strict(strict)
     load_dotenv()
     api_key = os.getenv("CIRDG_API_KEY")
     model_name = os.getenv("CIRDG_MODEL_NAME")
@@ -109,7 +146,7 @@ def netlist_gen_setup(
         temperature=temperature,
     )
 
-    sys_prompt_path = get_config_path_value("netlist_gen", "LLM_SYSTEM_PROMPT_PATH").resolve()
+    sys_prompt_path = get_config_path_value("netlist_gen", system_prompt_key(strict)).resolve()
 
     with open(sys_prompt_path, "r", encoding="utf-8") as f:
         sys_prompt = f.read()
@@ -201,6 +238,7 @@ def netlist_gen_setup(
                 temp_netlist_path.write_text(netlist, encoding="utf-8")
 
                 logger.info(f"smoke test for netlist {idx}:\n")
+                rng_seed = state.get("rng_seed")
                 try:
                     if_valid, errors = smoke_test_render(
                         state,
@@ -209,6 +247,9 @@ def netlist_gen_setup(
                         temp_schematic_path,
                         temp_annotation_path,
                         temp_overlay_path,
+                        strict=strict,
+                        # the circuits's rng_seed drives the ELK layout seed
+                        elk_seed=rng_seed + f"_{idx}" if rng_seed is not None else None,
                     )
                 except Exception as e:
                     errors.append(str(e))

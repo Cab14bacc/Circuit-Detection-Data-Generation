@@ -1,4 +1,4 @@
-from .convert import IS_SPICE, _merge_nodes, WIRE, GROUND_NAMES
+from .parser.convert import IS_SPICE, _merge_nodes, WIRE, GROUND_NAMES
 
 
 def undefined_components(parsed_netlist):

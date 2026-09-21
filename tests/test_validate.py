@@ -6,7 +6,7 @@ port drops, some are genuine netlist mistakes.
 
 import pytest
 
-from circuit_data_gen.convert import _parse_netlist
+from circuit_data_gen.parser.convert import _parse_netlist
 from circuit_data_gen.validate import hanging_nodes
 
 from tests.conftest import CONNECTED_NETLIST

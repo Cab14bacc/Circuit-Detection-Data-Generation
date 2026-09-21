@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .helper import generate_seed_prompt
-from ..convert import WIRE
+from ..parser.convert import WIRE
 from ..configs.config import get_logger, get_config_value
 
 
@@ -154,6 +154,7 @@ async def scale_generation(
     gen_seed: int | str | None = None,
     temperature: float = 0.9,
     project_name: str = "default_project",
+    strict: bool | None = None,
 ) -> list[GenResult]:
     """Generate a batch of netlists in parallel.
 
@@ -172,6 +173,9 @@ async def scale_generation(
         Seed for the seed-prompt generator (reproducible batches).
     temperature : float
         LLM sampling temperature.
+    strict : bool | None
+        SPICE strict parsing (and the strict system prompt) for validation.
+        None = config (convert.strict_parsing or simulation.enabled).
     """
     # prevent circular import
     from .setup import netlist_gen_setup  # noqa: PLC0415
@@ -222,6 +226,7 @@ async def scale_generation(
             tmp_schematic_dir,
             annotation_dir=tmp_annotation_dir,
             temperature=temperature,
+            strict=strict,
         )
 
         async def bounded_worker(worker_id: int, gen_count: int) -> GenResult:

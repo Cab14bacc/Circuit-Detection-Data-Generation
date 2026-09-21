@@ -50,6 +50,46 @@ NETLIST_SVG_CONFIG = {
     "FONT_DESC_SHIFT": 0.3,
     # Stroke width of the wires netlistsvg draws between components.
     "WIRE_STROKE_WIDTH": 0.4 * 2,
+    # ELK Layered layout options, emitted into the generated skin as a
+    # <s:layoutEngine ...> block (netlistsvg passes them straight to
+    # elk.layout). Empty dict = ELK defaults. Keys are full ELK option ids;
+    # values are whatever the option wants (enum strings, numbers).
+    # The knobs that matter for schematic variety:
+    #   org.eclipse.elk.algorithm              keep layered (only algorithm
+    #                                          honoring FIXED_POS ports)
+    #   org.eclipse.elk.direction              RIGHT=signals flow left->right
+    #                                          (default), DOWN = top-down
+    #   org.eclipse.elk.aspectRatio            canvas aspect target (default 1.6)
+    #   org.eclipse.elk.spacing.nodeNode       min gap between symbols
+    #   org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers
+    #                                          width of wire channels
+    #   org.eclipse.elk.spacing.edgeNode       wires vs component bodies
+    #   org.eclipse.elk.spacing.edgeEdge       wire vs wire spacing
+    #   org.eclipse.elk.layered.layering.strategy
+    #                                          NETWORK_SIMPLEX (fewest
+    #                                          crossings, slower) /
+    #                                          LONGEST_PATH / MIN_WIDTH /
+    #                                          COFFMAN_GRAHAM
+    #   org.eclipse.elk.layered.nodePlacement.strategy
+    #                                          BRANDES_KOEPF (default) /
+    #                                          NETWORK_SIMPLEX /
+    #                                          LINEAR_SEGMENTS
+    #   org.eclipse.elk.layered.crossingMinimization.strategy
+    #                                          LAYER_SWEEP (default) /
+    #                                          GREEDY_SWITCH
+    #   org.eclipse.elk.layered.edgeRouting    ORTHOGONAL (default) /
+    #                                          SPLINES (curvy wires) /
+    #                                          STRAIGHT
+    #   org.eclipse.elk.layered.thoroughness   1..; higher = fewer crossings
+    #   org.eclipse.elk.randomizationSeed      changes tie-breaking -> a
+    #                                          different but valid layout;
+    #                                          useful for per-sample variety
+    #   org.eclipse.elk.separateConnectedComponents
+    #                                          false merges isolated islands
+    #                                          into one blob
+    #   org.eclipse.elk.padding                canvas padding, number or
+    #                                          '[top,left,bottom,right]'
+    "LAYOUT_ENGINE": {},
     # annotation export settings.
     # CLASSES_PATH is the single centralized YOLO class registry, written once
     # by `cirdg build_skin` (registry is derived from the skin, so it only
@@ -69,7 +109,7 @@ CLI_CONFIG = {
 
 
 CONVERT_CONFIG = {
-    "CONVERT_LCAPY_CONFIG_PATH": "configs/convert/default_convert_config.py",
+    "CONVERT_LCAPY_CONFIG_PATH": "configs/convert/lcapy_convert_config.py",
     "CONVERT_SPICE_CONFIG_PATH": "configs/convert/spice_convert_config.py",
     # Input netlist dialect: "lcapy" (default, simplified lcapy grammar) or
     # "spice" (SPICE/ngspice/LTspice grammar).
@@ -80,12 +120,32 @@ CONVERT_CONFIG = {
     # it with specs that doesn't require a model name, i.e. a config that doesn't have
     # the kind field.
     "ALLOW_UNKNOWN_MODELS": False,
+    # SPICE only. When True, the parser rejects netlists that ngspice would
+    # misread or refuse: braced node tokens ({n1}), directives outside the
+    # allowlist (.tran, .include, .control, ...), undefined symbols in
+    # expressions, and dangling references (controlling sources, K inductors,
+    # X subckts, unknown models; ALLOW_UNKNOWN_MODELS is ignored).
+    # `cirdg gen_data` parses strictly when this OR simulation.enabled is set;
+    # `cirdg render`/`convert` only when this is set, so external netlists
+    # still render by default.
+    "STRICT_PARSING": False,
+}
+
+
+SIMULATION_CONFIG = {
+    # Run the ngspice (PySpice) simulation step during `cirdg gen_data`.
+    # Turning it on also turns on strict parsing for generation.
+    "ENABLED": False,
 }
 
 
 NETLIST_GEN_CONFIG = {
     "LLM_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt.md",
     # "LLM_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/lcapy_agent_system_prompt.md",
+    # SPICE only: used instead of LLM_SYSTEM_PROMPT_PATH when generation parses
+    # strictly (convert.strict_parsing or simulation.enabled); it documents the
+    # strict rules and their error messages.
+    "LLM_STRICT_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt_strict.md",
 }
 
 CONFIGS = {
@@ -95,6 +155,7 @@ CONFIGS = {
     "convert": CONVERT_CONFIG,
     "logging": LOGGING_CONFIG,
     "netlist_gen": NETLIST_GEN_CONFIG,
+    "simulation": SIMULATION_CONFIG,
 }
 
 

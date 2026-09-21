@@ -38,20 +38,26 @@ TOKEN NOTATION — what each kind of token in the rules below means:
              element-specific codes are named per rule below (NC collector,
              NB base, NE emitter, ND drain, NG gate, NS source, NP/N switch
              terminals). Real net names are any word.
-  {Ncode}    DROPPED node: STILL REQUIRED in the line — it is parsed and
-             electrically connected, but the symbol has no pin for it, so
-             it is NOT drawn. Used for: Q substrate {NS}, M bulk {NB},
-             E/G/S control pairs {NC+} {NC-}, and the far-end pair
-             {NP2+} {NP2-} of transmission lines. Write 0 or a real net.
+             Some nodes are HIDDEN (named in the rule's comment): they are
+             STILL REQUIRED in the line and electrically connected, but the
+             symbol has no pin for them, so they are NOT drawn (the spec
+             marks them "drop"). Used for: Q substrate NS, M bulk NB,
+             E/G/S control pairs NC+ NC-, and the far-end pair NP2+ NP2-
+             of transmission lines. Write 0 or a real net, as a plain name:
+             strict parsing rejects braced node tokens ({n1}).
   <value>    REQUIRED value token: write the number/expression itself
-             (1k, 5, 2m, SINE(0 1m 100)), never the placeholder word.
+             (1k, 5, 2m, SIN(0 1m 100)), never the placeholder word.
+             Expressions go in curly braces ({2*Rbase}); every name in them
+             must be a .param, a built-in constant (EXPRESSION_CONSTANTS),
+             a function, v(node) or i(Vname).
   [ ... ]    OPTIONAL: the whole bracketed group may be omitted.
   Key=val    KEYWORD argument, written exactly in that form (Q=2n, Z0=50,
              TD=10n, cur='...', V='...'). Unbracketed Key=val = required,
              bracketed [Key=val] = optional.
-  bare kw    LITERAL keyword written verbatim: off (element disabled),
+  bare kw    LITERAL keyword written verbatim: off (device starts off),
              ON / OFF (switch state), DC / AC (source mode specifiers).
-  mname      MODEL name: always the LAST token of a model-typed element,
+  mname      MODEL name: written after all nodes and values of a
+             model-typed element (only off / ON / OFF may follow it),
              and a .model card declaring it is REQUIRED in the same
              netlist. The card's TYPE selects the symbol; the COMPLETE
              set of supported TYPEs is: D (D), NPN / PNP / LPNP (Q),
@@ -69,9 +75,10 @@ TOKEN NOTATION — what each kind of token in the rules below means:
 
 KIND KEYWORDS vs SPECIFIERS — two classes of bare literal words, not
 interchangeable:
-  kind keyword  ONE bare word, NO operands, position-free; selects which
-                VARIANT of the element the line is (symbol or state):
-                off (element disabled, same symbol), ON / OFF (switch
+  kind keyword  ONE bare word, NO operands, written right after mname;
+                selects which VARIANT of the element the line is
+                (symbol or state):
+                off (device starts off, same symbol), ON / OFF (switch
                 state: ON closed, OFF open, omitted = default open).
                 Omitting it selects the default variant. For model-typed
                 elements the variant comes from the .model TYPE instead
@@ -119,13 +126,13 @@ Independent sources (the AC specifier decides DC vs AC source):
       no operands means magnitude 1. The value/DC group must come BEFORE
       the AC segment; extra Key=val parameters may follow it.
     - DC is transparent: `DC 5` binds exactly like a bare `5`.
-    - function values are single tokens: SINE(0 1m 1k) PULSE(0 5 ...)
+    - function values are single tokens: SIN(0 1m 1k) PULSE(0 5 ...)
       PWL(0,0 1m,5)
 
 Controlled sources (control terminals are written even though not drawn):
-    Ename N+ N- {NC+} {NC-} <gain>        VCVS (voltage_gain)
+    Ename N+ N- NC+ NC- <gain>            VCVS (voltage_gain); NC+ NC- hidden
     Ename N+ N- vol='<expr>'              non-linear V source (2 nodes only)
-    Gname N+ N- {NC+} {NC-} <gm>          VCCS (transconductance)
+    Gname N+ N- NC+ NC- <gm>              VCCS (transconductance); NC+ NC- hidden
     Gname N+ N- cur='<expr>'              non-linear I source (2 nodes only)
     Fname N+ N- Vcontrol <gain>           CCCS (current_gain)
     Hname N+ N- Vcontrol <resistance>     CCVS (transresistance)
@@ -134,37 +141,49 @@ Behavioral sources (exactly one of V= / I=; the keyword selects the symbol):
     Bname N+ N- V=<expr>                  draws as a voltage source
     Bname N+ N- I=<expr>                  draws as a current source
 
-Model-typed elements (mname is the LAST arg and matches a .model card;
-optional `off` before mname marks the element disabled; the card's TYPE
+Model-typed elements (mname follows the nodes and matches a .model card;
+optional `off` after mname starts the device off; the card's TYPE
 picks the symbol variant — accepted TYPEs listed per rule):
-    Dname N+ N- [off] mname               TYPE: D
-    Qname NC NB NE [{NS}] [off] mname     {NS} = substrate node (still written);
+    Dname N+ N- mname [off]               TYPE: D
+    Qname NC NB NE [NS] mname [off]       NS = substrate node, hidden;
                                           TYPE: NPN | PNP | LPNP
-    Jname ND NG NS [off] mname            TYPE: NJF | PJF
-    Mname ND NG NS {NB} [off] mname       {NB} = bulk node (still written);
+    Jname ND NG NS mname [off]            TYPE: NJF | PJF
+    Mname ND NG NS NB mname [off]         NB = bulk node, hidden;
                                           TYPE: NMOS | PMOS
-    Zname ND NG NS [off] mname            MESFET; TYPE: NMF | PMF
+    Zname ND NG NS mname [off]            MESFET; TYPE: NMF | PMF
 
 Switches (model TYPE SW for S, CSW for W; ON or OFF selects the state,
 omitted = default open switch):
-    Sname NP N {NC+} {NC-} [ON|OFF] mname voltage-controlled; NP/N = switch
-                                          terminals, {NC+} {NC-} = control
-                                          pair (still written, not drawn)
-    Wname N+ N- Vcontrol [ON|OFF] mname   current-controlled
+    Sname NP N NC+ NC- mname [ON|OFF]     voltage-controlled; NP/N = switch
+                                          terminals, NC+ NC- = control
+                                          pair, hidden
+    Wname N+ N- Vcontrol mname [ON|OFF]   current-controlled
 
-Transmission lines (the far-end pair {NP2+} {NP2-} is still written but
+Transmission lines (the far-end pair NP2+ NP2- is hidden: still written,
 not drawn — the bipole symbol has one pin pair):
-    Tname N+ N- {NP2+} {NP2-} Z0=<val> [TD=<val>] [F=<freq> [NL=<len>]]
+    Tname N+ N- NP2+ NP2- Z0=<val> [TD=<val>] [F=<freq> [NL=<len>]]
                                           [IC=<v1,i1,v2,i2>]
-    Oname N+ N- {NP2+} {NP2-} mname       lossy line (LTRA model)
-    Yname N+ N- {NP2+} {NP2-} mname [LEN=<len>]   KSPICE TXL
+    Oname N+ N- NP2+ NP2- mname           lossy line (LTRA model)
+    Yname N+ N- NP2+ NP2- mname [LEN=<len>]   KSPICE TXL
 
-Subcircuit invocation (parsed generically; .subckt bodies are ignored):
-    Xname N1 ... Nn SUBNAM [param=value ...]
+Generic elements (explicit generics: pin count depends on a definition,
+drawn as a generic box; the last non-keyword token is the definition name):
+    Xname N1 ... Nn SUBNAM [param=value ...]   subcircuit instance; strict
+                                          parsing requires a .subckt SUBNAM
+    Aname ...                             XSPICE code model
+    Nname ...                             OSDI (Verilog-A) device
+    Pname ...                             coupled multiconductor line (CPL)
+    Uname ...                             uniform RC line / digital device
 
-Directives allowed but not drawn: .model, .lib, .include, .tran, .ac, .dc,
-.op, .end, .backanno — form `.model mname TYPE(param=val ...)`, and a
-.model card is REQUIRED for every model-typed element reference.
+Directives (not drawn). Strict parsing accepts ONLY:
+    .model mname TYPE(param=val ...)      REQUIRED for every model-typed
+                                          element reference
+    .param name=value ...                 names used in {expressions}
+    .subckt SUBNAM N1 ... Nn / .ends      subcircuit definition (body ignored)
+    .end
+Lenient parsing ignores every other directive (.tran .ac .dc .op .lib
+.include .backanno ...) and skips .control ... .endc blocks; strict parsing
+rejects them (see STRICT_ALLOWED_DIRECTIVES in convert.py).
 Continuation lines start with '+'; comments start with '*' or ';'.
 ===========================================================================
 """  # noqa: E501
@@ -840,6 +859,8 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": None,
                     "alias": ["Vcontrol", "VNAM"],
+                    # strict parsing: must name a V element of the netlist
+                    "is_reference": "V",
                     "is_optional": False,
                 },
                 3: {
@@ -863,6 +884,8 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": "vcontrol",
                     "alias": ["Vcontrol", "VNAM"],
+                    # strict parsing: must name a V element of the netlist
+                    "is_reference": "V",
                 },
                 3: {
                     "skin_label": "value",
@@ -972,6 +995,8 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": None,
                     "alias": ["Vcontrol", "VNAM"],
+                    # strict parsing: must name a V element of the netlist
+                    "is_reference": "V",
                     "is_optional": False,
                 },
             },
@@ -988,6 +1013,8 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": None,
                     "alias": ["Vcontrol", "VNAM"],
+                    # strict parsing: must name a V element of the netlist
+                    "is_reference": "V",
                     "is_optional": False,
                 },
             },
@@ -1005,6 +1032,8 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": None,
                     "alias": ["Vcontrol", "VNAM"],
+                    # strict parsing: must name a V element of the netlist
+                    "is_reference": "V",
                     "is_optional": False,
                 },
             },
@@ -1024,6 +1053,8 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": None,
                     "alias": ["Vcontrol", "VNAM"],
+                    # strict parsing: must name a V element of the netlist
+                    "is_reference": "V",
                     "is_optional": False,
                 }
             },
@@ -1232,4 +1263,31 @@ TO_SKIN_CONFIG = {
             "port_directions": {},
         }
     ],
+    # OSDI (Verilog-A compiled) device — Nname N1 ... mname [param=value]
+    # (ngspice §2.1 table 2.2). Pin count depends on the compiled model, so it
+    # is an explicit generic like X/A/U/P.
+    "N": [
+        {
+            "skin_alias": "generic",
+            "arg_to_ports": {},
+            "args_to_values": {},
+            "port_directions": {},
+        }
+    ],
+}
+
+# Bare identifiers that ngspice resolves inside expressions without a .param
+# definition (strict parsing only). Matched case-insensitively. Function names
+# (sin, exp, PULSE, ...) are NOT listed: the parser does not check them, an
+# unknown function is reported by ngspice itself at simulation time.
+EXPRESSION_CONSTANTS = {
+    "pi",
+    "e",
+    "time",
+    "temper",
+    "hertz",
+    "boltz",
+    "planck",
+    "echarge",
+    "kelvin",
 }

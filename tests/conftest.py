@@ -40,19 +40,24 @@ def _selected_formats() -> tuple[str, ...]:
 
 
 def _reload_convert(netlist_format: str):
-    """Reload ``circuit_data_gen.convert`` with ``netlist_format`` active.
+    """Reload ``circuit_data_gen.parser.convert`` with ``netlist_format`` active.
 
-    ``importlib.reload`` re-executes the module body into the SAME module
-    ``__dict__`` object, so already-imported function objects (whose
-    ``__globals__`` is that dict) transparently see the reloaded
-    ``IS_SPICE`` / ``TO_SKIN_CONFIG``. Only names bound via
-    ``from convert import X`` go stale — so tests must read dialect state off
-    the returned module object rather than a module-level import.
+    The dialect state lives in ``parser.dialect``: it is reloaded first, then
+    ``convert`` (which binds that state at import). ``importlib.reload``
+    re-executes a module body into the SAME module ``__dict__`` object, so
+    already-imported function objects (whose ``__globals__`` is that dict)
+    transparently see the reloaded ``IS_SPICE`` / ``TO_SKIN_CONFIG``; the
+    helper modules (tokens, strict, grammar) read ``dialect.X`` at call time.
+    Only names bound via ``from convert import X`` go stale — so tests must
+    read dialect state off the returned module object rather than a
+    module-level import.
     """
     import circuit_data_gen.configs.config as config
-    import circuit_data_gen.convert as convert
+    import circuit_data_gen.parser.convert as convert
+    import circuit_data_gen.parser.dialect as dialect
 
     config.CONVERT_CONFIG["NETLIST_FORMAT"] = netlist_format
+    importlib.reload(dialect)
     return importlib.reload(convert)
 
 
@@ -81,7 +86,7 @@ def convert_spice(convert):
 @pytest.fixture
 def netlist_format():
     """The dialect currently loaded into ``convert`` (the configured default)."""
-    from circuit_data_gen.convert import NETLIST_FORMAT
+    from circuit_data_gen.parser.convert import NETLIST_FORMAT
 
     return NETLIST_FORMAT
 

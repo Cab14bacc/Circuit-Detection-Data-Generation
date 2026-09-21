@@ -7,7 +7,7 @@ same functions the generation pipeline's validator uses.
 
 import pytest
 
-from circuit_data_gen.convert import (
+from circuit_data_gen.parser.convert import (
     GROUND_NAMES,
     _assign_net_ids,
     _merge_nodes,
