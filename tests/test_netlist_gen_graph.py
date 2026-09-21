@@ -21,7 +21,20 @@ from tests.conftest import (
 
 
 # a valid netlist wrapped in the tags the LLM is asked to emit
-WELL_FORMED_TAGGED = "<netlist>\n" + CONNECTED_NETLIST + "</netlist>"
+# (gen idx 0 of a gen_count_per_session=1 session)
+WELL_FORMED_TAGGED = "<netlist0>\n" + CONNECTED_NETLIST + "</netlist0>"
+ISOLATED_TAGGED = "<netlist0>\n" + ISOLATED_NETLIST + "</netlist0>"
+
+# a per-index requirement matching CONNECTED_NETLIST's 4 components
+# (V, R, R, C) and its exact type tuples
+_CONNECTED_TYPES = [("C", (), ()), ("R", (), ()), ("V", (), ("dc",))]
+
+
+def _reqs(count: int = 1):
+    return [
+        CircuitRequirements(num_components=4, component_subset=_CONNECTED_TYPES)
+        for _ in range(count)
+    ]
 
 
 @pytest.fixture
@@ -36,12 +49,21 @@ def validate_node(tmp_path):
 
 
 def _state(content: str, index: int = 0):
+    # NOTE: output_* arrays are normally seeded by the graph's initialize()
+    # node, which this test bypasses by invoking validate_circuit directly.
     return {
         "messages": [AIMessage(content=content)],
         "circuit_valid": False,
         "logger": logging.getLogger("test-graph"),
         "index": index,
-        "requirements": CircuitRequirements(num_components=1),
+        "gen_count_per_session": 1,
+        "circuits_valid": [False],
+        "requirements": _reqs(1),
+        "output_netlists": [""],
+        "output_schematics": [""],
+        "output_annotations": [""],
+        "output_overlays": [""],
+        "output_yosys": [""],
     }
 
 
@@ -50,31 +72,31 @@ class TestValidateCircuitTags:
         node, netlist_dir, _, _ = validate_node
         result = node.invoke(_state(NETLIST_MISSING_TAG))
         assert result["circuit_valid"] is False
-        # retry message asks for <netlist> tags
-        assert "<netlist>" in result["messages"][-1].content
+        # retry message asks for <netlist0> tags
+        assert "<netlist0>" in result["messages"][-1].content
 
     async def test_valid_tagged_netlist_passes_and_persists(self, validate_node):
         node, netlist_dir, schematic_dir, annotation_dir = validate_node
         result = node.invoke(_state(WELL_FORMED_TAGGED))
-        assert result["circuit_valid"] is True
-        assert (netlist_dir / "netlist_0.net").exists()
-        assert (schematic_dir / "schematic_0.png").exists()
-        assert (annotation_dir / "annotation_0.json").exists()
-        assert (annotation_dir / "overlay_0.png").exists()
+        assert result["circuits_valid"] == [True]
+        # filenames are {index}_{idx}: netlist_0_0.net for index=0, idx=0
+        assert (netlist_dir / "netlist_0_0.net").exists()
+        assert (schematic_dir / "schematic_0_0.png").exists()
+        assert (annotation_dir / "annotation_0_0.json").exists()
+        assert (annotation_dir / "overlay_0_0.png").exists()
 
     async def test_isolated_netlist_feeds_errors_back(self, validate_node):
         node, netlist_dir, _, _ = validate_node
-        tagged_bad = "<netlist>\n" + ISOLATED_NETLIST + "</netlist>"
-        result = node.invoke(_state(tagged_bad))
-        assert result["circuit_valid"] is False
+        result = node.invoke(_state(ISOLATED_TAGGED))
+        assert result["circuits_valid"] == [False]
         # nothing persisted for invalid circuits
-        assert not (netlist_dir / "netlist_0.net").exists()
+        assert not (netlist_dir / "netlist_0_0.net").exists()
         # the error message is fed back for regeneration
         assert "not a connected graph" in result["messages"][-1].content
 
     async def test_index_respected_when_persisting(self, validate_node):
         node, netlist_dir, schematic_dir, _ = validate_node
         result = node.invoke(_state(WELL_FORMED_TAGGED, index=3))
-        assert result["circuit_valid"] is True
-        assert (netlist_dir / "netlist_3.net").exists()
-        assert (schematic_dir / "schematic_3.png").exists()
+        assert result["circuits_valid"] == [True]
+        assert (netlist_dir / "netlist_3_0.net").exists()
+        assert (schematic_dir / "schematic_3_0.png").exists()
