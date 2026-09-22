@@ -265,7 +265,14 @@ def generate_data_cmd(
         "--strict/--no-strict",
         help="SPICE only: validate with strict parsing (proper ngspice input: no {node} tokens, "
         "only .model/.param/.subckt/.end directives, no undefined symbols) and use the strict "
-        "system prompt. Defaults to config: convert.strict_parsing or simulation.enabled.",
+        "system prompt. Defaults to config: convert.strict_parsing.",
+    ),
+    simulate: Optional[bool] = typer.Option(
+        None,
+        "--simulate/--no-simulate",
+        help="SPICE only: the netlists will be simulated with ngspice. Implies --strict, rejects "
+        "components ngspice cannot simulate and uses the simulation system prompt. "
+        "Defaults to config: simulation.enabled.",
     ),
 ):
     from .netlist_gen.parallel import scale_generation  # noqa: PLC0415
@@ -296,6 +303,7 @@ def generate_data_cmd(
             max_attempts=max_attempts,
             project_name=project_name,
             strict=strict,
+            simulate=simulate,
         )
     )
 

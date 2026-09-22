@@ -1104,28 +1104,37 @@ TO_SKIN_CONFIG = {
             "port_directions": {},
         }
     ],
+    # XSPICE code model: needs a code-model .model card, which the grammar
+    # does not teach, so it is not offered for simulation.
     "A": [
         {
             "skin_alias": "generic",
             "arg_to_ports": {},
             "args_to_values": {},
             "port_directions": {},
+            "simulatable": False,
         }
     ],
+    # URC line / digital device: needs a .model ... URC card, which is not
+    # in MODEL_CONFIG, so it is not offered for simulation.
     "U": [
         {
             "skin_alias": "generic",
             "arg_to_ports": {},
             "args_to_values": {},
             "port_directions": {},
+            "simulatable": False,
         }
     ],
+    # Coupled multiconductor line (CPL): its model takes R/L/G/C matrices,
+    # so it is not offered for simulation.
     "P": [
         {
             "skin_alias": "generic",
             "arg_to_ports": {},
             "args_to_values": {},
             "port_directions": {},
+            "simulatable": False,
         }
     ],
     # OSDI (Verilog-A compiled) device — Nname N1 ... mname [param=value]
@@ -1137,6 +1146,8 @@ TO_SKIN_CONFIG = {
             "arg_to_ports": {},
             "args_to_values": {},
             "port_directions": {},
+            # ngspice 34 has no OSDI support: "unknown device type"
+            "simulatable": False,
         }
     ],
 }

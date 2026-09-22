@@ -120,8 +120,65 @@ def _match_model_card(model_type: str, given: dict, variants: list[dict], params
     return per_variant
 
 
+def _model_type_simulatable(model_type: str) -> bool:
+    """False when every configuration of the .model TYPE is marked
+    "simulatable": False in MODEL_CONFIG. Types not listed there (e.g. XSPICE
+    code models) are left to ngspice."""
+    variants = dialect.MODEL_CONFIG.get(model_type.upper())
+    return not variants or any(v.get("simulatable", True) for v in variants)
+
+
+def _spec_simulatable(spec: dict) -> bool:
+    """False when ngspice cannot simulate a TO_SKIN_CONFIG spec: the spec is
+    marked "simulatable": False, or none of its model types simulate (the
+    Q specs of model type LPNP)."""
+    model_types = spec.get("model_type", [])
+    return spec.get("simulatable", True) and (
+        not model_types or any(_model_type_simulatable(m) for m in model_types)
+    )
+
+
+def _simulation_violations(parsed_netlist: dict, model_table: dict) -> list[str]:
+    """Components ngspice cannot simulate: elements whose spec is marked
+    "simulatable": False in TO_SKIN_CONFIG (e.g. the N/P/A/U generics), and
+    elements whose .model card has a TYPE marked so in MODEL_CONFIG (LPNP)."""
+    violations: list[str] = []
+    for component_name, element in parsed_netlist.items():
+        prefix = element["prefix"]
+        if not element.get("simulatable", True):
+            violations.append(
+                f"Component {component_name}: {prefix} elements cannot be simulated; "
+                f"remove it and use another component."
+            )
+            continue
+        model_name = element.get("model_name")
+        card = model_table.get(model_name.upper()) if model_name else None
+        if card is None or _model_type_simulatable(card["model_type"]):
+            continue
+        # suggest the model types of the same element that do simulate
+        alternatives = sorted(
+            {
+                model_type.upper()
+                for spec in dialect.TO_SKIN_CONFIG.get(prefix, [])
+                if _spec_simulatable(spec)
+                for model_type in spec.get("model_type", [])
+                if _model_type_simulatable(model_type)
+            }
+        )
+        hint = f"use model type {' or '.join(alternatives)} instead." if alternatives else "remove it."
+        violations.append(
+            f"Component {component_name}: model {model_name} has type {card['model_type'].upper()}, "
+            f"which cannot be simulated; {hint}"
+        )
+    return violations
+
+
 def _strict_violations(
-    parsed_netlist: dict, subckt_table: dict, meta: dict, model_table: dict | None = None
+    parsed_netlist: dict,
+    subckt_table: dict,
+    meta: dict,
+    model_table: dict | None = None,
+    simulate: bool = False,
 ) -> list[str]:
     """SPICE strict parsing: everything ngspice would misread or refuse,
     worded as instructions for the LLM. Returns an empty list when clean.
@@ -135,6 +192,10 @@ def _strict_violations(
     not listed there, e.g. XSPICE code models, are left to ngspice). Unknown
     models are rejected earlier, in both modes, by _parse_line: no spec
     matches a model name without a .model card.
+
+    With `simulate` (the netlist will be run by ngspice), components that
+    ngspice cannot simulate are rejected too (_simulation_violations).
+    Strict parsing alone does not imply simulation, so this is opt-in.
     """
     violations: list[str] = []
     params = meta["params"]
@@ -202,6 +263,10 @@ def _strict_violations(
                 f"{card} matches none of the configurations ngspice implements:\n"
                 + "\n".join(f"    {reason}" for reason in reasons)
             )
+
+    # check components ngspice cannot simulate (only when simulating)
+    if simulate:
+        violations.extend(_simulation_violations(parsed_netlist, model_table or {}))
 
     # check undefined symbols/identifiers
     for name, value in params.items():

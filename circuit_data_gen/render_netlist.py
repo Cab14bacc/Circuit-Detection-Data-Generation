@@ -44,6 +44,7 @@ def render_netlist(
     debug_overlay_path: Path | None = None,
     strict: bool | None = None,
     elk_seed: str | int | None = None,
+    simulate: bool | None = None,
 ) -> tuple[Path, dict]:
     """Render a netlist via convert.py + netlistsvg.
 
@@ -78,6 +79,10 @@ def render_netlist(
         yields the same layout; vary it per sample for layout variety while
         keeping renders reproducible. None leaves the skin's seed (or the
         ELK default) in effect.
+    simulate : bool | None
+        SPICE: the netlist will be simulated, forwarded to convert.py, where
+        strict parsing then also rejects components ngspice cannot simulate
+        (no effect without strict). None uses the simulation.enabled value.
     """
     netlistsvg_bin = get_config_path_value("netlistsvg", "bin_path")
 
@@ -97,7 +102,7 @@ def render_netlist(
     out_file.parent.mkdir(parents=True, exist_ok=True)
     json_path = out_file.with_suffix(".json")
 
-    yosys, parsed_netlist = to_yosys_json(netlist_text, module_name, strict=strict)
+    yosys, parsed_netlist = to_yosys_json(netlist_text, module_name, strict=strict, simulate=simulate)
 
     logger.debug(f"writing yosys json to: {json_path}")
     json_path.write_text(json.dumps(yosys, indent=2))

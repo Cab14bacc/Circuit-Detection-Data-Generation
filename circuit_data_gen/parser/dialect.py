@@ -15,6 +15,11 @@ IS_SPICE = NETLIST_FORMAT == "spice"
 # SPICE only: default for `strict` in _parse_netlist / to_yosys_json. Strict
 # parsing rejects what ngspice would misread or refuse (see _strict_violations).
 STRICT_PARSING = bool(get_config_value("convert", "strict_parsing"))
+# SPICE only: default for `simulate` in _parse_netlist. Strict parsing
+# additionally rejects what ngspice cannot simulate (spec or .model
+# configuration marked "simulatable": False). Has no effect without strict
+# parsing: strict parsing does not imply simulation, nor the other way round.
+SIMULATION_ENABLED = bool(get_config_value("simulation", "enabled"))
 if IS_SPICE:
     TO_SKIN_CONFIG = get_config_value("convert", "convert_spice_config_path", "TO_SKIN_CONFIG")
     EXPRESSION_CONSTANTS = {

@@ -2,6 +2,7 @@
 (used for the LLM grammar docs and for the parse errors fed back to it)."""
 
 from . import dialect
+from .strict import _spec_simulatable
 
 
 def _render_slots(arg_to_ports: dict) -> list[str]:
@@ -213,6 +214,7 @@ def _render_spec_grammar(
 def config_to_grammar(
     show_skin: bool = False,
     mark_dropped: bool = False,
+    simulatable_only: bool = False,
 ) -> list[str]:
     """Render TO_SKIN_CONFIG into a list of grammar strings, one per spec.
 
@@ -230,6 +232,9 @@ def config_to_grammar(
         so a reader can tell which node tokens are written but not drawn.
         Hidden nodes are still REQUIRED plain node tokens in the element
         line; the slots themselves are never marked (no `{NC+}`).
+    simulatable_only : leave out the specs ngspice cannot simulate (marked
+        "simulatable": False, or whose model types are all marked so in
+        MODEL_CONFIG), for a grammar that only offers simulatable netlists.
 
     Positional slots come from `arg_to_ports`, value slots from
     `args_to_values`: optional slots render bracketed (`[Value=val]`,
@@ -243,6 +248,8 @@ def config_to_grammar(
     grammar_lines: list[str] = []
     for prefix, component_specs in dialect.TO_SKIN_CONFIG.items():
         for spec in component_specs:
+            if simulatable_only and not _spec_simulatable(spec):
+                continue
             pattern = _render_spec_grammar(prefix, spec, show_skin=show_skin, mark_dropped=mark_dropped)
             grammar_lines.append(f"format:{pattern}")
     return grammar_lines
@@ -255,24 +262,28 @@ def _render_zero_slot(entry: dict, name: str) -> str:
     return f"[{slot}]" if entry.get("is_optional", True) else slot
 
 
-def model_config_to_grammar(only_declared: bool = True) -> list[str]:
+def model_config_to_grammar(only_declared: bool = True, simulatable_only: bool = False) -> list[str]:
     """Render MODEL_CONFIG into one `.model` card template per configuration:
 
-        format:.model mname LTRA R=<value> L=<value> C=<value> LEN=<value>
-            , 0/omitted:G , RLC (series loss only)
+        format:.model mname LTRA R=<value> L=<value> C=<value> LEN=<value> G=0
 
     .model params are keyword-only, so each declared param renders like a
-    keyword-only value slot (required unbracketed, optional bracketed);
-    `zero_params` and the configuration's `variant` label are appended as
-    annotations, like the ` , skin:` annotation of element specs.
+    keyword-only value slot (required unbracketed, optional bracketed); an
+    "is_zero" param renders as `Key=0`. The configuration's `variant` label,
+    when set, is appended as an annotation, like the ` , skin:` annotation
+    of element specs.
     With `only_declared` (default), configurations that declare no params
     are skipped: their bare card `.model mname TYPE` is all ngspice needs.
+    With `simulatable_only`, configurations marked "simulatable": False are
+    skipped too.
     """
     grammar_lines: list[str] = []
     for model_type, variants in dialect.MODEL_CONFIG.items():
         for variant in variants:
             args_to_values = variant.get("args_to_values", {})
             if only_declared and not args_to_values:
+                continue
+            if simulatable_only and not variant.get("simulatable", True):
                 continue
             slots = [
                 # an "is_zero" param can only be written as 0, so show that

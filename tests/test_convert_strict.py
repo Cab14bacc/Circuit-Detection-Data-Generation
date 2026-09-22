@@ -16,10 +16,11 @@ import pytest
 from tests.conftest import CONNECTED_NETLIST
 
 
-def _strict_errors(convert, text: str) -> str:
-    """Parse strictly, return the violation message ("" when clean)."""
+def _strict_errors(convert, text: str, simulate: bool | None = False) -> str:
+    """Parse strictly, return the violation message ("" when clean).
+    `simulate` is pinned (False) unless given, so the config can't leak in."""
     try:
-        convert._parse_netlist(text, strict=True)
+        convert._parse_netlist(text, strict=True, simulate=simulate)
     except convert.NetlistError as e:
         return str(e)
     return ""
@@ -246,6 +247,72 @@ class TestReferences:
         assert element["values"]["value"]["value"] == "amp"
 
 
+class TestSimulationComponents:
+    """With simulate on, strict parsing rejects what ngspice cannot simulate:
+    specs marked "simulatable": False (N/P/A/U generics) and .model TYPEs
+    whose configurations all are (LPNP)."""
+
+    LPNP = "V1 c 0 5\nR1 c b 1k\nQ1 c b 0 QL\n.model QL LPNP\n"
+
+    def test_unsimulatable_model_type_rejected(self, convert_spice):
+        errors = _strict_errors(convert_spice, self.LPNP, simulate=True)
+        assert "Component Q1: model QL has type LPNP, which cannot be simulated" in errors
+        assert "use model type NPN or PNP instead" in errors
+
+    def test_simulatable_model_type_accepted(self, convert_spice):
+        text = self.LPNP.replace("LPNP", "NPN")
+        assert _strict_errors(convert_spice, text, simulate=True) == ""
+
+    @pytest.mark.parametrize("prefix", ["N", "P", "A", "U"])
+    def test_unsimulatable_generic_rejected(self, convert_spice, prefix):
+        text = f"V1 a 0 5\nR1 a b 1k\n{prefix}1 a b dev\n"
+        errors = _strict_errors(convert_spice, text, simulate=True)
+        assert f"Component {prefix}1: {prefix} elements cannot be simulated" in errors
+
+    def test_subckt_instance_accepted(self, convert_spice):
+        text = "V1 a 0 5\nR1 a b 1k\nX1 a b amp\n.subckt amp p n\nR9 p n 1k\n.ends\n"
+        assert _strict_errors(convert_spice, text, simulate=True) == ""
+
+    def test_strict_alone_does_not_check_simulation(self, convert_spice):
+        # strict parsing does not imply simulation
+        assert _strict_errors(convert_spice, self.LPNP, simulate=False) == ""
+
+    def test_simulate_without_strict_does_nothing(self, convert_spice):
+        # the check is part of strict parsing: lenient parsing never runs it
+        parsed = convert_spice._parse_netlist(self.LPNP, strict=False, simulate=True)
+        assert "Q1" in parsed
+
+    def test_simulate_defaults_to_config(self, convert_spice, monkeypatch):
+        monkeypatch.setattr(convert_spice, "SIMULATION_ENABLED", True)
+        errors = _strict_errors(convert_spice, self.LPNP, simulate=None)
+        assert "which cannot be simulated" in errors
+        monkeypatch.setattr(convert_spice, "SIMULATION_ENABLED", False)
+        assert _strict_errors(convert_spice, self.LPNP, simulate=None) == ""
+
+
+class TestSimulatableGrammar:
+    def test_grammar_can_leave_out_unsimulatable_specs(self, convert_spice):
+        full = convert_spice.config_to_grammar()
+        sim = convert_spice.config_to_grammar(simulatable_only=True)
+        for prefix in "NPAU":
+            assert f"format:{prefix}name" in "\n".join(full)
+            assert not [line for line in sim if line.startswith(f"format:{prefix}name")]
+        # the element lines do not name the model type, so count the Q specs:
+        # the LPNP ones are gone, NPN/PNP stay
+        q_specs = convert_spice.TO_SKIN_CONFIG["Q"]
+        simulatable_q = [s for s in q_specs if s["model_type"] != ["LPNP"]]
+        assert sum(line.startswith("format:Qname") for line in full) == len(q_specs)
+        assert sum(line.startswith("format:Qname") for line in sim) == len(simulatable_q)
+        assert "format:Xname" in "\n".join(sim)
+
+    def test_model_grammar_can_leave_out_unsimulatable_cards(self, convert_spice):
+        full = convert_spice.model_config_to_grammar(only_declared=False)
+        sim = convert_spice.model_config_to_grammar(only_declared=False, simulatable_only=True)
+        assert "format:.model mname LPNP" in full
+        assert "format:.model mname LPNP" not in sim
+        assert "format:.model mname NPN" in sim
+
+
 class TestGrammarRendering:
     def test_grammar_never_braces_nodes(self, convert_spice):
         for mark_dropped in (False, True):
@@ -276,6 +343,7 @@ class TestGenerationStrictness:
         from circuit_data_gen.netlist_gen.parallel import CircuitRequirements
 
         monkeypatch.setattr(setup, "GEN_STRICT", True)
+        monkeypatch.setattr(setup, "GEN_SIMULATE", False)
         net_path = tmp_path / "test.net"
         net_path.write_text(CONNECTED_NETLIST + ".tran 1u 1m\n", encoding="utf-8")
         state = {
@@ -293,22 +361,83 @@ class TestGenerationStrictness:
         assert any("Directive '.tran 1u 1m' is not allowed" in e for e in errors), errors
 
     @pytest.mark.parametrize(
-        "gen_strict, key",
-        [(True, "LLM_STRICT_SYSTEM_PROMPT_PATH"), (False, "LLM_SYSTEM_PROMPT_PATH")],
+        "gen_strict, gen_simulate, key",
+        [
+            (False, False, "LLM_SYSTEM_PROMPT_PATH"),
+            (True, False, "LLM_STRICT_SYSTEM_PROMPT_PATH"),
+            (False, True, "LLM_SIMULATE_SYSTEM_PROMPT_PATH"),
+            (True, True, "LLM_SIMULATE_SYSTEM_PROMPT_PATH"),
+        ],
     )
-    def test_system_prompt_follows_strictness(self, convert_spice, monkeypatch, gen_strict, key):
+    def test_system_prompt_follows_config(self, convert_spice, monkeypatch, gen_strict, gen_simulate, key):
         from circuit_data_gen.configs.config import get_config_path_value
         from circuit_data_gen.netlist_gen import setup
 
         monkeypatch.setattr(setup, "GEN_STRICT", gen_strict)
+        monkeypatch.setattr(setup, "GEN_SIMULATE", gen_simulate)
         assert setup.system_prompt_key() == key
         prompt = get_config_path_value("netlist_gen", key).read_text(encoding="utf-8")
-        # only the strict prompt documents the strict-parsing errors
-        assert ("Strict Parsing Errors" in prompt) is gen_strict
+        # the strict and simulation prompts document the strict-parsing
+        # errors; only the simulation prompt the DC operating-point rules
+        assert ("Strict Parsing Errors" in prompt) is (gen_strict or gen_simulate)
+        assert ("Electrical Validity" in prompt) is gen_simulate
+
+    def test_explicit_simulate_overrides_config(self, convert_spice, monkeypatch):
+        from circuit_data_gen.netlist_gen import setup
+
+        monkeypatch.setattr(setup, "GEN_STRICT", False)
+        monkeypatch.setattr(setup, "GEN_SIMULATE", False)
+        assert setup.system_prompt_key(simulate=True) == "LLM_SIMULATE_SYSTEM_PROMPT_PATH"
+        monkeypatch.setattr(setup, "GEN_SIMULATE", True)
+        assert setup.system_prompt_key(simulate=False) == "LLM_SYSTEM_PROMPT_PATH"
+        assert setup.system_prompt_key(strict=True, simulate=False) == "LLM_STRICT_SYSTEM_PROMPT_PATH"
+
+    def test_simulate_implies_strict(self, convert_spice, monkeypatch):
+        from circuit_data_gen.netlist_gen import setup
+
+        monkeypatch.setattr(setup, "GEN_STRICT", False)
+        monkeypatch.setattr(setup, "GEN_SIMULATE", False)
+        assert setup._resolve_strict(None, simulate=True) is True
+        # even an explicit strict=False: ngspice needs the strict guarantees
+        assert setup._resolve_strict(False, simulate=True) is True
+        assert setup._resolve_strict(None, simulate=False) is False
+
+    @pytest.mark.parametrize("simulate, rejected", [(True, True), (False, False)])
+    def test_smoke_test_render_forwards_simulate(
+        self, convert_spice, monkeypatch, tmp_path, simulate, rejected
+    ):
+        from circuit_data_gen.netlist_gen import setup
+
+        monkeypatch.setattr(setup, "full_validation", lambda *args, **kwargs: [])
+        net_path = tmp_path / "test.net"
+        net_path.write_text("V1 c 0 5\nR1 c b 1k\nQ1 c b 0 QL\n.model QL LPNP\n", encoding="utf-8")
+        state = {"logger": logging.getLogger("test-simulate"), "requirements": [None]}
+        valid, errors = setup.smoke_test_render(
+            state,
+            0,
+            net_path,
+            tmp_path / "s.png",
+            tmp_path / "a.json",
+            tmp_path / "o.png",
+            strict=True,
+            simulate=simulate,
+        )
+        assert valid is not rejected, errors
+        assert any("type LPNP, which cannot be simulated" in e for e in errors) is rejected
+
+    def test_gen_data_has_simulate_option(self):
+        from typer.testing import CliRunner
+
+        from circuit_data_gen.cli import app
+
+        result = CliRunner().invoke(app, ["gen_data", "--help"], terminal_width=200)
+        assert result.exit_code == 0
+        assert "--simulate" in result.output and "--no-simulate" in result.output
 
     def test_explicit_strict_overrides_config(self, convert_spice, monkeypatch, tmp_path):
         from circuit_data_gen.netlist_gen import setup
 
+        monkeypatch.setattr(setup, "GEN_SIMULATE", False)
         monkeypatch.setattr(setup, "GEN_STRICT", False)
         assert setup.system_prompt_key(True) == "LLM_STRICT_SYSTEM_PROMPT_PATH"
         monkeypatch.setattr(setup, "GEN_STRICT", True)

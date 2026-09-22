@@ -161,6 +161,7 @@ async def scale_generation(
     temperature: float = 0.9,
     project_name: str = "default_project",
     strict: bool | None = None,
+    simulate: bool | None = None,
 ) -> list[GenResult]:
     """Generate a batch of netlists in parallel.
 
@@ -182,7 +183,10 @@ async def scale_generation(
         LLM sampling temperature.
     strict : bool | None
         SPICE strict parsing (and the strict system prompt) for validation.
-        None = config (convert.strict_parsing or simulation.enabled).
+        None = config (convert.strict_parsing).
+    simulate : bool | None
+        SPICE: the netlists will be simulated (implies strict parsing; uses
+        the simulation system prompt). None = config (simulation.enabled).
     """
     # prevent circular import
     from .setup import netlist_gen_setup  # noqa: PLC0415
@@ -235,6 +239,7 @@ async def scale_generation(
             temperature=temperature,
             strict=strict,
             max_attempts=max_attempts,
+            simulate=simulate,
         )
 
         async def bounded_worker(worker_id: int, gen_count: int) -> GenResult:

@@ -23,11 +23,10 @@ from .parallel import CircuitRequirements
 
 
 SKIN_PATH = get_config_path_value("netlistsvg", "skin_path").resolve()
-# generation parses strictly when asked to, and always when the generated
-# netlists will be simulated (ngspice needs the strict guarantees)
-GEN_STRICT = bool(get_config_value("convert", "strict_parsing")) or bool(
-    get_config_value("simulation", "enabled")
-)
+# config defaults of the generation flags (--strict / --simulate). Simulating
+# always parses strictly too: ngspice needs the strict guarantees.
+GEN_STRICT = bool(get_config_value("convert", "strict_parsing"))
+GEN_SIMULATE = bool(get_config_value("simulation", "enabled"))
 # LLM generations per session (the first one included) before giving up
 DEFAULT_MAX_ATTEMPTS = 3
 
@@ -48,18 +47,30 @@ class CircuitState(TypedDict):
     output_yosys: list[Path]
 
 
-def _resolve_strict(strict: bool | None) -> bool:
+def _resolve_simulate(simulate: bool | None) -> bool:
+    """Whether generated netlists are simulated: the explicit value (e.g.
+    `cirdg gen_data --simulate/--no-simulate`), else GEN_SIMULATE."""
+    return GEN_SIMULATE if simulate is None else simulate
+
+
+def _resolve_strict(strict: bool | None, simulate: bool | None = None) -> bool:
     """Generation strictness: the explicit value (e.g. `cirdg gen_data
-    --strict/--no-strict`), else the config-derived GEN_STRICT."""
-    return GEN_STRICT if strict is None else strict
+    --strict/--no-strict`), else GEN_STRICT; always on when simulating,
+    even with an explicit strict=False."""
+    return (GEN_STRICT if strict is None else strict) or _resolve_simulate(simulate)
 
 
-def system_prompt_key(strict: bool | None = None) -> str:
-    """Config key (under netlist_gen) of the LLM system prompt: the strict
-    SPICE prompt when generation parses strictly, else the default one.
-    Strict parsing is SPICE only, so the lcapy dialect always uses the default."""
+def system_prompt_key(strict: bool | None = None, simulate: bool | None = None) -> str:
+    """Config key (under netlist_gen) of the LLM system prompt: the
+    simulation prompt when netlists are simulated, the strict prompt when
+    they are only parsed strictly, else the default one. Both are SPICE only,
+    so the lcapy dialect always uses the default."""
     is_spice = str(get_config_value("convert", "netlist_format")).lower() == "spice"
-    if _resolve_strict(strict) and is_spice:
+    if not is_spice:
+        return "LLM_SYSTEM_PROMPT_PATH"
+    if _resolve_simulate(simulate):
+        return "LLM_SIMULATE_SYSTEM_PROMPT_PATH"
+    if _resolve_strict(strict, simulate):
         return "LLM_STRICT_SYSTEM_PROMPT_PATH"
     return "LLM_SYSTEM_PROMPT_PATH"
 
@@ -73,10 +84,13 @@ def smoke_test_render(
     temp_overlay_path: Path,
     strict: bool | None = None,
     elk_seed: str | int | None = None,
+    simulate: bool | None = None,
 ) -> tuple[bool, list[str]]:
     """Attempt to render the netlist and return (valid, errors).
 
-    `strict` selects strict SPICE parsing (None = config-derived GEN_STRICT).
+    `strict` selects strict SPICE parsing (None = GEN_STRICT), `simulate`
+    whether the netlist will be simulated (None = GEN_SIMULATE), which also
+    rejects components ngspice cannot simulate and implies strict parsing.
     `elk_seed` fixes the ELK randomization seed for the render; None keeps
     the skin's seed. Callers pass the worker's rng_seed so the smoke-test
     layout matches the persisted render layout for the same sample.
@@ -94,7 +108,8 @@ def smoke_test_render(
             format="png",
             debug_overlay=True,
             debug_overlay_path=temp_overlay_path,
-            strict=_resolve_strict(strict),
+            strict=_resolve_strict(strict, simulate),
+            simulate=_resolve_simulate(simulate),
             elk_seed=elk_seed,
         )
 
@@ -118,6 +133,7 @@ def netlist_gen_setup(
     temperature: float = 0.9,
     strict: bool | None = None,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+    simulate: bool | None = None,
 ):
     """Build the LangGraph state machine for netlist generation.
 
@@ -134,16 +150,20 @@ def netlist_gen_setup(
         here as <stem>.txt alongside a shared classes.txt registry.
     strict : bool | None
         SPICE strict parsing for the smoke test, and the matching (strict)
-        system prompt. None = config-derived GEN_STRICT
-        (convert.strict_parsing or simulation.enabled).
+        system prompt. None = GEN_STRICT (convert.strict_parsing).
     max_attempts : int
         LLM generations per session, the first one included (>= 1). Each
         call regenerates every netlist of the session that is still
         invalid; those still invalid after the last call fail.
+    simulate : bool | None
+        SPICE only: the generated netlists will be simulated. Implies strict
+        parsing, rejects components ngspice cannot simulate, and selects the
+        simulation system prompt. None = GEN_SIMULATE (simulation.enabled).
     """
     if max_attempts < 1:
         raise ValueError(f"max_attempts must be at least 1, got {max_attempts}")
-    strict = _resolve_strict(strict)
+    strict = _resolve_strict(strict, simulate)
+    simulate = _resolve_simulate(simulate)
     load_dotenv()
     api_key = os.getenv("CIRDG_API_KEY")
     model_name = os.getenv("CIRDG_MODEL_NAME")
@@ -156,7 +176,7 @@ def netlist_gen_setup(
         temperature=temperature,
     )
 
-    sys_prompt_path = get_config_path_value("netlist_gen", system_prompt_key(strict)).resolve()
+    sys_prompt_path = get_config_path_value("netlist_gen", system_prompt_key(strict, simulate)).resolve()
 
     with open(sys_prompt_path, "r", encoding="utf-8") as f:
         sys_prompt = f.read()
@@ -262,6 +282,7 @@ def netlist_gen_setup(
                         temp_annotation_path,
                         temp_overlay_path,
                         strict=strict,
+                        simulate=simulate,
                         # the circuits's rng_seed drives the ELK layout seed
                         elk_seed=rng_seed + f"_{idx}" if rng_seed is not None else None,
                     )

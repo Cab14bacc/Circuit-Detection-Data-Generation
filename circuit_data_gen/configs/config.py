@@ -127,8 +127,9 @@ CONVERT_CONFIG = {
 
 
 SIMULATION_CONFIG = {
-    # Run the ngspice (PySpice) simulation step during `cirdg gen_data`.
-    # Turning it on also turns on strict parsing for generation.
+    # Run the ngspice (PySpice) simulation step during `cirdg gen_data`
+    # (default of --simulate/--no-simulate). Simulating also turns on strict
+    # parsing for generation, and selects the simulation system prompt.
     "ENABLED": False,
 }
 
@@ -137,9 +138,13 @@ NETLIST_GEN_CONFIG = {
     "LLM_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt.md",
     # "LLM_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/lcapy_agent_system_prompt.md",
     # SPICE only: used instead of LLM_SYSTEM_PROMPT_PATH when generation parses
-    # strictly (convert.strict_parsing or simulation.enabled); it documents the
-    # strict rules and their error messages.
+    # strictly without simulating (convert.strict_parsing / --strict); it
+    # documents the strict rules and their error messages.
     "LLM_STRICT_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt_strict.md",
+    # SPICE only: used when generated netlists are simulated
+    # (simulation.enabled / --simulate); the strict rules plus the
+    # simulatable components and the rules for a DC operating point.
+    "LLM_SIMULATE_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt_simulate.md",
 }
 
 CONFIGS = {

@@ -43,6 +43,7 @@ from .dialect import (  # noqa: F401 (re-exported)
     IS_SPICE,
     MODEL_CONFIG,
     NETLIST_FORMAT,
+    SIMULATION_ENABLED,
     STRICT_PARSING,
     SUBCKT_PREFIX,
     TO_SKIN_CONFIG,
@@ -690,6 +691,8 @@ def _match_spec(
         cur_elem["skin_alias"] = skin_alias
         if parse_only:
             cur_elem["parse_only"] = True
+        # False when ngspice cannot simulate this spec (strict + simulate rejects it)
+        cur_elem["simulatable"] = component_spec.get("simulatable", True)
 
         # if component is not of this kind
         kind = component_spec.get("kind", [])
@@ -962,6 +965,8 @@ def _parse_line(
             "connections": {},
             "values": {},
             "skin_alias": "generic",
+            # an explicit generic has a single spec (X/A/U/P/N in SPICE)
+            "simulatable": TO_SKIN_CONFIG.get(prefix, [{}])[0].get("simulatable", True),
         }
 
         if prefix == SUBCKT_PREFIX and IS_SPICE:
@@ -1014,7 +1019,7 @@ def _parse_line(
     return component_name, elem
 
 
-def _parse_netlist(text: str, strict: bool | None = None):
+def _parse_netlist(text: str, strict: bool | None = None, simulate: bool | None = None):
     """Parse netlist text into {component_name: element}.
 
     Parameters
@@ -1026,8 +1031,13 @@ def _parse_netlist(text: str, strict: bool | None = None):
         are collected and raised together as one NetlistError, one per line,
         so they can be fed back to the LLM in a single round. None uses the
         STRICT_PARSING config default.
+    simulate : bool | None
+        SPICE only: the netlist will be simulated, so strict parsing also
+        rejects components ngspice cannot simulate. Only checked when
+        `strict` is on. None uses the simulation.enabled config default.
     """
     strict = (STRICT_PARSING if strict is None else strict) and IS_SPICE
+    simulate = SIMULATION_ENABLED if simulate is None else simulate
     text_lines, model_table, subckt_table, meta = _preprocess_lines(text.splitlines())
 
     parsed_netlist = {}
@@ -1057,7 +1067,7 @@ def _parse_netlist(text: str, strict: bool | None = None):
         parsed_netlist[component_name] = element
 
     if strict:
-        violations = _strict_violations(parsed_netlist, subckt_table, meta, model_table)
+        violations = _strict_violations(parsed_netlist, subckt_table, meta, model_table, simulate=simulate)
         if violations:
             raise NetlistError(
                 f"Strict parsing found {len(violations)} problem(s):\n"
@@ -1127,14 +1137,18 @@ def _assign_net_ids(parsed_netlist):
 
 
 def to_yosys_json(
-    netlist_text: str, module_name: str = "circuit", strict: bool | None = None
+    netlist_text: str,
+    module_name: str = "circuit",
+    strict: bool | None = None,
+    simulate: bool | None = None,
 ) -> tuple[dict, dict]:
     """Parse a netlist and convert it to yosys JSON for netlistsvg.
 
-    `strict` is forwarded to _parse_netlist (None = STRICT_PARSING config).
+    `strict` and `simulate` are forwarded to _parse_netlist (None = the
+    STRICT_PARSING / SIMULATION_ENABLED config defaults).
     Returns (yosys_json, parsed_netlist).
     """
-    parsed_netlist = _parse_netlist(netlist_text, strict=strict)
+    parsed_netlist = _parse_netlist(netlist_text, strict=strict, simulate=simulate)
     id_map, find, ground_net_id = _assign_net_ids(parsed_netlist)
 
     cells = {}
