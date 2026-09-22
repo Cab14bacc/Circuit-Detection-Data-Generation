@@ -253,6 +253,13 @@ def generate_data_cmd(
         help="Seed for the seed-prompt generator (reproducible batches)",
     ),
     temperature: float = typer.Option(0.9, "--temperature", "-t", help="LLM sampling temperature"),
+    max_attempts: int = typer.Option(
+        3,
+        "--max-attempts",
+        min=1,
+        help="Max LLM generations per session (the first one included); netlists still "
+        "invalid after the last one are dropped",
+    ),
     strict: Optional[bool] = typer.Option(
         None,
         "--strict/--no-strict",
@@ -286,6 +293,7 @@ def generate_data_cmd(
             gen_count_per_session=gen_count_per_session,
             gen_seed=gen_seed,
             temperature=temperature,
+            max_attempts=max_attempts,
             project_name=project_name,
             strict=strict,
         )

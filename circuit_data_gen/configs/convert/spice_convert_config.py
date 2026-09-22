@@ -64,12 +64,9 @@ TOKEN NOTATION — what each kind of token in the rules below means:
              NJF / PJF (J), NMOS / PMOS (M), NMF / PMF (Z), SW (S),
              CSW (W), R / RES (R), C (C), L (L), LTRA (O), TXL (Y) —
              element letter in parentheses. A model TYPE outside this set
-             (URC, LTspice's VDMOS / CAP / IND, ...) has NO dedicated
-             spec: with allow_unknown_models on such lines fall back to
-             a default-symbol spec (and 3-node VDMOS M lines can still
-             fail), with it off they fail. Only use the listed TYPEs.
-             Unknown model NAMES (no .model card) also fall back to a
-             default-symbol spec when allow_unknown_models is on.
+             (URC, LTspice's VDMOS / CAP / IND, ...) has NO spec, and a
+             model name without a .model card cannot be resolved: both
+             make the line fail. Only use the listed TYPEs.
   Vcontrol   Controlling-source REFERENCE: the NAME of a V element defined
              elsewhere in the netlist (e.g. V1) — not a node, not drawn.
 
@@ -165,6 +162,13 @@ not drawn — the bipole symbol has one pin pair):
                                           [IC=<v1,i1,v2,i2>]
     Oname N+ N- NP2+ NP2- mname           lossy line (LTRA model)
     Yname N+ N- NP2+ NP2- mname [LEN=<len>]   KSPICE TXL
+    Their .model cards REQUIRE the line parameters (per-unit-length R, L,
+    G, C and the line length); ngspice has no defaults, write them all:
+    .model mname LTRA R=<value> L=<value> C=<value> LEN=<value> G=0
+    .model mname TXL R=<value> L=<value> G=<value> C=<value> LENGTH=<value>
+    LTRA: G MUST be 0 (only RLC / RC / LC lines are implemented; write
+    L=0 for an RC line, R=0 for an LC line). TXL: the length belongs in
+    the CARD, LEN= on the Y line only overrides it.
 
 Generic elements (explicit generics: pin count depends on a definition,
 drawn as a generic box; the last non-keyword token is the definition name):
@@ -420,8 +424,7 @@ TO_SKIN_CONFIG = {
     ],
     # Diode — Dname N+ N- mname [area]  (ngspice §7.2)
     # model name is the LAST token; its .model TYPE (in-file table) must be
-    # 'd' for this spec to match. Unknown (.lib) models fall back to the
-    # kind-less spec below. Nothing displayed.
+    # 'd' for this spec to match. Nothing displayed.
     "D": [
         {
             "skin_alias": ["d_h"],
@@ -444,26 +447,12 @@ TO_SKIN_CONFIG = {
             "kind": ["off"],
             "port_directions": {"+": "input", "-": "output"},
         },
-        # Unknown-model fallback (ALLOW_UNKNOWN_MODELS): the caller retries
-        # with the trailing unknown model token stripped. Only matches when
-        # the line has NO in-file model name — a resolved model with no kind
-        # is rejected, so this spec never shadows a kind-matched spec.
-        {
-            "skin_alias": ["d_h"],
-            "arg_to_ports": {
-                0: {"alias": "+"},
-                1: {"alias": "-"},
-            },
-            "args_to_values": {},
-            "port_directions": {"+": "input", "-": "output"},
-        },
     ],
     # BJT — Qname C B E [substrate] mname  (ngspice §7.3.1)
     # the skin has 3 pins (c/b/e); the optional substrate node (4th token when
     # present) has no skin pin and is DROPPED. The model name is the LAST
     # token: its .model TYPE (NPN/PNP/LPNP) selects the spec — kind matching
-    # via the model table, exactly like a lcapy kind keyword. Unknown (.lib)
-    # models fall back to the kind-less NPN-style specs at the end.
+    # via the model table, exactly like a lcapy kind keyword.
     "Q": [
         {
             "skin_alias": ["q_npn"],
@@ -609,33 +598,8 @@ TO_SKIN_CONFIG = {
             "kind": ["off"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
         },
-        # Unknown-model fallback (ALLOW_UNKNOWN_MODELS): model type cannot be
-        # resolved, so the default NPN-style symbol is used. 3-node and
-        # 4-node (substrate dropped) variants.
-        {
-            "skin_alias": ["q_npn"],
-            "arg_to_ports": {
-                0: {"alias": "c"},
-                1: {"alias": "b"},
-                2: {"alias": "e"},
-            },
-            "args_to_values": {},
-            "port_directions": {"b": "input", "c": "input", "e": "output"},
-        },
-        {
-            "skin_alias": ["q_npn"],
-            "arg_to_ports": {
-                0: {"alias": "c"},
-                1: {"alias": "b"},
-                2: {"alias": "e"},
-                3: {"alias": "ns", "drop": True},  # substrate: no skin pin
-            },
-            "args_to_values": {},
-            "port_directions": {"b": "input", "c": "input", "e": "output"},
-        },
     ],
-    # JFET — Jname D G S mname  (ngspice §7.4.1). Model type NJF/PJF selects;
-    # unknown (.lib) models fall back to the kind-less n-channel spec below.
+    # JFET — Jname D G S mname  (ngspice §7.4.1). Model type NJF/PJF selects.
     "J": [
         {
             "skin_alias": ["jfet_n"],
@@ -683,25 +647,11 @@ TO_SKIN_CONFIG = {
             "kind": ["off"],
             "port_directions": {"g": "input", "d": "output", "s": "output"},
         },
-        # Unknown-model fallback (ALLOW_UNKNOWN_MODELS): default n-channel
-        # symbol; model type cannot be resolved.
-        {
-            "skin_alias": ["jfet_n"],
-            "arg_to_ports": {
-                0: {"alias": "d"},
-                1: {"alias": "g"},
-                2: {"alias": "s"},
-            },
-            "args_to_values": {},
-            "port_directions": {"g": "input", "d": "output", "s": "output"},
-        },
     ],
     # MOSFET — Mname D G S B mname  (ngspice §7.6.1; LTspice VDMOS: 3 nodes)
     # skin has 3 pins (d/g/s); the bulk node (4th token in the 5-token form)
     # is DROPPED as the skin has no bulk pin. Model name is the LAST token:
     # its .model TYPE (NMOS/PMOS) selects the spec via the model table.
-    # Unknown (.lib) models (IRFP240, ...) fall back to the kind-less
-    # n-channel specs at the end.
     "M": [
         {
             "skin_alias": ["mos_n"],
@@ -751,20 +701,6 @@ TO_SKIN_CONFIG = {
             "args_to_values": {},
             "model_type": ["PMOS"],
             "kind": ["off"],
-            "port_directions": {"g": "input", "d": "output", "s": "output"},
-        },
-        # Unknown-model fallback (ALLOW_UNKNOWN_MODELS): default n-channel
-        # symbol; model type cannot be resolved. 3-node (VDMOS) and 4-node
-        # (bulk dropped) variants.
-        {
-            "skin_alias": ["mos_n"],
-            "arg_to_ports": {
-                0: {"alias": "d"},
-                1: {"alias": "g"},
-                2: {"alias": "s"},
-                3: {"alias": "b", "drop": True},  # bulk/substrate: no skin pin
-            },
-            "args_to_values": {},
             "port_directions": {"g": "input", "d": "output", "s": "output"},
         },
     ],
@@ -898,8 +834,7 @@ TO_SKIN_CONFIG = {
     # Voltage-controlled switch — Sname N+ N- NC+ NC- mname [ON|OFF]
     # (ngspice §3.3.15). 4 nodes: the second pair controls the switch; the
     # skin only has 2 pins so the control pair is DROPPED. The model name
-    # binds to a .model ... SW card (kind = SW); unknown (.lib) switch
-    # models fall back to the kind-less spec below.
+    # binds to a .model ... SW card (kind = SW).
     "S": [
         {
             "skin_alias": ["sw_no"],
@@ -939,19 +874,6 @@ TO_SKIN_CONFIG = {
             "kind": ["OFF"],
             "port_directions": {"p": "input", "n": "input"},
         },
-        # Unknown-model fallback (ALLOW_UNKNOWN_MODELS): model type cannot be
-        # resolved, so the default switch symbol is used.
-        {
-            "skin_alias": ["sw_no"],
-            "arg_to_ports": {
-                0: {"alias": "p"},
-                1: {"alias": "n"},
-                2: {"alias": "c+", "drop": True},
-                3: {"alias": "c-", "drop": True},
-            },
-            "args_to_values": {},
-            "port_directions": {"p": "input", "n": "input"},
-        },
     ],
     # Lossless transmission line — Tname N1 N2 N3 N4 Z0=val TD=val  (ngspice §6.1)
     # skin is the dedicated 2-pin tline symbol (circuitikz to[tline]); the
@@ -981,8 +903,7 @@ TO_SKIN_CONFIG = {
     # (ngspice §3.3.15; model type CSW). The 3rd arg VNAM is a controlling
     # VOLTAGE SOURCE reference (not a node) — shown via the 'vcontrol' skin
     # label, same convention as the F/H controlled sources. The model name
-    # binds to a .model ... CSW card (kind = CSW); unknown (.lib) switch
-    # models fall back to the kind-less spec below.
+    # binds to a .model ... CSW card (kind = CSW).
     "W": [
         {
             "skin_alias": ["csw"],
@@ -1041,25 +962,6 @@ TO_SKIN_CONFIG = {
             "kind": ["OFF"],
             "port_directions": {"+": "input", "-": "input"},
         },
-        # Unknown-model fallback (ALLOW_UNKNOWN_MODELS): model type cannot be
-        # resolved, so the default switch symbol is used.
-        {
-            "skin_alias": ["csw"],
-            "arg_to_ports": {
-                0: {"alias": "+"},
-                1: {"alias": "-"},
-            },
-            "args_to_values": {
-                2: {
-                    "skin_label": None,
-                    "alias": ["Vcontrol", "VNAM"],
-                    # strict parsing: must name a V element of the netlist
-                    "is_reference": "V",
-                    "is_optional": False,
-                }
-            },
-            "port_directions": {"+": "input", "-": "input"},
-        },
     ],
     # Behavioral source — Bname N+ N- V=expr | I=expr  (ngspice §5.1.1)
     # The expression is a single token (no spaces in the corpus). Two specs
@@ -1103,9 +1005,9 @@ TO_SKIN_CONFIG = {
     ],
     # Lossy transmission line — Oname N1 N2 N3 N4 mname  (ngspice §6.2, LTRA)
     # Same shape as T: the dedicated tline bipole symbol is used and the 2nd
-    # port pair (N3/N4) is DROPPED. mname is a trailing model reference with
-    # NO .model type (LTRA models select line parameters, not a symbol) — it
-    # is consumed without kind matching.
+    # port pair (N3/N4) is DROPPED. mname must name an LTRA .model card,
+    # which holds the line parameters (MODEL_CONFIG); it does not change
+    # the symbol.
     "O": [
         {
             "skin_alias": ["tline"],
@@ -1117,17 +1019,6 @@ TO_SKIN_CONFIG = {
             },
             "args_to_values": {},
             "model_type": ["LTRA"],
-            "port_directions": {"+": "input", "-": "input"},
-        },
-        {
-            "skin_alias": ["tline"],
-            "arg_to_ports": {
-                0: {"alias": "+"},
-                1: {"alias": "-"},
-                2: {"alias": "p2+", "drop": True},
-                3: {"alias": "p2-", "drop": True},
-            },
-            "args_to_values": {},
             "port_directions": {"+": "input", "-": "input"},
         },
     ],
@@ -1149,24 +1040,10 @@ TO_SKIN_CONFIG = {
             "model_type": ["txl"],
             "port_directions": {"+": "input", "-": "input"},
         },
-        {
-            "skin_alias": ["tline"],
-            "arg_to_ports": {
-                0: {"alias": "+"},
-                1: {"alias": "-"},
-                2: {"alias": "p2+", "drop": True},
-                3: {"alias": "p2-", "drop": True},
-            },
-            "args_to_values": {
-                4: {"skin_label": None, "alias": ["LEN", "len"]},
-            },
-            "port_directions": {"+": "input", "-": "input"},
-        },
     ],
     # MESFET — Zname D G S mname  (ngspice NMF/PMF). The model TYPE (NMF =
     # n-channel, PMF = p-channel) selects the JFET symbol via the model
-    # table, exactly like the J prefix. Unknown (.lib) models fall back to
-    # the kind-less n-channel spec.
+    # table, exactly like the J prefix.
     "Z": [
         {
             "skin_alias": ["jfet_n"],
@@ -1212,18 +1089,6 @@ TO_SKIN_CONFIG = {
             "args_to_values": {},
             "model_type": ["PMF"],
             "kind": ["off"],
-            "port_directions": {"g": "input", "d": "output", "s": "output"},
-        },
-        # Unknown-model fallback (ALLOW_UNKNOWN_MODELS): default n-channel
-        # symbol; model type cannot be resolved.
-        {
-            "skin_alias": ["jfet_n"],
-            "arg_to_ports": {
-                0: {"alias": "d"},
-                1: {"alias": "g"},
-                2: {"alias": "s"},
-            },
-            "args_to_values": {},
             "port_directions": {"g": "input", "d": "output", "s": "output"},
         },
     ],
@@ -1274,6 +1139,81 @@ TO_SKIN_CONFIG = {
             "port_directions": {},
         }
     ],
+}
+
+
+def _required(*names: str) -> dict:
+    """args_to_values entries for .model params that must be PRESENT on the
+    card (0 is a fine value), keyed by the canonical name (the spelling
+    ngspice accepts; matched case-insensitively)."""
+    return {name: {"alias": [name], "is_optional": False} for name in names}
+
+
+# .model cards, keyed by model TYPE (upper case). The specs in TO_SKIN_CONFIG
+# refer to these through their "model_type"; every model_type used there must
+# have an entry here. The value is a LIST of configurations, like a prefix's
+# spec list in TO_SKIN_CONFIG: a card is valid when it matches ONE of them.
+#
+#   args_to_values : the configuration's parameters, declared like a spec's
+#                    args_to_values. .model params are always key=value, so
+#                    entries are keyed by the canonical param name and take
+#                    "alias", "is_optional", "default_value" (and optionally
+#                    "skin_label"). A required param must be PRESENT on the
+#                    card; 0 is a valid value. An entry with "is_zero" must
+#                    additionally BE 0 (or, when optional, absent). Only
+#                    params worth declaring are listed: ngspice defaults
+#                    most of them, so most types declare none; undeclared
+#                    params are allowed (ngspice reports bad ones).
+#   variant        : label for error messages / the grammar listing when a
+#                    type has several configurations (the netlist never
+#                    writes it, unlike an element kind keyword).
+#   simulatable    : False when the bundled ngspice (34) cannot simulate the
+#                    configuration at all; defaults to True.
+MODEL_CONFIG = {
+    # resistors / capacitors / inductors (semiconductor forms)
+    "R": [{"args_to_values": {}}],
+    "RES": [{"args_to_values": {}}],
+    "C": [{"args_to_values": {}}],
+    "L": [{"args_to_values": {}}],
+    "D": [{"args_to_values": {}}],
+    # BJT
+    "NPN": [{"args_to_values": {}}],
+    "PNP": [{"args_to_values": {}}],
+    # ngspice 34 rejects it: "model type mismatch", with or without substrate node
+    "LPNP": [{"args_to_values": {}, "simulatable": False}],
+    # JFET / MOSFET / MESFET
+    "NJF": [{"args_to_values": {}}],
+    "PJF": [{"args_to_values": {}}],
+    "NMOS": [{"args_to_values": {}}],
+    "PMOS": [{"args_to_values": {}}],
+    "NMF": [{"args_to_values": {}}],
+    "PMF": [{"args_to_values": {}}],
+    # switches
+    "SW": [{"args_to_values": {}}],
+    "CSW": [{"args_to_values": {}}],
+    # Lossy line (ngspice §6.2.1). LEN has no default and is required.
+    # Omitted R/L/C only warn ("assumed zero"), but are required here so a
+    # card always states the line it means (any mix is accepted: RLC, RC
+    # with L=0, LC with R=0). G must be 0: ngspice rejects a non-zero one
+    # with "Nonzero G (except RG) line not supported yet". The RG line
+    # (non-zero R and G, zero L and C) does run, but ngspice prints a
+    # "Fatal error" line about the missing capacitance while doing so, so
+    # it is not offered here.
+    "LTRA": [
+        {
+            "args_to_values": {
+                **_required("R", "L"),
+                **_required("C", "LEN"),
+                "G": {"alias": ["G"], "is_optional": False, "is_zero": True},
+            },
+        },
+    ],
+    # KSPICE lossy line (ngspice §6.4.1). Unlike LTRA, every one of R/L/G/C
+    # must be PRESENT (ngspice: "lossy line ... not given" is fatal here even
+    # though the manual lists 0.0 defaults), and the length belongs in the
+    # CARD: LEN= on the Y line only OVERRIDES it, so a card without "length"
+    # fails with "lossy line length must be given". Non-zero G is fine.
+    "TXL": [{"args_to_values": _required("R", "L", "G", "C", "LENGTH")}],
 }
 
 # Bare identifiers that ngspice resolves inside expressions without a .param

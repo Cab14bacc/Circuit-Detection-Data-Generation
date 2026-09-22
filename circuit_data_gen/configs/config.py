@@ -114,17 +114,11 @@ CONVERT_CONFIG = {
     # Input netlist dialect: "lcapy" (default, simplified lcapy grammar) or
     # "spice" (SPICE/ngspice/LTspice grammar).
     "NETLIST_FORMAT": "spice",
-    # SPICE only.  When the model name is well defined, this does nothing.
-    # When the model name is not well defined. This setting attempts to
-    # remove the model name by dropping the last token, and attempts to parse
-    # it with specs that doesn't require a model name, i.e. a config that doesn't have
-    # the kind field.
-    "ALLOW_UNKNOWN_MODELS": False,
     # SPICE only. When True, the parser rejects netlists that ngspice would
     # misread or refuse: braced node tokens ({n1}), directives outside the
     # allowlist (.tran, .include, .control, ...), undefined symbols in
     # expressions, and dangling references (controlling sources, K inductors,
-    # X subckts, unknown models; ALLOW_UNKNOWN_MODELS is ignored).
+    # X subckts). Model names always need an in-file .model card.
     # `cirdg gen_data` parses strictly when this OR simulation.enabled is set;
     # `cirdg render`/`convert` only when this is set, so external netlists
     # still render by default.

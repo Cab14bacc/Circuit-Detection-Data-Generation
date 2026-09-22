@@ -12,9 +12,6 @@ NETLIST_FORMAT = str(get_config_value("convert", "netlist_format")).lower()
 if NETLIST_FORMAT not in ("lcapy", "spice"):
     raise ValueError(f"CONVERT_CONFIG.NETLIST_FORMAT must be 'lcapy' or 'spice', got '{NETLIST_FORMAT}'")
 IS_SPICE = NETLIST_FORMAT == "spice"
-# SPICE only: tolerate models not declared in-file (external .lib models).
-# When False, model-typed components must reference an in-file .model.
-ALLOW_UNKNOWN_MODELS = bool(get_config_value("convert", "allow_unknown_models"))
 # SPICE only: default for `strict` in _parse_netlist / to_yosys_json. Strict
 # parsing rejects what ngspice would misread or refuse (see _strict_violations).
 STRICT_PARSING = bool(get_config_value("convert", "strict_parsing"))
@@ -23,9 +20,12 @@ if IS_SPICE:
     EXPRESSION_CONSTANTS = {
         c.lower() for c in get_config_value("convert", "convert_spice_config_path", "EXPRESSION_CONSTANTS")
     }
+    # .model TYPE (upper case) -> {"args_to_values": ..., "simulatable": ...}
+    MODEL_CONFIG = get_config_value("convert", "convert_spice_config_path", "MODEL_CONFIG")
 else:
     TO_SKIN_CONFIG = get_config_value("convert", "convert_lcapy_config_path", "TO_SKIN_CONFIG")
     EXPRESSION_CONSTANTS = set()
+    MODEL_CONFIG = {}
 
 WIRE = "W"
 SUBCKT_PREFIX = "X"

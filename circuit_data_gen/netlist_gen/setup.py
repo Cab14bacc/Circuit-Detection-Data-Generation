@@ -28,6 +28,8 @@ SKIN_PATH = get_config_path_value("netlistsvg", "skin_path").resolve()
 GEN_STRICT = bool(get_config_value("convert", "strict_parsing")) or bool(
     get_config_value("simulation", "enabled")
 )
+# LLM generations per session (the first one included) before giving up
+DEFAULT_MAX_ATTEMPTS = 3
 
 
 class CircuitState(TypedDict):
@@ -35,6 +37,7 @@ class CircuitState(TypedDict):
     rng_seed: str
     logger: logging.Logger
     index: int
+    attempts: int
     gen_count_per_session: int
     circuits_valid: list[bool]
     requirements: list[CircuitRequirements]
@@ -114,6 +117,7 @@ def netlist_gen_setup(
     annotation_dir: str | Path,
     temperature: float = 0.9,
     strict: bool | None = None,
+    max_attempts: int = DEFAULT_MAX_ATTEMPTS,
 ):
     """Build the LangGraph state machine for netlist generation.
 
@@ -132,7 +136,13 @@ def netlist_gen_setup(
         SPICE strict parsing for the smoke test, and the matching (strict)
         system prompt. None = config-derived GEN_STRICT
         (convert.strict_parsing or simulation.enabled).
+    max_attempts : int
+        LLM generations per session, the first one included (>= 1). Each
+        call regenerates every netlist of the session that is still
+        invalid; those still invalid after the last call fail.
     """
+    if max_attempts < 1:
+        raise ValueError(f"max_attempts must be at least 1, got {max_attempts}")
     strict = _resolve_strict(strict)
     load_dotenv()
     api_key = os.getenv("CIRDG_API_KEY")
@@ -168,6 +178,8 @@ def netlist_gen_setup(
         if not state.get("requirements"):
             init_state["requirements"] = [CircuitRequirements()]
 
+        init_state["attempts"] = 0
+
         if not state.get("gen_count_per_session"):
             init_state["gen_count_per_session"] = 1 or len(state.get("requirements", ["dummy"]))
 
@@ -197,9 +209,11 @@ def netlist_gen_setup(
         logger = state["logger"]
         llm_response = state["messages"][-1]
         llm_msg = llm_response.content
+        # each validated LLM response is one attempt of the session's budget
+        attempts = state.get("attempts", 0) + 1
 
         logger.info(f"{type(llm_response).__name__}:\n {llm_response.content or llm_response.tool_calls}\n")
-        logger.info("Validating circuit (smoke test)...")
+        logger.info(f"Validating circuit (smoke test, attempt {attempts}/{max_attempts})...")
 
         netlists = [None for _ in range(state["gen_count_per_session"])]
         for idx in range(state["gen_count_per_session"]):
@@ -215,7 +229,7 @@ def netlist_gen_setup(
                     )
                 )
                 logger.info(f"{type(message).__name__}:\n {message.content}\n")
-                return {"circuit_valid": False, "messages": [message]}
+                return {"circuit_valid": False, "messages": [message], "attempts": attempts}
 
             netlist = match.group(1).strip()
             netlists[idx] = netlist
@@ -315,6 +329,7 @@ def netlist_gen_setup(
 
         return {
             "messages": [message],
+            "attempts": attempts,
             "circuits_valid": state["circuits_valid"],
             "output_netlists": state["output_netlists"],
             "output_schematics": state["output_schematics"],
@@ -326,8 +341,13 @@ def netlist_gen_setup(
     def route_for_regeneration(state: CircuitState) -> str:
         if all(state["circuits_valid"]):
             return END
-        else:
-            return "generate_circuit"
+        if state["attempts"] >= max_attempts:
+            # retry budget spent: the netlists still invalid stay failed
+            state["logger"].warning(
+                f"Giving up after {state['attempts']} attempt(s): circuit validity {state['circuits_valid']}"
+            )
+            return END
+        return "generate_circuit"
 
     # Build the graph
     builder = StateGraph(CircuitState)

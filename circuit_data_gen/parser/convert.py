@@ -36,12 +36,12 @@ import copy
 # dialect state is bound here at import: reload dialect, then this module, to
 # switch dialect (see tests/conftest.py::_reload_convert)
 from .dialect import (  # noqa: F401 (re-exported)
-    ALLOW_UNKNOWN_MODELS,
     COUPLED_INDUCTOR_PREFIXES,
     EXPLICIT_SPICE_GENERICS,
     EXPRESSION_CONSTANTS,
     GROUND_NAMES,
     IS_SPICE,
+    MODEL_CONFIG,
     NETLIST_FORMAT,
     STRICT_PARSING,
     SUBCKT_PREFIX,
@@ -49,7 +49,11 @@ from .dialect import (  # noqa: F401 (re-exported)
     WIRE,
 )
 from .errors import NetlistError, SpecError
-from .grammar import _render_spec_grammar, config_to_grammar  # noqa: F401 (re-exported)
+from .grammar import (  # noqa: F401 (re-exported)
+    _render_spec_grammar,
+    config_to_grammar,
+    model_config_to_grammar,
+)
 from .strict import STRICT_ALLOWED_DIRECTIVES, _strict_violations  # noqa: F401 (re-exported)
 from .tokens import (
     Token,  # noqa: F401 (re-exported)
@@ -325,7 +329,8 @@ def _preprocess_lines(text_lines: list[str]):
                 # .model <name> <type> (pname1=pval1 pname2=pval2 ... )
                 # both are correct, parse for both
                 if len(parts) >= 3:
-                    model_table[parts[1].upper()] = {}
+                    # "name" keeps the spelling of the card, for messages
+                    model_table[parts[1].upper()] = {"name": parts[1]}
                     model_type_and_args = parts[2].upper().split("(")
                     model_table[parts[1].upper()]["model_type"] = model_type_and_args[0]
                     model_args = parts[2].upper().split("(")[1] if len(model_type_and_args) > 1 else ""
@@ -608,6 +613,7 @@ def _extract_values(
             found_value_alias = found_value_alias if found_value_alias is not None else [key]
             skin_label = skin_label if skin_label is not None else f"unknown_{key}"
 
+            # instance args take precedence over model args
             if skin_label not in cur_elem["values"]:
                 cur_elem["values"][skin_label] = {"value": value, "alias": found_value_alias}
 
@@ -637,8 +643,8 @@ def _filter_spice_model_args(prefix, spec_idx, args, model_types, model_table):
         )
 
     # if a model name is NOT defined in the args, yet the spec declares a kind,
-    # the spec cannot be verified — reject it here. Unknown models are only
-    # tolerated by retrying against kind-less specs (see _parse_line).
+    # the spec cannot be verified — reject it here (every model name needs an
+    # in-file .model card).
     if len(resolved_model_types) == 0 and len(model_types) > 0:
         raise NetlistError(
             f"No model type found in args for prefix '{prefix}' spec index {spec_idx}, "
@@ -692,9 +698,9 @@ def _match_spec(
         model_types = component_spec.get("model_type", [])
         cur_elem["model_type"] = model_types
 
-        # mapping from non kind argument index to port spec
+        # mapping from non kind and model name argument index to port spec
         arg_to_ports = component_spec.get("arg_to_ports", {})
-        # mapping from non kind argument index to value spec,
+        # mapping from non kind and model name argument index to value spec,
         args_to_values = component_spec.get("args_to_values", {})
         args_to_values_positional = [
             key for key, value in args_to_values.items() if value.get("is_positional", True)
@@ -860,7 +866,6 @@ def _parse_line(
     line: str,
     model_table: dict[str, str] | None = None,
     subckt_table: dict[str, list[str]] | None = None,
-    strict: bool = False,
 ):
     """Parse a single line of the netlist into a component name and its tokens.
 
@@ -879,9 +884,6 @@ def _parse_line(
         directives (upper-cased). Used to resolve args marked `is_subckt` in
         the spec: the subckt name token is looked up to obtain its port names,
         which are used to populate the component's connections.
-    strict : bool
-        SPICE only: strict parsing. Disables the ALLOW_UNKNOWN_MODELS retry,
-        so every model reference needs an in-file .model card.
 
 
     Returns
@@ -901,6 +903,7 @@ def _parse_line(
         component_name = tokens[0] + str(uuid4().hex[:4])
     model_table = model_table or {}
     subckt_table = subckt_table or {}
+    # if not generic
     if prefix is not None and (not IS_SPICE or prefix not in EXPLICIT_SPICE_GENERICS):
         component_specs = TO_SKIN_CONFIG.get(prefix, [{}])
         elem = {
@@ -923,62 +926,10 @@ def _parse_line(
             candidates.append((cur_elem, errors, warnings))
 
         # Select the candidate with the least errors and warnings, give errors more weight.
-        best_elem, best_errors, best_warnings = min(candidates, key=lambda c: len(c[1]) * 2 + len(c[2]))
+        best_elem, _, _ = min(candidates, key=lambda c: len(c[1]) * 2 + len(c[2]))
 
         if best_elem is not None:
             elem.update(best_elem)
-        # Lenient mode: an unknown (external .lib) model cannot be resolved from
-        # the model table, so retry with the trailing token stripped — but ONLY
-        # against specs of the same prefix that declare NO kind. Matching a kind-
-        # requiring spec here would guess a model type we don't actually know.
-        elif IS_SPICE and ALLOW_UNKNOWN_MODELS and not strict and len(args) > 0:
-            specs_without_model = [
-                (spec_idx, spec)
-                for spec_idx, spec in enumerate(component_specs)
-                if not spec.get("model_type")
-            ]
-            candidates_retry = []
-            for spec_idx, component_spec in specs_without_model:
-                retry_args = copy.copy(args)
-                for tok_idx in range(len(args) - 1, -1, -1):
-                    if "=" in args[tok_idx]:
-                        continue
-                    retry_args.pop(tok_idx)
-                    break
-
-                cur_elem, errors, warnings = _match_spec(
-                    spec_idx, prefix, component_name, retry_args, component_spec, model_table
-                )
-                candidates_retry.append((cur_elem, errors, warnings))
-
-            best_elem_retry, best_errors_retry, best_warnings_retry = (
-                min(candidates_retry, key=lambda c: len(c[1]) * 2 + len(c[2]))
-                if candidates_retry
-                else (None, [], [])
-            )
-
-            if best_elem_retry is not None:
-                logger.warning(
-                    f"Unknown model name in last token for component {component_name} "
-                    f"in netlist for prefix '{prefix}'; matched a kind-less spec."
-                )
-                elem.update(best_elem_retry)
-            else:
-                logger.error(
-                    f"All specs failed for prefix '{prefix}' on line '{line}'\n"
-                    f"Errors: {'; '.join(best_errors)}; Warnings: {'; '.join(best_warnings)}\n"
-                    f"Retry with last token removed (unknown model name) also failed.\n"
-                    f"Retry Errors: {'; '.join(best_errors_retry)}; "
-                    f"Retry Warnings: {'; '.join(best_warnings_retry)}"
-                )
-                # All specs failed, raise the error from the best candidate.
-                raise ValueError(
-                    f"All specs failed for prefix '{prefix}' on line '{line}'\n"
-                    f"Errors: {'; '.join(best_errors)}; Warnings: {'; '.join(best_warnings)}\n"
-                    f"Retry with last token removed (unknown model name) also failed.\n"
-                    f"Retry Errors: {'; '.join(best_errors_retry)}; "
-                    f"Retry Warnings: {'; '.join(best_warnings_retry)}"
-                )
         else:
             # dropped ports are NOT marked ({NC+}) here: this message is fed
             # back to the LLM, which must write plain node names
@@ -1100,15 +1051,13 @@ def _parse_netlist(text: str, strict: bool | None = None):
 
     for line in text_lines:
         logger.debug(f"Parsing line: {line}")
-        component_name, element = _parse_line(
-            line, model_table=model_table, subckt_table=subckt_table, strict=strict
-        )
+        component_name, element = _parse_line(line, model_table=model_table, subckt_table=subckt_table)
         if component_name in parsed_netlist:
             raise NetlistError(f"Duplicate component name '{component_name}' found in netlist.")
         parsed_netlist[component_name] = element
 
     if strict:
-        violations = _strict_violations(parsed_netlist, subckt_table, meta)
+        violations = _strict_violations(parsed_netlist, subckt_table, meta, model_table)
         if violations:
             raise NetlistError(
                 f"Strict parsing found {len(violations)} problem(s):\n"

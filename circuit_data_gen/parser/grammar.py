@@ -246,3 +246,44 @@ def config_to_grammar(
             pattern = _render_spec_grammar(prefix, spec, show_skin=show_skin, mark_dropped=mark_dropped)
             grammar_lines.append(f"format:{pattern}")
     return grammar_lines
+
+
+def _render_zero_slot(entry: dict, name: str) -> str:
+    """A param declared `is_zero` renders as `Key=0`, bracketed when it may
+    also be omitted."""
+    slot = f"{(entry.get('alias') or [name])[0]}=0"
+    return f"[{slot}]" if entry.get("is_optional", True) else slot
+
+
+def model_config_to_grammar(only_declared: bool = True) -> list[str]:
+    """Render MODEL_CONFIG into one `.model` card template per configuration:
+
+        format:.model mname LTRA R=<value> L=<value> C=<value> LEN=<value>
+            , 0/omitted:G , RLC (series loss only)
+
+    .model params are keyword-only, so each declared param renders like a
+    keyword-only value slot (required unbracketed, optional bracketed);
+    `zero_params` and the configuration's `variant` label are appended as
+    annotations, like the ` , skin:` annotation of element specs.
+    With `only_declared` (default), configurations that declare no params
+    are skipped: their bare card `.model mname TYPE` is all ngspice needs.
+    """
+    grammar_lines: list[str] = []
+    for model_type, variants in dialect.MODEL_CONFIG.items():
+        for variant in variants:
+            args_to_values = variant.get("args_to_values", {})
+            if only_declared and not args_to_values:
+                continue
+            slots = [
+                # an "is_zero" param can only be written as 0, so show that
+                # instead of a <value> placeholder
+                _render_zero_slot(entry, name)
+                if entry.get("is_zero")
+                else _render_value_slot({**entry, "is_positional": False}, name)
+                for name, entry in args_to_values.items()
+            ]
+            pattern = " ".join([".model mname", model_type, *(s for s in slots if s is not None)])
+            if variant.get("variant"):
+                pattern += f" , {variant['variant']}"
+            grammar_lines.append(f"format:{pattern}")
+    return grammar_lines

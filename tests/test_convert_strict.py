@@ -93,6 +93,72 @@ class TestKindKeywordOrder:
         assert not any("off mname" in line or "ON mname" in line for line in grammar)
 
 
+class TestModelConfig:
+    """MODEL_CONFIG: .model cards are matched against the configurations
+    ngspice implements, like elements are matched against their specs."""
+
+    LINE = "V1 a 0 5\nR1 a b 50\nO1 b 0 c 0 Om\nR2 c 0 50\n"
+
+    def test_every_spec_model_type_is_declared(self, convert_spice):
+        declared = set(convert_spice.MODEL_CONFIG)
+        for prefix, specs in convert_spice.TO_SKIN_CONFIG.items():
+            for spec in specs:
+                for model_type in spec.get("model_type", []):
+                    assert model_type.upper() in declared, (prefix, model_type)
+
+    @pytest.mark.parametrize(
+        "card",
+        [
+            ".model Om LTRA R=0.1 L=250n G=0 C=100p LEN=1",  # RLC
+            ".model Om LTRA R=0.1 L=0 G=0 C=100p LEN=1",  # RC (L written as 0)
+            ".model Om LTRA R=0 L=250n G=0 C=100p LEN=1",  # LC
+            ".model Om LTRA(r=0.1 l=250n g=0 c=100p len=1)",  # paren form, lower case
+        ],
+    )
+    def test_implemented_lines_pass(self, convert_spice, card):
+        assert _strict_errors(convert_spice, self.LINE + card + "\n") == ""
+
+    def test_param_valued_entry_is_resolved(self, convert_spice):
+        # {gg} resolves to 0 through the .param table, so G is 0 as required
+        text = ".param gg=0\n" + self.LINE + ".model Om LTRA R=0.1 L=250n G={gg} C=100p LEN=1\n"
+        assert _strict_errors(convert_spice, text) == ""
+
+    def test_nonzero_conductance_rejected(self, convert_spice):
+        # ngspice: "Nonzero G (except RG) line not supported yet"
+        errors = _strict_errors(convert_spice, self.LINE + ".model Om LTRA R=0.1 L=250n G=1m C=100p LEN=1\n")
+        assert ".model Om LTRA: G must be 0." in errors
+
+    def test_missing_params_reported(self, convert_spice):
+        errors = _strict_errors(convert_spice, self.LINE + ".model Om LTRA R=0.1 C=100p\n")
+        assert ".model Om LTRA: L is missing, LEN is missing, G is missing." in errors
+
+    def test_txl_needs_every_param_and_card_length(self, convert_spice):
+        # ngspice 34 wants R/L/G/C present (0 is fine) and "length" in the
+        # CARD: LEN= on the Y line only overrides it
+        base = "V1 a 0 5\nR1 a b 50\nY1 b 0 c 0 Ym LEN=2\nR2 c 0 50\n"
+        errors = _strict_errors(convert_spice, base + ".model Ym TXL R=12.45 C=0.468p\n")
+        assert ".model Ym TXL: L is missing, G is missing, LENGTH is missing." in errors
+        card = ".model Ym TXL R=12.45 L=8.972n G=0 C=0.468p length=16\n"
+        assert _strict_errors(convert_spice, base + card) == ""
+
+    def test_lenient_parsing_ignores_model_params(self, convert_spice):
+        convert_spice._parse_netlist(self.LINE + ".model Om LTRA\n", strict=False)
+
+    def test_types_without_declared_params_need_no_params(self, convert_spice):
+        # bare cards work for D (ngspice defaults) and for types MODEL_CONFIG
+        # does not know (e.g. XSPICE code models), which are left to ngspice
+        text = "V1 a 0 1\nD1 a b Dm\nA1 b c gm\nR1 c 0 1k\n.model Dm D\n.model gm gain(gain=2)\n"
+        assert _strict_errors(convert_spice, text) == ""
+
+    def test_model_grammar_lists_configurations(self, convert_spice):
+        grammar = convert_spice.model_config_to_grammar()
+        # an is_zero param renders as G=0, not as a <value> placeholder
+        assert "format:.model mname LTRA R=<value> L=<value> C=<value> LEN=<value> G=0" in grammar
+        assert "format:.model mname TXL R=<value> L=<value> G=<value> C=<value> LENGTH=<value>" in grammar
+        # configurations without declared params are skipped by default
+        assert not any(line.endswith(" D") for line in grammar)
+
+
 class TestDirectives:
     @pytest.mark.parametrize(
         "directive", [".tran 1u 1m", ".ac dec 10 1 1k", ".op", ".lib x.lib", ".include a"]
@@ -178,13 +244,6 @@ class TestReferences:
         _, element = convert_spice._parse_line("X1 a 0 amp")
         assert [c["node_name"] for c in element["connections"].values()] == ["a", "0"]
         assert element["values"]["value"]["value"] == "amp"
-
-    def test_strict_ignores_allow_unknown_models(self, convert_spice, monkeypatch):
-        monkeypatch.setattr(convert_spice, "ALLOW_UNKNOWN_MODELS", True)
-        text = "V1 a 0 5\nD1 a 0 ExtModel\n"
-        convert_spice._parse_netlist(text, strict=False)  # lenient: kind-less fallback
-        with pytest.raises(ValueError, match="All specs failed"):
-            convert_spice._parse_netlist(text, strict=True)
 
 
 class TestGrammarRendering:

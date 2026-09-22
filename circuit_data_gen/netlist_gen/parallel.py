@@ -18,6 +18,8 @@ class GenResult:
     ok: bool = False
     worker_id: int = 0
     gen_idx_in_session: int = 0
+    # LLM generations the session used (shared by the netlists of a session)
+    attempts: int = 0
     exception: str | None = None
     render_error: str | None = None
     sanity_errors: list[str] = field(default_factory=list)
@@ -47,7 +49,9 @@ async def run_pipeline_worker(
 ) -> GenResult:
     """Run a single generation pipeline worker.
 
-    Returns a GenResult; any unexpected exception is captured.
+    Returns a GenResult; any unexpected exception is captured. Netlists
+    still invalid when the graph's retry budget (max_attempts, set by
+    netlist_gen_setup) runs out come back not ok.
     """
     gen_seed = str(gen_seed) if gen_seed is not None else f"{uuid.uuid4().hex[:5]}"
     worker_id = worker_id if worker_id is not None else 0
@@ -101,6 +105,7 @@ async def run_pipeline_worker(
 
     try:
         final_state = await graph.ainvoke(initial_state)
+        attempts = final_state.get("attempts", 0)
         ok = final_state.get("circuits_valid", [False for _ in range(gen_count_per_session)])
         output_netlists = final_state.get("output_netlists", ["" for _ in range(gen_count_per_session)])
         output_schematics = final_state.get("output_schematics", ["" for _ in range(gen_count_per_session)])
@@ -118,6 +123,7 @@ async def run_pipeline_worker(
                 output_yosys=output_yosyss[idx],
                 worker_id=worker_id,
                 gen_idx_in_session=idx,
+                attempts=attempts,
             )
             for idx, k in enumerate(ok)
         ]
@@ -168,7 +174,8 @@ async def scale_generation(
     concurrency : int
         Maximum number of simultaneous LLM calls.
     max_attempts : int
-        Maximum number of regeneration attempts per sample (unused for now)
+        Maximum number of LLM generations per session, the first one
+        included (>= 1). Netlists still invalid after the last one fail.
     gen_seed : int | None
         Seed for the seed-prompt generator (reproducible batches).
     temperature : float
@@ -227,6 +234,7 @@ async def scale_generation(
             annotation_dir=tmp_annotation_dir,
             temperature=temperature,
             strict=strict,
+            max_attempts=max_attempts,
         )
 
         async def bounded_worker(worker_id: int, gen_count: int) -> GenResult:

@@ -60,12 +60,9 @@ TOKEN NOTATION — what each kind of token in the rules below means:
              NJF / PJF (J), NMOS / PMOS (M), NMF / PMF (Z), SW (S),
              CSW (W), R / RES (R), C (C), L (L), LTRA (O), TXL (Y) —
              element letter in parentheses. A model TYPE outside this set
-             (URC, LTspice's VDMOS / CAP / IND, ...) has NO dedicated
-             spec: with allow_unknown_models on the line falls back to a
-             default-symbol spec (and 3-node VDMOS M lines can fail), so
-             only use the listed TYPEs. Unknown model NAMES (not declared
-             by any .model card) also fall back to a default-symbol spec
-             when allow_unknown_models is on.
+             (URC, LTspice's VDMOS / CAP / IND, ...) has NO spec, and a
+             model name without a .model card cannot be resolved: both
+             make the line fail. Only use the listed TYPEs.
   Vcontrol   Controlling-source REFERENCE: the NAME of a V element defined
              elsewhere in the netlist (e.g. V1) — not a node, not drawn.
 
@@ -161,6 +158,13 @@ not drawn — the bipole symbol has one pin pair):
                                           [IC=<v1,i1,v2,i2>]
     Oname N+ N- NP2+ NP2- mname           lossy line (LTRA model)
     Yname N+ N- NP2+ NP2- mname [LEN=<len>]   KSPICE TXL
+    Their .model cards REQUIRE the line parameters (per-unit-length R, L,
+    G, C and the line length); ngspice has no defaults, write them all:
+    .model mname LTRA R=<value> L=<value> C=<value> LEN=<value> G=0
+    .model mname TXL R=<value> L=<value> G=<value> C=<value> LENGTH=<value>
+    LTRA: G MUST be 0 (only RLC / RC / LC lines are implemented; write
+    L=0 for an RC line, R=0 for an LC line). TXL: the length belongs in
+    the CARD, LEN= on the Y line only overrides it.
 
 Generic elements (pin count depends on a definition; drawn as a generic box
 with numbered pins; the last non-keyword token is the definition name):

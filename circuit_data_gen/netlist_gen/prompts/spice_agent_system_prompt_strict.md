@@ -60,12 +60,9 @@ TOKEN NOTATION — what each kind of token in the rules below means:
              NJF / PJF (J), NMOS / PMOS (M), NMF / PMF (Z), SW (S),
              CSW (W), R / RES (R), C (C), L (L), LTRA (O), TXL (Y) —
              element letter in parentheses. A model TYPE outside this set
-             (URC, LTspice's VDMOS / CAP / IND, ...) has NO dedicated
-             spec: with allow_unknown_models on the line falls back to a
-             default-symbol spec (and 3-node VDMOS M lines can fail), so
-             only use the listed TYPEs. Unknown model NAMES (not declared
-             by any .model card) also fall back to a default-symbol spec
-             when allow_unknown_models is on.
+             (URC, LTspice's VDMOS / CAP / IND, ...) has NO spec, and a
+             model name without a .model card cannot be resolved: both
+             make the line fail. Only use the listed TYPEs.
   Vcontrol   Controlling-source REFERENCE: the NAME of a V element defined
              elsewhere in the netlist (e.g. V1) — not a node, not drawn.
 
@@ -161,6 +158,13 @@ not drawn — the bipole symbol has one pin pair):
                                           [IC=<v1,i1,v2,i2>]
     Oname N+ N- NP2+ NP2- mname           lossy line (LTRA model)
     Yname N+ N- NP2+ NP2- mname [LEN=<len>]   KSPICE TXL
+    Their .model cards REQUIRE the line parameters (per-unit-length R, L,
+    G, C and the line length); ngspice has no defaults, write them all:
+    .model mname LTRA R=<value> L=<value> C=<value> LEN=<value> G=0
+    .model mname TXL R=<value> L=<value> G=<value> C=<value> LENGTH=<value>
+    LTRA: G MUST be 0 (only RLC / RC / LC lines are implemented; write
+    L=0 for an RC line, R=0 for an LC line). TXL: the length belongs in
+    the CARD, LEN= on the Y line only overrides it.
 
 Generic elements (pin count depends on a definition; drawn as a generic box
 with numbered pins; the last non-keyword token is the definition name):
@@ -271,14 +275,16 @@ The second message is saying that the netlist is using a switch component withou
 The netlist must be valid ngspice input. All problems of this kind are reported together, one per line:
 
 ```
-Strict parsing found 4 problem(s):
+Strict parsing found 6 problem(s):
 - Directive '.tran 1u 1m' is not allowed; remove it. Only .model, .param, .subckt/.ends and .end may appear (the validator adds its own analysis).
+- .model Om LTRA: G must be 0.
 - Component G1: node {n1} is written in curly braces; write it as n1. Braces are not allowed on node names.
+- Component D1: 'off' must come after the model name 'Dmod'; write `... Dmod off`.
 - Component R2: value 'R_2' uses undefined symbol(s) R_2; define them with .param (e.g. .param R_2=1k) or write a number.
 - Component F1: 'V9' must name a V element of the netlist.
 ```
 
-Fix each line as it says: delete forbidden directives (and whole `.control ... .endc` blocks), write node names without braces, define every symbol used in an expression with `.param` (or replace it with a number), and make references point at existing elements: `Vcontrol` of F/H/W and `i(...)` must name a V source, `v(...)` must name a node, K lines must name L inductors, X lines must name a `.subckt` defined in the netlist.
+Fix each line as it says: delete forbidden directives (and whole `.control ... .endc` blocks), add the missing parameters to `.model` cards, write node names without braces, put `off` / `ON` / `OFF` after the model name, define every symbol used in an expression with `.param` (or replace it with a number), and make references point at existing elements: `Vcontrol` of F/H/W and `i(...)` must name a V source, `v(...)` must name a node, K lines must name L inductors, X lines must name a `.subckt` defined in the netlist.
 
 7. Other Errors:
 You might receive other errors, attempt to figure it out from context and fix it.

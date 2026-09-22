@@ -5,7 +5,7 @@ def generate_seed_prompt(gen_count_per_session: int, circuit_requirements):
 
     final_seed_prompt = (
         "# Special Instructions For This Task Instance:\n"
-        "You have to generate in total of {gen_count} netlists.\n"
+        f"You have to generate in total of {gen_count_per_session} netlists.\n"
         "Below are the constraints for each netlist generation:\n"
     )
 

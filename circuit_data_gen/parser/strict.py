@@ -18,6 +18,17 @@ STRICT_ALLOWED_DIRECTIVES = {".model", ".param", ".params", ".subckt", ".ends", 
 _NUMBER_RE = re.compile(r"(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?[a-z]*", re.IGNORECASE)
 _IDENTIFIER_RE = re.compile(r"[a-z_][a-z0-9_]*", re.IGNORECASE)
 _NODE_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
+# SPICE scale suffixes, longest first so 'meg' wins over 'm' (milli)
+_SCALE_SUFFIXES = [
+    ("meg", 1e6),
+    ("g", 1e9),
+    ("k", 1e3),
+    ("m", 1e-3),
+    ("u", 1e-6),
+    ("n", 1e-9),
+    ("p", 1e-12),
+    ("f", 1e-15),
+]
 
 
 def _expression_symbols(expr: str) -> tuple[set[str], list[tuple[str, list[str]]]]:
@@ -55,7 +66,63 @@ def _expression_symbols(expr: str) -> tuple[set[str], list[tuple[str, list[str]]
     return identifiers, probes
 
 
-def _strict_violations(parsed_netlist: dict, subckt_table: dict, meta: dict) -> list[str]:
+def _spice_number(text: str) -> float | None:
+    """Parse a SPICE number (0, 1k, 2.2u, 10Meg, 1e-6, 5V) into a float, or
+    None when the token is not a plain number (an expression, a param name).
+    The scale suffix is matched longest-first ('meg' before 'm'), any trailing
+    unit letters are ignored, exactly like ngspice."""
+    match = re.match(r"^\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*([a-z]*)\s*$", text, re.IGNORECASE)
+    if match is None:
+        return None
+    value, suffix = float(match.group(1)), match.group(2).lower()
+    for name, scale in _SCALE_SUFFIXES:
+        if suffix.startswith(name):
+            return value * scale
+    return value
+
+
+def _is_zero(value: str | None, params: dict) -> bool:
+    """True when a .model param is absent or evaluates to 0. A value that
+    cannot be evaluated (an expression) counts as non-zero: the safe
+    assumption, since it decides which configuration a card claims."""
+    if value is None:
+        return True
+    number = _spice_number(value)
+    if number is None:
+        number = _spice_number(str(params.get(value.upper(), "")))
+    return number == 0
+
+
+def _match_model_card(model_type: str, given: dict, variants: list[dict], params: dict) -> list[str]:
+    """Check a .model card against its configurations in MODEL_CONFIG.
+
+    A configuration fits when every required param is present (0 is a valid
+    value) and every "is_zero" param is 0 (or absent, when optional).
+    Returns the reasons each configuration failed, empty when one matched
+    (mirrors _match_spec: a card is valid when ONE configuration fits).
+    """
+    per_variant: list[str] = []
+    for variant in variants:
+        reasons: list[str] = []
+        for name, entry in variant.get("args_to_values", {}).items():
+            value = next((given[a.lower()] for a in entry.get("alias", [name]) if a.lower() in given), None)
+            optional = entry.get("is_optional", True) or entry.get("default_value") is not None
+            if value is None:
+                # required = present on the card; 0 is a valid value
+                if not optional:
+                    reasons.append(f"{name} is missing")
+            elif entry.get("is_zero") and not _is_zero(value, params):
+                reasons.append(f"{name} must be 0")
+        if not reasons:
+            return []
+        label = variant.get("variant")
+        per_variant.append(f"{label}: {', '.join(reasons)}" if label else ", ".join(reasons))
+    return per_variant
+
+
+def _strict_violations(
+    parsed_netlist: dict, subckt_table: dict, meta: dict, model_table: dict | None = None
+) -> list[str]:
     """SPICE strict parsing: everything ngspice would misread or refuse,
     worded as instructions for the LLM. Returns an empty list when clean.
 
@@ -63,8 +130,11 @@ def _strict_violations(parsed_netlist: dict, subckt_table: dict, meta: dict) -> 
     (off, ON/OFF) written before the model name, dot-directives outside
     STRICT_ALLOWED_DIRECTIVES, undefined symbols in expressions (.param
     names, built-in constants, v(node)/i(Vsrc) probes), and dangling
-    references (controlling V sources, K inductors, X subckts). Unknown
-    models are rejected earlier, by _parse_line with strict=True.
+    references (controlling V sources, K inductors, X subckts), and .model
+    cards missing a param their type requires (MODEL_CONFIG; cards of types
+    not listed there, e.g. XSPICE code models, are left to ngspice). Unknown
+    models are rejected earlier, in both modes, by _parse_line: no spec
+    matches a model name without a .model card.
     """
     violations: list[str] = []
     params = meta["params"]
@@ -114,6 +184,25 @@ def _strict_violations(parsed_netlist: dict, subckt_table: dict, meta: dict) -> 
                 f"Directive '{line}' is not allowed; remove it. Only .model, .param, .subckt/.ends "
                 f"and .end may appear (the validator adds its own analysis)."
             )
+    # check .model cards against their configurations (MODEL_CONFIG)
+    for model_name, model in (model_table or {}).items():
+        model_type = model["model_type"].upper()
+        variants = dialect.MODEL_CONFIG.get(model_type)
+        if not variants:
+            continue  # type not described here (e.g. XSPICE code models): ngspice's job
+        given = dict(arg.split("=", 1) for arg in (a.lower() for a in model.get("args", [])) if "=" in arg)
+        reasons = _match_model_card(model_type, given, variants, params)
+        if not reasons:
+            continue
+        card = f".model {model.get('name', model_name)} {model_type}"
+        if len(reasons) == 1:
+            violations.append(f"{card}: {reasons[0]}.")
+        else:
+            violations.append(
+                f"{card} matches none of the configurations ngspice implements:\n"
+                + "\n".join(f"    {reason}" for reason in reasons)
+            )
+
     # check undefined symbols/identifiers
     for name, value in params.items():
         undefined_symbols(f".param {name}", value)

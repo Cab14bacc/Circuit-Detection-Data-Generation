@@ -31,10 +31,11 @@ def test_preprocess_model_table_extracted(convert_spice):
     out, model_table, subckt_table, _ = convert_spice._preprocess_lines(lines)
     # directives filtered out of the element lines
     assert out == ["Q1 C B E QN3904"]
-    # name -> {model_type, args} mapping (upper-cased, level suffix stripped)
+    # name -> {name, model_type, args} mapping (keys and types upper-cased,
+    # "name" keeps the card's spelling, level suffix stripped)
     assert model_table == {
-        "QN3904": {"model_type": "NPN", "args": ["Is=1f"]},
-        "DP": {"model_type": "D", "args": []},
+        "QN3904": {"name": "QN3904", "model_type": "NPN", "args": ["Is=1f"]},
+        "DP": {"name": "DP", "model_type": "D", "args": []},
     }
     assert subckt_table == {}
 
@@ -253,31 +254,20 @@ class TestModelTable:
         # model token consumed — only the two nodes remain as connections
         assert set(parsed["D1"]["connections"]) == {"+", "-"}
 
-    def test_unknown_model_strict_mode_rejected(self, convert, monkeypatch):
-        # default (strict): unknown models (external .lib, no in-file .model)
-        # are a netlist error so malformed netlists are caught
-        if not convert.IS_SPICE:
-            pytest.skip("SPICE-only behavior")
-        monkeypatch.setattr(convert, "ALLOW_UNKNOWN_MODELS", False)
+    @pytest.mark.parametrize("strict", [False, True])
+    def test_unknown_model_rejected(self, convert_spice, strict):
+        # a model name without an in-file .model card (external .lib model)
+        # cannot be resolved, so no spec matches — in both modes
         with pytest.raises(ValueError, match="All specs failed"):
-            convert._parse_netlist("D1 N1 N2 1N4148\n")
+            convert_spice._parse_netlist("D1 N1 N2 1N4148\n", strict=strict)
+        with pytest.raises(ValueError, match="All specs failed"):
+            convert_spice._parse_netlist("M1 D G S B IRFP240\n", strict=strict)
 
-    def test_unknown_model_lenient_mode(self, convert, monkeypatch):
-        # with ALLOW_UNKNOWN_MODELS, unknown (external .lib) models are
-        # tolerated: the trailing token is consumed and the component renders
-        # with the default spec for its prefix
-        if not convert.IS_SPICE:
-            pytest.skip("SPICE-only behavior")
-        monkeypatch.setattr(convert, "ALLOW_UNKNOWN_MODELS", True)
-        parsed = convert._parse_netlist("D1 N1 N2 1N4148\n")
-        assert parsed["D1"]["skin_alias"] == ["d_h"]
-        # model token consumed — only the two nodes remain
-        assert set(parsed["D1"]["connections"]) == {"+", "-"}
-
-        # also works with a substrate/bulk form: unknown model is last token
-        parsed = convert._parse_netlist("M1 D G S B IRFP240\n")
-        assert parsed["M1"]["skin_alias"] == ["mos_n"]
-        assert parsed["M1"]["connections"]["d"]["node_name"] == "D"
+    @pytest.mark.parametrize("line", ["D1 N1 N2", "Q1 C B E", "M1 D G S B", "S1 a b c d", "O1 a 0 b 0"])
+    def test_model_typed_element_needs_model_name(self, convert_spice, line):
+        # model-typed elements have no model-less spec: ngspice needs the model
+        with pytest.raises(ValueError, match="All specs failed"):
+            convert_spice._parse_netlist(line + "\n")
 
     def test_bjt_npn_pnp_selected_by_model(self, convert_spice):
         text = "Q1 C B E QN\nQ2 C2 B2 E2 QP\n.model QN NPN\n.model QP PNP\n"
