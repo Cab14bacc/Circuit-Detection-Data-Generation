@@ -281,6 +281,14 @@ The ports that are dropped are usually controll ports like `Ncp`,`Ncm` in VSCS (
 
 Those that are listed in the first part and not the second part of the message are hanging in the netlist itself.
 
+The reverse also happens: a node whose ONLY connection is a hidden pin (for example the control pin of an E, G or S element, wired to a node nothing else uses):
+
+```
+Netlist has 1 node(s) connected only to a hidden pin: M1 (hidden pin c+ of G1). Hidden pins are not drawn but are still connected: connect each of these nodes to another component too.
+```
+
+A hidden pin is still an electrical connection, so the node floats; connect it to another component (or write an existing node, such as 0, in that position).
+
 4. Disconnected Subgraph Errors:
 You might receive something like this:
 
@@ -291,14 +299,17 @@ Then it means that the netlist has multiple isolated subgraphs, and you will hav
 
 Also, the node dropping describe in "3. Hanging Node Errors:" can also cause the netlist to become disconnected in that we have isolated subgraphs, look out for this too.
 
-5. Using Extra Components:
+5. Required and Allowed Components:
+Each netlist comes with components it MUST use (each at least once) and components it MAY use; nothing else is allowed. You might receive something like this:
 
 ```
-Netlist can not contain components that are not in the specified subset, these components are not allowed: `r without kind keyword.'
+Netlist is missing required components; use each of these at least once:
+- `L`; written as `Lname N+ N- [<Value>] [<IC>]`
+Netlist uses components that are not allowed; remove them or replace them with allowed ones:
+- `R`; written as `Rname N+ N- [<Value>]`
 ```
 
-r is the prefix for a mechanical damper, and this says that the netlist is using a damper component without a kind keyword, which is not in the allowed subset. Though r doesn't have a variant where it has a kind keyword, so this is just saying that the netlist is using a damper component, and this is not allowed. The fix is to remove the damper component from the netlist, or replace it with a component that is allowed in the subset.
-
+The first message lists required components the netlist does not contain: add at least one of each, written in one of the forms shown. The second lists components that are neither required nor allowed: remove them, or replace them with allowed components, keeping the exact component count. A component's type is its prefix together with its kind keyword, so an `E` with kind `opamp` does not count as a plain `E`.
 
 6. Other Errors:
 You might receive other errors, attempt to figure it out from context and fix it.

@@ -227,12 +227,12 @@ TO_SKIN_CONFIG = {
                     # When True, the value can be omitted, and either the default_value will be used.
                     # or if the default value is not specified, the label will be ommitted.
                     "is_optional": True,
-                    # Default True. When True, the value is positional, can still be
-                    # specified as like keyword e.g. (value=1.0), but must only be in
-                    # the position of the specified index.
-                    # When False, the value can only be specified as a keyword arg in any position,
-                    # but must come after all the positional args.
-                    "is_positional": True,
+                    # Default "positional": the value sits at its index, and may
+                    # still be written as a keyword there (value=1.0).
+                    # "positional_only": at its index, never in key=value form.
+                    # "keyword": only as a keyword arg, in any position after
+                    # all the positional args.
+                    "is_positional": "positional",
                     # default value, used when is_optional is True and value is omitted.
                     # not used here as is_optional is False, but can be used in other cases.
                     "default_value": 1.0,

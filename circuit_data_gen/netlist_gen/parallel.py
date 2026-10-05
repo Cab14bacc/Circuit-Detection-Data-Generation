@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 import shutil
 import uuid
@@ -7,8 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .helper import generate_seed_prompt
-from ..parser.convert import WIRE
-from ..configs.config import get_logger, get_config_value
+from .sampling import CircuitRequirements, ComponentSample, build_pool, sample_requirements
+from ..configs.config import get_logger
 
 
 @dataclass
@@ -17,7 +18,7 @@ class GenResult:
 
     ok: bool = False
     worker_id: int = 0
-    gen_idx_in_session: int = 0
+    gen_idx: int = 0
     # LLM generations the session used (shared by the netlists of a session)
     attempts: int = 0
     exception: str | None = None
@@ -28,80 +29,81 @@ class GenResult:
     output_annotation: Path = field(default_factory=Path)
     output_overlay: Path = field(default_factory=Path)
     output_yosys: Path = field(default_factory=Path)
-
-
-@dataclass
-class CircuitRequirements:
-    """Result of a single netlist generation worker."""
-
-    num_components: int = 0
-    component_subset: list[tuple[str, str]] = field(default_factory=list)
+    # simulating only: the operating point JSON ("" when not saved)
+    output_simulation: Path | str = ""
+    # what the netlist was asked to contain (for per-type pass rates)
+    requirements: CircuitRequirements | None = None
 
 
 async def run_pipeline_worker(
     graph,
-    all_components: list[tuple[str, str]],
+    pool: list[ComponentSample],
     num_components_range: tuple[int, int] = (5, 25),
-    gen_count_per_session: int = 1,
+    base_seed: int | str | None = None,
     worker_id: int | None = None,
-    gen_seed: int | str | None = None,
+    gen_ids: list[int] = [0],
     log_dir: Path | None = None,
+    simulate: bool = False,
+    max_attempts: int = 3,
 ) -> GenResult:
     """Run a single generation pipeline worker.
 
+    Each netlist's requirements are drawn from `pool` (see
+    sampling.sample_requirements; `simulate` adds the simulation anchors).
     Returns a GenResult; any unexpected exception is captured. Netlists
     still invalid when the graph's retry budget (max_attempts, set by
     netlist_gen_setup) runs out come back not ok.
     """
-    gen_seed = str(gen_seed) if gen_seed is not None else f"{uuid.uuid4().hex[:5]}"
+    base_seed = str(base_seed) if base_seed is not None else f"{uuid.uuid4().hex[:5]}"
     worker_id = worker_id if worker_id is not None else 0
-    rng_base_seed = f"{gen_seed}_{worker_id}"
+    gen_count_per_session = len(gen_ids)
+    rng_base_seed = f"{base_seed}_{worker_id}"
+    rng_seeds = [f"{rng_base_seed}_{gen_ids[idx]}" for idx in range(gen_count_per_session)]
 
-    # Generate unique seed constraints
-
-    constraints = []
-    for idx in range(gen_count_per_session):
-        rng_seed = f"{rng_base_seed}_{idx}"
-        rng = random.Random(rng_seed)
-        num_components = rng.randint(num_components_range[0], num_components_range[1])
-
-        # Randomly select a subset of component types the LLM must use
-        subset_min = num_components // 2
-        subset_max = min(len(all_components), num_components)
-        num_required = rng.randint(subset_min, subset_max)
-        component_subset = rng.sample(all_components, num_required)
-
-        constraints.append(
-            CircuitRequirements(num_components=num_components, component_subset=component_subset)
-        )
+    # draw each netlist's requirements from its own seeded rng (reproducible)
+    constraints = [
+        sample_requirements(random.Random(f"{rng_seeds[idx]}"), pool, num_components_range, simulate=simulate)
+        for idx in range(gen_count_per_session)
+    ]
 
     final_seed_prompt = generate_seed_prompt(gen_count_per_session, constraints)
 
     # Set up a per-worker logger
     log_path = (
-        log_dir / f"debug_{gen_seed}_{worker_id}.log"
+        log_dir / f"debug_{rng_base_seed}.log"
         if log_dir is not None
-        else Path(__file__).parent.parent / "debug" / "netlist_gen_logs" / f"debug_{gen_seed}_{worker_id}.log"
+        else Path(__file__).parent.parent / "debug" / "netlist_gen_logs" / f"debug_{rng_base_seed}.log"
     )
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     netlist_logger = get_logger(
-        __name__ + f".run_{gen_seed}_{worker_id}",
+        __name__ + f".run_{rng_base_seed}",
         extra_log_path=str(log_path),
+        extra_log_formatter="formatter",
     )
 
     initial_state = {
         "messages": [final_seed_prompt],
         "circuits_valid": [False for _ in range(gen_count_per_session)],
-        "rng_seed": rng_base_seed,
-        "index": worker_id,
-        "logger": netlist_logger,
+        "rng_base_seed": rng_base_seed,
+        "rng_seeds": rng_seeds,
+        "worker_id": worker_id,
+        "max_attempts": max_attempts,
         "gen_count_per_session": gen_count_per_session,
         "requirements": constraints,
+        "logger": netlist_logger,
     }
 
-    netlist_logger.info(f"Worker {worker_id} starting (gen_seed={gen_seed})")
-    netlist_logger.info(f"Initial prompt seed: {final_seed_prompt}\n")
+    netlist_logger.info(
+        (
+            f"Worker {worker_id} starting.\n"
+            f"rng_base_seed={rng_base_seed}\n"
+            f"rng_seeds={rng_seeds}\n"
+            f"max_attempts={max_attempts}\n"
+            f"gen_count_per_session={gen_count_per_session}\n"
+            f"Initial seed prompt: {final_seed_prompt}\n"
+        )
+    )
 
     try:
         final_state = await graph.ainvoke(initial_state)
@@ -112,6 +114,7 @@ async def run_pipeline_worker(
         output_annotations = final_state.get("output_annotations", ["" for _ in range(gen_count_per_session)])
         output_overlays = final_state.get("output_overlays", ["" for _ in range(gen_count_per_session)])
         output_yosyss = final_state.get("output_yosys", ["" for _ in range(gen_count_per_session)])
+        output_simulations = final_state.get("output_simulations", ["" for _ in range(gen_count_per_session)])
 
         result = [
             GenResult(
@@ -121,9 +124,11 @@ async def run_pipeline_worker(
                 output_annotation=output_annotations[idx],
                 output_overlay=output_overlays[idx],
                 output_yosys=output_yosyss[idx],
+                output_simulation=output_simulations[idx],
                 worker_id=worker_id,
-                gen_idx_in_session=idx,
+                gen_idx=gen_ids[idx],
                 attempts=attempts,
+                requirements=constraints[idx],
             )
             for idx, k in enumerate(ok)
         ]
@@ -146,8 +151,42 @@ async def run_pipeline_worker(
                 ok=False,
                 worker_id=worker_id,
                 exception=str(e),
+                gen_idx=gen_ids[idx],
+                attempts=max_attempts,
             )
+            for idx in range(gen_count_per_session)
         ]
+
+
+def rename_outputs(gen_result, global_idx, netlist_dir, schematic_dir, annotation_dir, simulation_dir):
+    output_netlist_path = Path(gen_result.output_netlist)
+    netlist_name = output_netlist_path.name.replace("netlist", f"netlist_{global_idx}")
+    output_netlist_path = output_netlist_path.rename(netlist_dir / netlist_name)
+
+    output_schematic_path = Path(gen_result.output_schematic)
+    schematic_name = output_schematic_path.name.replace("schematic", f"schematic_{global_idx}")
+    output_schematic_path = output_schematic_path.rename(schematic_dir / schematic_name)
+
+    output_annotation_path = Path(gen_result.output_annotation)
+    annotation_data = json.loads(output_annotation_path.read_text(encoding="utf-8"))
+    annotation_data["image"] = str(output_schematic_path.resolve())
+    output_annotation_path.write_text(json.dumps(annotation_data), encoding="utf-8")
+    annotation_name = output_annotation_path.name.replace("annotation", f"annotation_{global_idx}")
+    output_annotation_path = output_annotation_path.rename(annotation_dir / annotation_name)
+
+    output_overlay_path = Path(gen_result.output_overlay)
+    overlay_name = output_overlay_path.name.replace("overlay", f"overlay_{global_idx}")
+    output_overlay_path = output_overlay_path.rename(annotation_dir / overlay_name)
+
+    output_yosys_path = Path(gen_result.output_yosys)
+    yosys_name = output_yosys_path.name.replace("yosys", f"yosys_{global_idx}")
+    output_yosys_path = output_yosys_path.rename(schematic_dir / yosys_name)
+
+    if gen_result.output_simulation:
+        simulation_dir.mkdir(parents=True, exist_ok=True)
+        output_simulation_path = Path(gen_result.output_simulation)
+        simulation_name = output_simulation_path.name.replace("simulation", f"simulation_{global_idx}")
+        output_simulation_path.rename(simulation_dir / simulation_name)
 
 
 async def scale_generation(
@@ -156,12 +195,14 @@ async def scale_generation(
     concurrency: int = 4,
     gen_count_per_session: int = 1,
     num_components_range: tuple[int, int] = (5, 25),
-    max_attempts: int = 3,
+    max_attempts: int = 10,
     gen_seed: int | str | None = None,
     temperature: float = 0.9,
     project_name: str = "default_project",
     strict: bool | None = None,
     simulate: bool | None = None,
+    persevere: bool = False,
+    rename: bool = True,
 ) -> list[GenResult]:
     """Generate a batch of netlists in parallel.
 
@@ -189,34 +230,26 @@ async def scale_generation(
         the simulation system prompt). None = config (simulation.enabled).
     """
     # prevent circular import
-    from .setup import netlist_gen_setup  # noqa: PLC0415
+    from .setup import _resolve_simulate, netlist_gen_setup  # noqa: PLC0415
+
+    if max_attempts < 1:
+        raise ValueError(f"max_attempts must be at least 1, got {max_attempts}")
 
     output_dir = Path(output_dir).resolve()
     netlist_dir = output_dir / "netlists"
     schematic_dir = output_dir / "schematics"
     annotation_dir = output_dir / "annotations"
+    simulation_dir = output_dir / "simulations"
 
     # Create output directories
     netlist_dir.mkdir(parents=True, exist_ok=True)
     schematic_dir.mkdir(parents=True, exist_ok=True)
     annotation_dir.mkdir(parents=True, exist_ok=True)
 
-    is_spice = get_config_value("convert", "netlist_format").lower() == "spice"
-
-    if is_spice:
-        to_skin_config = get_config_value("convert", "convert_spice_config_path", "TO_SKIN_CONFIG")
-    else:
-        to_skin_config = get_config_value("convert", "convert_lcapy_config_path", "TO_SKIN_CONFIG")
-
-    all_components = []
-    for prefix, component_specs in to_skin_config.items():
-        if prefix == WIRE:
-            continue  # Skip wire, as it's not a component to be required
-        for spec in component_specs:
-            kinds = spec.get("kind", [])
-            specifiers = spec.get("specifiers", [])
-
-            all_components.append((prefix, tuple(map(str.lower, kinds)), tuple(map(str.lower, specifiers))))
+    # the component types netlists may be asked to use (what ngspice cannot
+    # simulate is left out when simulating)
+    simulate = _resolve_simulate(simulate)
+    pool = build_pool(simulate=simulate)
 
     # Use a semaphore to limit concurrency
     semaphore = asyncio.Semaphore(concurrency)
@@ -226,32 +259,48 @@ async def scale_generation(
     gen_seed = gen_seed if gen_seed is not None else f"{uuid.uuid4().hex[:5]}"
 
     try:
-        temp_dir = Path(mkdtemp())
-        tmp_netlist_dir = temp_dir / "netlists"
-        tmp_schematic_dir = temp_dir / "schematics"
-        tmp_annotation_dir = temp_dir / "annotations"
+        if rename:
+            temp_dir = Path(mkdtemp())
+            work_netlist_dir = temp_dir / "netlists"
+            work_schematic_dir = temp_dir / "schematics"
+            work_annotation_dir = temp_dir / "annotations"
+            work_simulation_dir = temp_dir / "simulations"
+        else:
+            work_netlist_dir = netlist_dir
+            work_schematic_dir = schematic_dir
+            work_annotation_dir = annotation_dir
+            work_simulation_dir = simulation_dir
 
         # Build the graph
         graph = netlist_gen_setup(
-            tmp_netlist_dir,
-            tmp_schematic_dir,
-            annotation_dir=tmp_annotation_dir,
+            work_netlist_dir,
+            work_schematic_dir,
+            annotation_dir=work_annotation_dir,
+            simulation_dir=work_simulation_dir,
             temperature=temperature,
             strict=strict,
-            max_attempts=max_attempts,
             simulate=simulate,
         )
 
-        async def bounded_worker(worker_id: int, gen_count: int) -> GenResult:
+        async def bounded_worker(
+            worker_id: int, gen_ids: int | list, max_attempts: int = max_attempts
+        ) -> GenResult:
+            if isinstance(gen_ids, int):
+                _gen_ids = list(range(gen_ids))
+            else:
+                _gen_ids = gen_ids
+
             async with semaphore:
                 return await run_pipeline_worker(
                     num_components_range=num_components_range,
-                    worker_id=worker_id,
                     graph=graph,
-                    gen_seed=str(gen_seed),
-                    gen_count_per_session=gen_count,
-                    all_components=all_components,
+                    worker_id=worker_id,
+                    base_seed=str(gen_seed),
+                    gen_ids=_gen_ids,
+                    pool=pool,
+                    simulate=simulate,
                     log_dir=log_dir,
+                    max_attempts=max_attempts,
                 )
 
         batch_size = num_netlists // gen_count_per_session
@@ -260,39 +309,74 @@ async def scale_generation(
             batch_size += 1  # Add an extra batch for the remainder
             last_gen_count = num_netlists % gen_count_per_session
 
-        tasks = [
-            bounded_worker(i, gen_count_per_session if i < batch_size - 1 else last_gen_count)
+        pending: set[asyncio.Task] = {
+            asyncio.create_task(
+                bounded_worker(i, gen_count_per_session if i < batch_size - 1 else last_gen_count)
+            )
             for i in range(batch_size)
-        ]
-        results: list[list[GenResult]] = await asyncio.gather(*tasks)
-        valid_samples = [_r for r in results for _r in r if _r.ok]
+        }
 
+        valid_samples = []
+        invalid_results = {}
         global_idx = 0
-        for valid_sample in valid_samples:
-            output_netlist_path = Path(valid_sample.output_netlist)
-            netlist_name = output_netlist_path.name.replace("netlist", f"netlist_{global_idx}")
-            output_netlist_path.rename(netlist_dir / netlist_name)
-            output_schematic_path = Path(valid_sample.output_schematic)
-            schematic_name = output_schematic_path.name.replace("schematic", f"schematic_{global_idx}")
-            output_schematic_path.rename(schematic_dir / schematic_name)
+        while pending:
+            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
 
-            output_annotation_path = Path(valid_sample.output_annotation)
-            annotation_name = output_annotation_path.name.replace("annotation", f"annotation_{global_idx}")
-            output_annotation_path.rename(annotation_dir / annotation_name)
+            for task in done:
+                results = task.result()
 
-            output_overlay_path = Path(valid_sample.output_overlay)
-            overlay_name = output_overlay_path.name.replace("overlay", f"overlay_{global_idx}")
-            output_overlay_path.rename(annotation_dir / overlay_name)
+                for gen_result in results:
+                    if gen_result.ok:
+                        valid_samples.append(gen_result)
 
-            output_yosys_path = Path(valid_sample.output_yosys)
-            yosys_name = output_yosys_path.name.replace("yosys", f"yosys_{global_idx}")
-            output_yosys_path.rename(schematic_dir / yosys_name)
-            global_idx += 1
+                        if persevere:
+                            worker_id = gen_result.worker_id
+                            gen_idx = gen_result.gen_idx
+                            global_idx = worker_id * gen_count_per_session + gen_idx
+
+                        if rename:
+                            # ===========================================================
+                            # For more intuitive naming (i.e. sequential numbering),
+                            # we rename and move the valid netlists and schematics to
+                            # the final output directories
+                            # ===========================================================
+                            rename_outputs(
+                                gen_result,
+                                global_idx,
+                                netlist_dir,
+                                schematic_dir,
+                                annotation_dir,
+                                simulation_dir,
+                            )
+
+                        global_idx += 1
+                    else:
+                        invalid_results.setdefault(gen_result.worker_id, []).append(gen_result)
+
+                if persevere and invalid_results:
+                    for worker_id, gen_results in invalid_results.items():
+                        pending.add(
+                            asyncio.create_task(
+                                bounded_worker(
+                                    worker_id,
+                                    [gen_result.gen_idx for gen_result in gen_results],
+                                    gen_result.attempts * 2,
+                                )
+                            )
+                        )
+
+                    invalid_results = {}
+
+        results: list[list[GenResult]] = valid_samples + [
+            gen_result for gen_results in invalid_results.values() for gen_result in gen_results
+        ]
+
     except Exception as e:
         get_logger(__name__).error(f"Batch generation failed with exception: {e}")
         raise
     finally:
-        shutil.rmtree(temp_dir)
+        if rename:
+            shutil.rmtree(temp_dir)
 
     print(f"Batch complete: {len(valid_samples)}/{num_netlists} valid schematics generated.")
 

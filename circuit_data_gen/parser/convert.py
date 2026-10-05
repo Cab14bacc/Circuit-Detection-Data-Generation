@@ -255,7 +255,8 @@ def _preprocess_lines(text_lines: list[str]):
     that the schematic render does not use. The `.model mname type` mappings
     are extracted into a model table FIRST (returned alongside the lines) —
     the model type is the specialization that spec `kind` matching uses.
-    The bodies of .subckt/.ends and .control/.endc blocks are skipped.
+    The bodies of .subckt/.ends and .control/.endc blocks are not parsed as
+    elements; subcircuit bodies are kept in meta for strict parsing.
 
     Returns
     -------
@@ -268,16 +269,22 @@ def _preprocess_lines(text_lines: list[str]):
     meta : dict
         SPICE netlist-level information used by strict parsing:
         "params" (.param name (upper) -> value text), "directives" (list of
-        (directive, line) for every top-level dot-directive) and "coupling"
-        (the K coupled-inductor lines, which are not parsed as elements).
+        (directive, line) for every top-level dot-directive), "coupling"
+        (the K coupled-inductor lines, which are not parsed as elements) and
+        "subckts" (subckt name (upper) -> {"name", "ports", "params",
+        "lines"}: the header's spelling, port names, header parameters and
+        the raw body lines, which strict parsing checks).
     """
     merged_stripped_lines = []
     current_line = ""
     model_table: dict[str, dict] = {}  # model name (upper) -> model type (upper)
     # SPICE: ignore lines inside .subckt/.ends blocks (we treat subckt as generics, only nodes are parsed)
     subckt_table: dict[str, list[str]] = {}  # subckt name (upper) -> list of port names
-    meta: dict = {"params": {}, "directives": [], "coupling": []}
+    meta: dict = {"params": {}, "directives": [], "coupling": [], "subckts": {}}
     in_subckt = False
+    # .subckt blocks may nest: only the matching .ends closes the outer one
+    subckt_depth = 0
+    current_subckt: dict | None = None
     # SPICE: .control/.endc blocks hold ngspice scripts (run, plot, shell ...),
     # not elements, so their lines are skipped as well.
     in_control = False
@@ -290,10 +297,18 @@ def _preprocess_lines(text_lines: list[str]):
             continue
 
         if IS_SPICE and (in_subckt or in_control):
-            # ignore all lines inside a .subckt or .control block
+            # lines inside a .subckt or .control block are not elements of
+            # the netlist; subcircuit bodies are kept for strict parsing
             directive = stripped_line.split()[0].lower()
-            if in_subckt and directive == ".ends":
-                in_subckt = False
+            if in_subckt:
+                if directive == ".subckt":
+                    subckt_depth += 1
+                elif directive == ".ends":
+                    subckt_depth -= 1
+                if subckt_depth == 0:
+                    in_subckt = False
+                else:
+                    current_subckt["lines"].append(stripped_line)
             if in_control and directive == ".endc":
                 in_control = False
             continue
@@ -350,6 +365,7 @@ def _preprocess_lines(text_lines: list[str]):
                 parts = stripped_line.split()
                 if len(parts) >= 3:
                     in_subckt = True
+                    subckt_depth = 1
                     subckt_port_names = []
                     for arg in parts[2:]:
                         if "PARAMS:" in arg.upper():
@@ -358,6 +374,22 @@ def _preprocess_lines(text_lines: list[str]):
                             break
                         subckt_port_names.append(arg)
                     subckt_table[parts[1].upper()] = subckt_port_names
+                    # header parameters (".subckt amp a b params: gain=2"),
+                    # which the body may use in expressions
+                    header = " ".join(parts[2 + len(subckt_port_names) :])
+                    header = re.sub(r"(?i)params:", " ", header)
+                    header_params = {}
+                    for tok in _get_tokens(re.sub(r"\s*=\s*", "=", header)):
+                        if "=" in tok:
+                            key, value = tok.split("=", 1)
+                            header_params[key.upper()] = value
+                    current_subckt = {
+                        "name": parts[1],
+                        "ports": subckt_port_names,
+                        "params": header_params,
+                        "lines": [],
+                    }
+                    meta["subckts"][parts[1].upper()] = current_subckt
                 else:
                     raise NetlistError(
                         f"Malformed .subckt directive: {stripped_line}, should follow the "
@@ -461,22 +493,21 @@ def _extract_values(
     spec_idx: int,
     model_table: dict[str, dict],
     resolved_model_name: str | None,
+    warnings: list[str] | None
 ):
 
     for arg_idx, arg_spec in args_to_values.items():
         # value spec must have alias
         value_alias = arg_spec.get("alias", None)
         is_optional = arg_spec.get("is_optional", True)
-        is_positional = arg_spec.get("is_positional", True)
+        is_positional = arg_spec.get("is_positional", "positional")
+        positional_only = is_positional == "positional_only"
 
-        if value_alias is None and not is_positional:
-            if not is_optional:
-                raise SpecError(
-                    f"Missing 'alias' for arg index {arg_idx} in "
-                    f"args_to_values for prefix '{prefix}' spec index {spec_idx}"
-                )
-            # skip if there is no corresponding alias in the spec
-            continue
+        if value_alias is None:
+            raise SpecError(
+                f"Missing 'alias' for arg index {arg_idx} in "
+                f"args_to_values for prefix '{prefix}' spec index {spec_idx}"
+            )
 
         skin_label = arg_spec.get("skin_label", None)
         # value spec must have skin_label, unless it is optional, then it's dropped.
@@ -487,7 +518,7 @@ def _extract_values(
         #         f"args_to_values for prefix '{prefix}' spec index {spec_idx}"
         #     )
 
-        if not is_positional:
+        if is_positional == "keyword":
             # check for arguments specified with key=value format,
             # and if the key matches any of the value_alias, we use that value.
             # Alias matching is case-insensitive (SPICE is case-insensitive).
@@ -518,7 +549,7 @@ def _extract_values(
                 elif default_value is not None:
                     skin_label = skin_label if skin_label is not None else f"unknown_{value_alias[0]}"
                     cur_elem["values"][skin_label] = {"value": default_value, "alias": value_alias}
-        else:
+        else:  # is_positional == "positional" or "positional_only"
             # if the argument is specified as positional, it can only be provided in that position.
             # we take the value from that position in the non_kind_args list.
             arg_idx = int(arg_idx)
@@ -545,21 +576,42 @@ def _extract_values(
             else:
                 key, value = None, value_arg
 
-            if key is not None and key.lower() not in [a.lower() for a in value_alias]:
-                if not is_optional:
+            if key is not None:
+                # if positional_only is True, then the key should not be present
+                if positional_only:
                     raise NetlistError(
-                        f"Positional value argument expects aliases {value_alias}, but got '{key}' "
-                        f"in netlist for prefix '{prefix}'d spec index {spec_idx}"
+                        f"Positional-only value argument expects no key, but got '{key}' "
+                        f"in netlist for prefix '{prefix}' spec index {spec_idx}"
                     )
-            else:
-                fallback_key = key if key is not None else value_alias[0]
-                skin_label = skin_label if skin_label is not None else f"unknown_{fallback_key}"
+                
+                # if the key is not in the value_alias, then we check if it is optional or not
+                # if optional, we record the value with a fallback key, otherwise we raise an error
+                if key.lower() not in [a.lower() for a in value_alias]:
+                    if not is_optional:
+                        raise NetlistError(
+                            f"Positional value argument expects aliases {value_alias}, but got '{key}' "
+                            f"in netlist for prefix '{prefix}' spec index {spec_idx}"
+                        )
+                    else:
+                        fallback_key = key
+                        skin_label = skin_label if skin_label is not None else f"unknown_{fallback_key}"
+                        cur_elem["values"][skin_label] = {"value": str(value), "alias": [key]}
+                # if the key is in the value_alias, we record the value with the skin_label
+                else:
+                    fallback_key = value_alias[0]
+                    skin_label = skin_label if skin_label is not None else f"unknown_{fallback_key}"
+                    cur_elem["values"][skin_label] = {"value": str(value), "alias": value_alias}
+            # if key is None, we record the value for the current spec
+            else: 
+                skin_label = skin_label if skin_label is not None else f"unknown_{value_alias[0]}"
                 cur_elem["values"][skin_label] = {"value": str(value), "alias": value_alias}
-                # for value args that reference another element (e.g. F/H/W's controlling V source)
-                if arg_spec.get("is_reference"):
-                    # names another element (e.g. F/H/W's controlling V source);
-                    # strict parsing checks that it exists
-                    cur_elem["values"][skin_label]["reference"] = arg_spec["is_reference"]
+
+
+            # for value args that reference another element (e.g. F/H/W's controlling V source)
+            if arg_spec.get("is_reference"):
+                # names another element (e.g. F/H/W's controlling V source);
+                # strict parsing checks that it exists
+                cur_elem["values"][skin_label]["reference"] = arg_spec["is_reference"]
 
     # add in arguments that are not specified in the spec but are keyword args
     for arg in filtered_args:
@@ -669,6 +721,26 @@ def _filter_spice_model_args(prefix, spec_idx, args, model_types, model_table):
     return non_model_args, resolved_model_name
 
 
+def _model_order(model_types, model_name, model_table, filtered_args) -> dict | None:
+    """Where the model name must sit, from a spec's {TYPE: {"ref_arg",
+    "before_arg"}} entry for the line's model TYPE: {"before", "ref",
+    "ref_span"}, the referenced argument's text and span. None without a
+    rule, a model name, or the referenced argument on the line."""
+    if not isinstance(model_types, dict) or model_name is None:
+        return None
+    card = (model_table or {}).get(str(model_name).upper())
+    if card is None:
+        return None
+    rule = next((r for t, r in model_types.items() if t.lower() == card["model_type"].lower()), None)
+    if not rule or rule.get("ref_arg") is None:
+        return None
+    ref_arg = rule["ref_arg"]
+    if ref_arg >= len(filtered_args) or not isinstance(filtered_args[ref_arg], Token):
+        return None
+    ref = filtered_args[ref_arg]
+    return {"before": bool(rule.get("before_arg", True)), "ref": str(ref), "ref_span": ref.span}
+
+
 def _match_spec(
     spec_idx,
     prefix,
@@ -693,20 +765,26 @@ def _match_spec(
             cur_elem["parse_only"] = True
         # False when ngspice cannot simulate this spec (strict + simulate rejects it)
         cur_elem["simulatable"] = component_spec.get("simulatable", True)
+        # which of the prefix's specs matched (error messages name its form)
+        cur_elem["spec_index"] = spec_idx
 
         # if component is not of this kind
         kind = component_spec.get("kind", [])
         cur_elem["kind"] = kind
         # model types drive SPICE model-table matching (independent of kind)
+        # a list of TYPEs, or {TYPE: {"ref_arg", "before_arg"}} when ngspice
+        # reads the model name only on one side of an argument
         model_types = component_spec.get("model_type", [])
-        cur_elem["model_type"] = model_types
+        cur_elem["model_type"] = list(model_types)
 
         # mapping from non kind and model name argument index to port spec
         arg_to_ports = component_spec.get("arg_to_ports", {})
         # mapping from non kind and model name argument index to value spec,
         args_to_values = component_spec.get("args_to_values", {})
         args_to_values_positional = [
-            key for key, value in args_to_values.items() if value.get("is_positional", True)
+            key
+            for key, value in args_to_values.items()
+            if value.get("is_positional", "positional") != "keyword"
         ]
         arg_indices_set = {key for key, value in arg_to_ports.items()}
         arg_indices_set.update(args_to_values_positional)
@@ -771,6 +849,15 @@ def _match_spec(
         cur_elem["kind_spans"] = {
             str(t): t.span for t in non_model_args if t.lower() in kind_l and isinstance(t, Token)
         }
+        # the argument the model name must precede / follow, for the strict
+        # model order check (absent when the argument is left out)
+        cur_elem["model_order"] = _model_order(model_types, resolved_model_name, model_table, filtered_args)
+        # key=value arguments and their positions: ngspice reads everything
+        # after the first one as further parameters, so a model name there
+        # fails ("unknown parameter"); strict parsing checks it
+        cur_elem["keyword_spans"] = {
+            str(t): t.span for t in filtered_args if isinstance(t, Token) and "=" in t and t.span is not None
+        }
 
         if len(filtered_args) == 0:
             raise NetlistError(
@@ -815,7 +902,7 @@ def _match_spec(
 
                 # could be positional arg specified as keyword arg in the correct position
                 # check for it
-                elif arg_spec.get("is_positional", True):
+                elif arg_spec.get("is_positional", "positional") != "keyword":
                     value_alias = arg_spec.get("alias", None)
                     if value_alias is None:
                         raise SpecError(
@@ -857,6 +944,7 @@ def _match_spec(
             spec_idx,
             model_table,
             resolved_model_name,
+            warnings
         )
 
         return cur_elem, errors, warnings
@@ -1019,8 +1107,103 @@ def _parse_line(
     return component_name, elem
 
 
+def _format_line_errors(errors: list[str]) -> str:
+    """One message for all lines that failed to parse. A single error is
+    returned as is; several are numbered, each error's further lines
+    (spec listings) indented under its number:
+
+        2 netlist lines have errors:
+        1. All specs failed for prefix 'D' on line 'D1 a b'
+           Spec 0: Dname N+ N- mname
+           - Errors: ...
+        2. Duplicate component name 'R1' found in netlist.
+    """
+    if len(errors) == 1:
+        return errors[0]
+    blocks = []
+    for number, error in enumerate(errors, start=1):
+        first, *rest = [line for line in error.strip().splitlines() if line.strip()]
+        indent = " " * (len(str(number)) + 2)
+        blocks.append("\n".join([f"{number}. {first}", *(indent + line for line in rest)]))
+    return f"{len(errors)} netlist lines have errors:\n" + "\n".join(blocks)
+
+
+def _subckt_violations(
+    subckt_table: dict, meta: dict, model_table: dict, simulate: bool
+) -> tuple[list[str], bool]:
+    """Strict parsing of the .subckt bodies, which the render never draws but
+    ngspice runs. Each body is parsed like a netlist of its own (its element
+    lines must match a spec) and checked with the strict rules, with the
+    netlist's models and .params plus the body's own and the header
+    parameters; it needs no ground of its own. Additionally every port must
+    be used inside the body, internal nodes need two connections (like
+    hanging nodes at the top level), and definitions may not nest.
+
+    Returns the violations (prefixed with the subcircuit) and whether any
+    body connects to ground, which is global in SPICE and so counts for the
+    top-level ground check.
+    """
+    violations: list[str] = []
+    uses_ground = False
+    ground = {g.lower() for g in GROUND_NAMES}
+    for info in meta.get("subckts", {}).values():
+        where = f".subckt {info['name']}"
+        lines, body_models, body_subckts, body_meta = _preprocess_lines(info["lines"])
+        if body_subckts:
+            violations.append(
+                f"{where}: nested .subckt definitions are not allowed; "
+                f"define every subcircuit at the top level."
+            )
+        models = {**model_table, **body_models}
+        body_meta["params"] = {**meta["params"], **info["params"], **body_meta["params"]}
+
+        parsed: dict = {}
+        for line in lines:
+            try:
+                name, element = _parse_line(line, model_table=models, subckt_table=subckt_table)
+            except (NetlistError, SpecError, ValueError) as e:
+                violations.append(f"{where}: {e}")
+                continue
+            if name in parsed:
+                violations.append(f"{where}: duplicate component name '{name}'.")
+                continue
+            parsed[name] = element
+        if not lines:
+            violations.append(
+                f"{where}: the body has no elements; add the components the subcircuit is made of."
+            )
+
+        violations += [
+            f"{where}: {v}"
+            for v in _strict_violations(
+                parsed, subckt_table, body_meta, models, simulate=simulate, top_level=False
+            )
+        ]
+
+        counts: dict[str, int] = {}
+        for element in parsed.values():
+            for conn in element["connections"].values():
+                counts[conn["node_name"].lower()] = counts.get(conn["node_name"].lower(), 0) + 1
+        uses_ground |= bool(counts.keys() & ground)
+        ports = {port.lower() for port in info["ports"]}
+        for port in info["ports"]:
+            if parsed and port.lower() not in counts:
+                violations.append(f"{where}: port {port} is not connected to anything inside the subcircuit.")
+        floating = sorted(n for n, c in counts.items() if c == 1 and n not in ports and n not in ground)
+        if floating:
+            violations.append(
+                f"{where}: internal node(s) {', '.join(floating)} connect to only one element; "
+                f"connect each to another element or to a port."
+            )
+    return violations, uses_ground
+
+
 def _parse_netlist(text: str, strict: bool | None = None, simulate: bool | None = None):
     """Parse netlist text into {component_name: element}.
+
+    Every line is parsed before failing: all lines that match no spec (and
+    duplicate names) are raised together as one NetlistError. Strict checks
+    run only once every line parsed.
 
     Parameters
     ----------
@@ -1059,15 +1242,39 @@ def _parse_netlist(text: str, strict: bool | None = None, simulate: bool | None 
     #     }
     # }
 
+    # every line is parsed before failing, so all bad lines are reported in
+    # one error (fed back to the LLM in a single round). SpecError (a broken
+    # config, not a bad netlist) is not collected.
+    line_errors: list[str] = []
     for line in text_lines:
         logger.debug(f"Parsing line: {line}")
-        component_name, element = _parse_line(line, model_table=model_table, subckt_table=subckt_table)
+        try:
+            component_name, element = _parse_line(line, model_table=model_table, subckt_table=subckt_table)
+        except (NetlistError, ValueError) as e:
+            line_errors.append(str(e))
+            continue
+
         if component_name in parsed_netlist:
-            raise NetlistError(f"Duplicate component name '{component_name}' found in netlist.")
+            line_errors.append(f"Duplicate component name '{component_name}' found in netlist.")
+            continue
         parsed_netlist[component_name] = element
 
+    if line_errors:
+        # strict checks are skipped: on an incomplete parse they would report
+        # follow-on problems (references to the failed lines, missing ground)
+        raise ValueError(_format_line_errors(line_errors))
+
     if strict:
-        violations = _strict_violations(parsed_netlist, subckt_table, meta, model_table, simulate=simulate)
+        body_violations, body_uses_ground = _subckt_violations(subckt_table, meta, model_table, simulate)
+        violations = _strict_violations(
+            parsed_netlist,
+            subckt_table,
+            meta,
+            model_table,
+            simulate=simulate,
+            ground_elsewhere=body_uses_ground,
+        )
+        violations += body_violations
         if violations:
             raise NetlistError(
                 f"Strict parsing found {len(violations)} problem(s):\n"

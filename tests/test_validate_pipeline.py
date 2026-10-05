@@ -11,25 +11,17 @@ from pathlib import Path
 
 import pytest
 
-from circuit_data_gen.netlist_gen.parallel import CircuitRequirements
 from circuit_data_gen.netlist_gen.setup import smoke_test_render
 
 from tests.conftest import (
     CONNECTED_NETLIST,
     ISOLATED_NETLIST,
+    requirements_for,
 )
 
-
-# exact component-type tuples as a parsed netlist reports them —
-# (prefix, lowercased kinds, lowercased specifiers). The subset allow-list
-# check compares against these verbatim, so they must match exactly.
-_CONNECTED_TYPES = [("C", (), ()), ("R", (), ()), ("V", (), ("dc",))]
-_ISOLATED_TYPES = [("R", (), ()), ("V", (), ("dc",))]
-
-# CONNECTED_NETLIST holds 4 elements (V, R, R, C)
-CONNECTED_REQS = CircuitRequirements(num_components=4, component_subset=_CONNECTED_TYPES)
-# ISOLATED_NETLIST holds 4 elements (V, R, V, R)
-ISOLATED_REQS = CircuitRequirements(num_components=4, component_subset=_ISOLATED_TYPES)
+# a one-line netlist whose component type (a plain inductor) the other
+# fixtures do not use
+INDUCTOR_NETLIST = "L1 N1 0 1u\n"
 
 
 @pytest.fixture
@@ -40,7 +32,8 @@ def state():
         "index": 0,
         "gen_count_per_session": 1,
         "circuits_valid": [False],
-        "requirements": [CONNECTED_REQS],
+        # CONNECTED_NETLIST's own 4 components and types, all required
+        "requirements": [requirements_for(CONNECTED_NETLIST)],
     }
 
 
@@ -78,38 +71,49 @@ class TestSmokeTestRenderValid:
 
 class TestSmokeTestRenderErrors:
     def test_isolated_subgraphs_rejected(self, state, tmp_path):
-        state["requirements"] = [ISOLATED_REQS]
+        state["requirements"] = [requirements_for(ISOLATED_NETLIST)]
         valid, errors = _run(state, ISOLATED_NETLIST, tmp_path)
         assert not valid
         assert any("not a connected graph" in e and "isolated subgraphs" in e for e in errors), errors
 
     def test_wrong_component_count_rejected(self, state, tmp_path):
         # validation now demands an EXACT component count, not a minimum
-        state["requirements"] = [
-            CircuitRequirements(num_components=10, component_subset=_CONNECTED_TYPES)
-        ]
+        state["requirements"] = [requirements_for(CONNECTED_NETLIST, num_components=10)]
         valid, errors = _run(state, CONNECTED_NETLIST, tmp_path)
         assert not valid
         assert any("not equal to the required number" in e for e in errors), errors
 
-    def test_subset_violation_rejected(self, state, tmp_path):
-        # the netlist uses R/V/C but the allowed subset only permits L
-        state["requirements"] = [
-            CircuitRequirements(num_components=4, component_subset=[("L", (), ())])
-        ]
+    def test_disallowed_components_rejected(self, state, tmp_path):
+        # the netlist uses R/V/C but only L is allowed (and none required)
+        state["requirements"] = [requirements_for(INDUCTOR_NETLIST, num_components=4, required=False)]
         valid, errors = _run(state, CONNECTED_NETLIST, tmp_path)
         assert not valid
-        assert any("not in the specified subset" in e for e in errors), errors
+        assert any("uses components that are not allowed" in e for e in errors), errors
+        assert not any("missing required components" in e for e in errors), errors
+
+    def test_missing_required_component_rejected(self, state, tmp_path):
+        # L is required on top of CONNECTED_NETLIST's own types
+        reqs = requirements_for(CONNECTED_NETLIST + INDUCTOR_NETLIST, num_components=4)
+        state["requirements"] = [reqs]
+        valid, errors = _run(state, CONNECTED_NETLIST, tmp_path)
+        assert not valid
+        missing = [e for e in errors if "missing required components" in e]
+        assert len(missing) == 1 and "`L`" in missing[0], errors
+        assert not any("not allowed" in e for e in errors), errors
+
+    def test_optional_component_may_be_left_out(self, state, tmp_path):
+        # L allowed but not required: leaving it out is fine
+        reqs = requirements_for(CONNECTED_NETLIST, num_components=4)
+        reqs.allowed = reqs.allowed + requirements_for(INDUCTOR_NETLIST).allowed
+        state["requirements"] = [reqs]
+        valid, errors = _run(state, CONNECTED_NETLIST, tmp_path)
+        assert valid, errors
 
     def test_hanging_node_rejected(self, state, tmp_path):
         # N2 touches only R1 -> hanging
-        state["requirements"] = [
-            CircuitRequirements(
-                num_components=2,
-                component_subset=[("R", (), ()), ("V", (), ("dc",))],
-            )
-        ]
-        valid, errors = _run(state, "V1 N1 0 5\nR1 N1 N2 1k\n", tmp_path)
+        hanging = "V1 N1 0 5\nR1 N1 N2 1k\n"
+        state["requirements"] = [requirements_for(hanging)]
+        valid, errors = _run(state, hanging, tmp_path)
         assert not valid
         assert any("hanging" in e for e in errors), errors
 
@@ -120,12 +124,10 @@ class TestSmokeTestRenderErrors:
 
     def test_multiple_errors_reported_together(self, state, tmp_path):
         # wrong count AND subset violation AND isolated subgraphs
-        state["requirements"] = [
-            CircuitRequirements(num_components=20, component_subset=[("L", (), ())])
-        ]
+        state["requirements"] = [requirements_for(INDUCTOR_NETLIST, num_components=20, required=False)]
         valid, errors = _run(state, ISOLATED_NETLIST, tmp_path)
         assert not valid
         joined = "\n".join(errors)
         assert "not a connected graph" in joined
         assert "not equal to the required number" in joined
-        assert "not in the specified subset" in joined
+        assert "uses components that are not allowed" in joined

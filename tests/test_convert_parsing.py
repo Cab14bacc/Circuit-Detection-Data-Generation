@@ -139,9 +139,7 @@ class TestParseLine:
         # N+ N- VNAM MODEL, resolved through the .model table).
         if convert.IS_SPICE:
             model_table = {"SWM": {"model_type": "CSW", "args": []}}
-            name, element = convert._parse_line(
-                "W1 N1 N2 V1 SWM", model_table=model_table
-            )
+            name, element = convert._parse_line("W1 N1 N2 V1 SWM", model_table=model_table)
             assert name == "W1"
             assert element["prefix"] == "W"
             # SPICE: W is the current-controlled switch — a normal component
@@ -154,7 +152,7 @@ class TestParseLine:
             assert name.startswith("W")
 
     def test_duplicate_component_raises(self, convert):
-        with pytest.raises(convert.NetlistError, match="Duplicate"):
+        with pytest.raises(ValueError, match="Duplicate"):
             text = "V1 N1 0 5\nV1 N2 0 3\n"
             convert._parse_netlist(text)
 
@@ -335,6 +333,50 @@ class TestParseNetlist:
         # a truly malformed line (no tokens) must raise
         with pytest.raises(Exception):
             _parse_netlist("R1")
+
+
 @pytest.fixture
 def connected_netlist():
     return CONNECTED_NETLIST
+
+
+class TestAllLineErrorsReported:
+    """_parse_netlist parses every line before failing, so all bad lines
+    reach the LLM in one round."""
+
+    BAD = "V1 a 0 5\nD1 a b\nR1 b 0 1k\nQ1 b 0 0\n"  # D1 and Q1 have no model
+
+    @pytest.mark.parametrize("strict", [False, True])
+    def test_every_bad_line_is_reported(self, convert_spice, strict):
+        with pytest.raises(ValueError) as error:
+            convert_spice._parse_netlist(self.BAD, strict=strict, simulate=False)
+        message = str(error.value)
+        assert message.startswith("2 netlist lines have errors:")
+        assert "on line 'D1 a b'" in message and "on line 'Q1 b 0 0'" in message
+
+    def test_errors_are_numbered_with_indented_details(self, convert_spice):
+        with pytest.raises(ValueError) as error:
+            convert_spice._parse_netlist(self.BAD)
+        lines = str(error.value).splitlines()
+        assert lines[1].startswith("1. All specs failed for prefix 'D'")
+        second = next(i for i, line in enumerate(lines) if line.startswith("2. "))
+        # every line of an error's details is indented under its number
+        assert all(line.startswith("   ") for line in lines[2:second])
+        assert all(line.startswith("   ") for line in lines[second + 1 :])
+
+    def test_single_error_keeps_its_message(self, convert_spice):
+        with pytest.raises(ValueError, match=r"^All specs failed for prefix 'D'"):
+            convert_spice._parse_netlist("V1 a 0 5\nD1 a 0\n")
+
+    def test_duplicates_are_collected_too(self, convert_spice):
+        with pytest.raises(ValueError) as error:
+            convert_spice._parse_netlist("V1 a 0 5\nR1 a 0 1k\nR1 a 0 2k\nD1 a 0\n")
+        assert "Duplicate component name 'R1'" in str(error.value)
+        assert "on line 'D1 a 0'" in str(error.value)
+
+    def test_strict_checks_wait_for_a_complete_parse(self, convert_spice):
+        # no ground and a bad line: only the line is reported, the strict
+        # "no ground" check does not run on the incomplete netlist
+        with pytest.raises(ValueError) as error:
+            convert_spice._parse_netlist("V1 a b 5\nD1 a b\n", strict=True, simulate=False)
+        assert "no ground node" not in str(error.value)

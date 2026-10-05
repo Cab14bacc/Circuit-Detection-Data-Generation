@@ -138,6 +138,25 @@ def _spec_simulatable(spec: dict) -> bool:
     )
 
 
+def _unsimulatable_spec_message(component_name: str, prefix: str, spec_index: int | None) -> str:
+    """The violation for an element whose spec cannot be simulated: when the
+    prefix has forms that simulate (C by charge vs C by value), name the
+    rejected form and suggest one that works; otherwise the whole prefix."""
+    from .grammar import _render_spec_grammar  # noqa: PLC0415 (grammar imports this module)
+
+    specs = dialect.TO_SKIN_CONFIG.get(prefix, [])
+    working = [spec for spec in specs if _spec_simulatable(spec)]
+    if not working or spec_index is None or spec_index >= len(specs):
+        return (
+            f"Component {component_name}: {prefix} elements cannot be simulated; "
+            f"remove it and use another component."
+        )
+    return (
+        f"Component {component_name}: the form `{_render_spec_grammar(prefix, specs[spec_index])}` cannot be "
+        f"simulated; write it as `{_render_spec_grammar(prefix, working[0])}` instead."
+    )
+
+
 def _simulation_violations(parsed_netlist: dict, model_table: dict) -> list[str]:
     """Components ngspice cannot simulate: elements whose spec is marked
     "simulatable": False in TO_SKIN_CONFIG (e.g. the N/P/A/U generics), and
@@ -146,10 +165,7 @@ def _simulation_violations(parsed_netlist: dict, model_table: dict) -> list[str]
     for component_name, element in parsed_netlist.items():
         prefix = element["prefix"]
         if not element.get("simulatable", True):
-            violations.append(
-                f"Component {component_name}: {prefix} elements cannot be simulated; "
-                f"remove it and use another component."
-            )
+            violations.append(_unsimulatable_spec_message(component_name, prefix, element.get("spec_index")))
             continue
         model_name = element.get("model_name")
         card = model_table.get(model_name.upper()) if model_name else None
@@ -179,6 +195,8 @@ def _strict_violations(
     meta: dict,
     model_table: dict | None = None,
     simulate: bool = False,
+    top_level: bool = True,
+    ground_elsewhere: bool = False,
 ) -> list[str]:
     """SPICE strict parsing: everything ngspice would misread or refuse,
     worded as instructions for the LLM. Returns an empty list when clean.
@@ -196,6 +214,15 @@ def _strict_violations(
     With `simulate` (the netlist will be run by ngspice), components that
     ngspice cannot simulate are rejected too (_simulation_violations).
     Strict parsing alone does not imply simulation, so this is opt-in.
+
+    ngspice ignores letter case, so names that differ only in case clash:
+    two components (R1, r1) are one device to ngspice, and two node
+    spellings (Out, out) one net, while the schematic draws two.
+
+    `top_level` is False for a .subckt body (convert._subckt_violations),
+    which needs no ground of its own. At the top level a ground node is
+    required, unless `ground_elsewhere` (a subcircuit body uses ground,
+    which is global in SPICE).
     """
     violations: list[str] = []
     params = meta["params"]
@@ -235,6 +262,44 @@ def _strict_violations(
                         violations.append(
                             f"{where}: i({source}) must name a voltage source (V element) of the netlist."
                         )
+
+    # check a ground node exists: ngspice measures every voltage against it,
+    # and without one it only reports a singular matrix
+    ground = {g.lower() for g in dialect.GROUND_NAMES}
+    if top_level and not ground_elsewhere:
+        uses_ground = any(
+            conn["node_name"].lower() in ground
+            for element in parsed_netlist.values()
+            for conn in element["connections"].values()
+        )
+        if not uses_ground:
+            violations.append(
+                "The netlist has no ground node: connect at least one element to node 0 (or GND); "
+                "ngspice measures every voltage against it."
+            )
+
+    # check names that differ only in letter case (ngspice ignores case)
+    by_lower: dict[str, list[str]] = {}
+    for component_name in parsed_netlist:
+        by_lower.setdefault(component_name.lower(), []).append(component_name)
+    for names in by_lower.values():
+        if len(names) > 1:
+            violations.append(
+                f"Components {', '.join(names)} are the same device for ngspice, which ignores letter "
+                f"case; give each component a distinct name."
+            )
+    spellings: dict[str, set[str]] = {}
+    for element in parsed_netlist.values():
+        for conn in element["connections"].values():
+            node = conn["node_name"]
+            if node.lower() not in ground:
+                spellings.setdefault(node.lower(), set()).add(node)
+    for nodes in spellings.values():
+        if len(nodes) > 1:
+            violations.append(
+                f"Nodes {', '.join(sorted(nodes))} are one net for ngspice, which ignores letter case; "
+                f"write the net with one spelling, or rename one if they are meant to be different nets."
+            )
 
     # check forbidden directives
     for directive, line in meta["directives"]:
@@ -285,6 +350,33 @@ def _strict_violations(
                 violations.append(
                     f"Component {component_name}: node name '{node}' may only contain letters, "
                     f"digits and underscores."
+                )
+
+        # check the model name is not written after a key=value argument:
+        # ngspice reads everything after the first one as further
+        # parameters (`R1 a b R=1k RM` fails with "unknown parameter (rm)")
+        model_span = element.get("model_span")
+        if model_span is not None:
+            before = [kw for kw, span in element.get("keyword_spans", {}).items() if span[0] < model_span[0]]
+            if before:
+                violations.append(
+                    f"Component {component_name}: the model name '{element.get('model_name')}' must come "
+                    f"before '{before[0]}'; ngspice reads every argument after a key=value pair as another "
+                    f"parameter."
+                )
+
+        # check model name order, where the spec pins it next to an argument:
+        # C, L and Y read the model name only BEFORE the value (C1 a b CM 1u),
+        # W only AFTER its controlling source (W1 a b V1 WM); ngspice cannot
+        # parse the other order
+        model_span = element.get("model_span")
+        order = element.get("model_order")
+        if order and model_span is not None and order.get("ref_span") is not None:
+            if (model_span[0] < order["ref_span"][0]) != order["before"]:
+                side = "before" if order["before"] else "after"
+                violations.append(
+                    f"Component {component_name}: the model name '{element.get('model_name')}' must come "
+                    f"{side} '{order['ref']}'; ngspice cannot read it on the other side."
                 )
 
         # check kind keyword order: ngspice requires off / ON / OFF AFTER the

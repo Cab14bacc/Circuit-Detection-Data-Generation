@@ -233,28 +233,31 @@ def generate_data_cmd(
         "-p",
         help="Name of the project (also used to compute default output dir)",
     ),
-    num_of_netlists: int = typer.Option(1, "--num", "-n", help="Number of netlists to generate"),
+    num_of_netlists: int = typer.Option(1, "--num", "-n", min=1, help="Number of netlists to generate"),
     gen_count_per_session: int = typer.Option(
         1,
         "--gen-count-per-session",
         "-g",
+        min=1,
         help="Number of netlists to generate per session",
     ),
-    concurrency: int = typer.Option(4, "--concurrency", "-c", help="Max simultaneous LLM calls"),
+    concurrency: int = typer.Option(4, "--concurrency", "-c", min=1, help="Max simultaneous LLM calls"),
     min_components: int = typer.Option(
-        5, "--min-components", "-cmin", help="Minimum number of components in a netlist"
+        5, "--min-components", "-cmin", min=1, help="Minimum number of components in a netlist"
     ),
     max_components: int = typer.Option(
-        25, "--max-components", "-cmax", help="Maximum number of components in a netlist"
+        25, "--max-components", "-cmax", min=1, help="Maximum number of components in a netlist"
     ),
     gen_seed: Optional[str] = typer.Option(
         None,
         "--gen-seed",
-        help="Seed for the seed-prompt generator (reproducible batches)",
+        help="Seed for the seed-prompt generator (reproducible batches). Realize the llm may still "
+        "generate different netlists for the same seed, as the providers often do not guarantee "
+        "deterministic outputs.",
     ),
     temperature: float = typer.Option(0.9, "--temperature", "-t", help="LLM sampling temperature"),
     max_attempts: int = typer.Option(
-        3,
+        10,
         "--max-attempts",
         min=1,
         help="Max LLM generations per session (the first one included); netlists still "
@@ -273,6 +276,22 @@ def generate_data_cmd(
         help="SPICE only: the netlists will be simulated with ngspice. Implies --strict, rejects "
         "components ngspice cannot simulate and uses the simulation system prompt. "
         "Defaults to config: simulation.enabled.",
+    ),
+    persevere: bool = typer.Option(
+        False,
+        "--persevere",
+        help="Will spin up another generation session if some netlists failed to generate. "
+        "If False, will return after trying to generate num_netlists netlists, even if some failed."
+        "Will run forever unless keyboard interrupt (Ctrl+C) is received.",
+    ),
+    rename: bool = typer.Option(
+        True,
+        "--rename/--no-rename",
+        help="Will rename the generated netlists and schematics to have sequential names. "
+        "If False, will use the default naming scheme ('{gen seed}_{worker id}_{gen idx in session}')."
+        "The sequential names are ('{global idx}_{gen seed}_{worker id}_{gen idx in session}')"
+        "The global idx is not guaranteed to refer to the same circuit across different runs "
+        "unless persevere is set to True. This might incur some overhead.",
     ),
 ):
     from .netlist_gen.parallel import scale_generation  # noqa: PLC0415
@@ -304,17 +323,19 @@ def generate_data_cmd(
             project_name=project_name,
             strict=strict,
             simulate=simulate,
+            persevere=persevere,
+            rename=rename,
         )
     )
 
-    failures = [_r for r in results for _r in r if not _r.ok]
+    failures = [r for r in results if not r.ok]
     if failures:
         for r in failures[:5]:
             why = r.exception or r.render_error or "; ".join(r.sanity_errors[:2])
             logger.error(f"  FAILED {r.worker_id}: {why}")
         if len(failures) > 5:
             logger.error(f"  … and {len(failures) - 5} more (see logs/)")
-        raise typer.Exit(code=1 if len(failures) == len(results) else 0)
+        raise typer.Exit(code=1 if len(failures) == num_of_netlists else 0)
 
 
 if __name__ == "__main__":

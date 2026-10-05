@@ -1,7 +1,21 @@
+import logging
+
+
+class MultilineIndentFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        # Indent every line after the first one by 2 spaces
+        record.msg = str(record.msg).replace("\n", "\n  ")
+        return super().format(record)
+
+
 LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
+        "formatter": {
+            "()": MultilineIndentFormatter,
+            "format": "%(asctime)s [%(levelname)s] %(name)s:\n  %(message)s\n",
+        },
         "json": {
             "()": ("pythonjsonlogger.json.JsonFormatter"),
             "format": ("%(asctime)s %(name)s %(levelname)s %(message)s"),
@@ -10,7 +24,7 @@ LOGGING_CONFIG = {
     "handlers": {
         "stdout": {
             "class": "logging.StreamHandler",
-            "formatter": "json",
+            "formatter": "formatter",
             "stream": "ext://sys.stdout",
         },
         "file": {

@@ -54,6 +54,7 @@ NETLIST_SVG_CONFIG = {
     # <s:layoutEngine ...> block (netlistsvg passes them straight to
     # elk.layout). Empty dict = ELK defaults. Keys are full ELK option ids;
     # values are whatever the option wants (enum strings, numbers).
+    # Documentation: https://eclipse.dev/elk/reference.html
     # The knobs that matter for schematic variety:
     #   org.eclipse.elk.algorithm              keep layered (only algorithm
     #                                          honoring FIXED_POS ports)
@@ -131,6 +132,34 @@ SIMULATION_CONFIG = {
     # (default of --simulate/--no-simulate). Simulating also turns on strict
     # parsing for generation, and selects the simulation system prompt.
     "ENABLED": False,
+    # Seconds one ngspice run may take before its process is killed.
+    "TIMEOUT_S": 10,
+    # Regexes of ngspice warnings that do not make a circuit invalid; any
+    # other warning rejects the netlist (and is logged), so extend this list
+    # deliberately.
+    "IGNORED_WARNINGS": [
+        # a SIN/PULSE source without DC value: .op uses its t=0 value
+        r"no DC value, transient time 0 value used",
+        # an AC-only source, which really is 0 V at DC
+        r"has no value, DC 0 assumed",
+    ],
+    # Write each valid netlist's operating point (node voltages, branch
+    # currents) to simulations/simulation_<id>.json next to the dataset.
+    "SAVE_RESULTS": True,
+}
+
+
+SAMPLING_CONFIG = {
+    # How each element prefix's sampling weight (always 1) is split among its
+    # component samples (prefix, model type, kind, specifiers, symbol):
+    # "by_skin" = equal share per distinct symbol, then per sample of that
+    # symbol; "uniform" = equal share per sample.
+    "WEIGHTING": "by_skin",
+    # Share of each netlist's drawn component types that MUST appear (at
+    # least once each); the rest may. 1.0 = all required, 0.0 = allow-list
+    # only. Components outside the drawn set (plus the simulation anchors and
+    # referenced V sources) are never allowed.
+    "REQUIRED_FRACTION": 1.0,
 }
 
 
@@ -155,6 +184,7 @@ CONFIGS = {
     "logging": LOGGING_CONFIG,
     "netlist_gen": NETLIST_GEN_CONFIG,
     "simulation": SIMULATION_CONFIG,
+    "sampling": SAMPLING_CONFIG,
 }
 
 
@@ -328,6 +358,7 @@ def _init_logging(extra_log_path: str | None = None):
 def get_logger(
     dunder_name: str,
     extra_log_path: str | None = None,
+    extra_log_formatter: logging.Formatter | str = None,
 ) -> logging.Logger:
     """returns a logger for the given module
 
@@ -345,7 +376,32 @@ def get_logger(
 
     # If log_path is provided, add the file handler.
     if extra_log_path is not None:
-        file_handler = logging.FileHandler(extra_log_path)
+        # explicit utf-8: the platform default (cp1252 on Windows) cannot
+        # encode characters LLM replies often contain (→, Ω, µ, —)
+        file_handler = logging.FileHandler(extra_log_path, encoding="utf-8")
+        root_logger = logging.getLogger()
+        if extra_log_formatter is not None:
+            # you can pass a string referencing a formatter in the logging config,
+            # or a logging.Formatter object
+            if isinstance(extra_log_formatter, str):
+                log_config = get_config_value("logging", "LOGGING_CONFIG_PATH", attr_name="LOGGING_CONFIG")
+                formatter = logging.config.DictConfigurator(log_config).configure_formatter(
+                    copy.deepcopy(log_config["formatters"][extra_log_formatter])
+                )
+            elif isinstance(extra_log_formatter, logging.Formatter):
+                formatter = extra_log_formatter
+            else:
+                formatter = next(
+                    (
+                        h.formatter
+                        for h in root_logger.handlers
+                        if h.formatter and h.get_name() == "file" and hasattr(h, "formatter")
+                    ),
+                    None,
+                )
+            if formatter is not None:
+                file_handler.setFormatter(formatter)
+
         # we would need to set logger level as well, but it will affect upstream loggers
         # TODO: figure it out, maybe use filters
         # file_handler.setLevel(logging.DEBUG)

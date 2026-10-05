@@ -7,9 +7,9 @@ port drops, some are genuine netlist mistakes.
 import pytest
 
 from circuit_data_gen.parser.convert import _parse_netlist
-from circuit_data_gen.validate import hanging_nodes
+from circuit_data_gen.validate import full_validation, hanging_nodes
 
-from tests.conftest import CONNECTED_NETLIST
+from tests.conftest import CONNECTED_NETLIST, requirements_for
 
 
 class TestHangingNodes:
@@ -59,3 +59,23 @@ class TestHangingNodes:
         before, after, _ = hanging_nodes(parsed)
         assert "A" not in after
         assert "C" not in after
+
+
+class TestHiddenPinOnlyNodes:
+    """A node whose only connection is a hidden (dropped) port has zero
+    connections after the drop, so it is not "hanging" in the rendered
+    sense, but it is still a floating pin of the netlist."""
+
+    def test_node_on_hidden_pin_only_is_reported(self, convert):
+        # G1's control pin c+ is on M1, which nothing else touches
+        text = "V1 N1 0 5\nR1 N1 0 1k\nG1 N1 0 M1 0 1m\n"
+        errors = full_validation(convert._parse_netlist(text), requirements_for(text))
+        hidden = [e for e in errors if "connected only to a hidden pin" in e]
+        assert len(hidden) == 1, errors
+        assert "M1 (hidden pin c+ of G1)" in hidden[0]
+
+    def test_hidden_pin_wired_elsewhere_is_fine(self, convert):
+        # control pin on N1, which V1 and R1 also use
+        text = "V1 N1 0 5\nR1 N1 N2 1k\nG1 N2 0 N1 0 1m\n"
+        errors = full_validation(convert._parse_netlist(text), requirements_for(text))
+        assert not any("hidden pin" in e for e in errors), errors

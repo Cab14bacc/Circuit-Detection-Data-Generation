@@ -45,7 +45,7 @@ def _render_value_slot(entry: dict, idx) -> str | None:
     (consumed token like F/W's Vcontrol, skin_label None) also renders
     `<alias>` — dropping it would make the rendered grammar unparseable.
 
-    A keyword-only slot (is_positional False) is written in Key=<value>
+    A keyword-only slot (is_positional "keyword") is written in Key=<value>
     form: required ones unbracketed (`V=<value>`, `Z0=<value>`), optional
     ones as `[Key=<value>|Key2=<value>]` showing every accepted alias.
 
@@ -57,7 +57,7 @@ def _render_value_slot(entry: dict, idx) -> str | None:
     first = aliases[0] if aliases else skin_label
     if first is None:
         return None
-    if entry.get("is_positional", True):
+    if entry.get("is_positional", "positional") != "keyword":
         return f"[<{first}>]" if is_optional else f"<{first}>"
     if not is_optional:
         return f"{first}=<value>"
@@ -145,7 +145,7 @@ def _render_spec_grammar(
         # positional value slots occupy their index (required slots render
         # bare, optional ones bracketed). Keyword-only slots are appended
         # after all positional content instead.
-        if not entry.get("is_positional", True):
+        if entry.get("is_positional", "positional") == "keyword":
             continue
         slot = _render_value_slot(entry, idx_str)
         if slot is None:
@@ -160,10 +160,19 @@ def _render_spec_grammar(
             slot = f"[<{first}>|{alt_key} <{first}>]"
         indexed[int(idx_str)] = slot
 
+    # a {TYPE: {"ref_arg", "before_arg"}} model_type pins the model name
+    # next to one argument (C1 a b mname <C>, W1 a b <Vcontrol> mname)
+    model_types = spec.get("model_type")
+    rules = [r for r in model_types.values() if r] if isinstance(model_types, dict) else []
+    anchor = rules[0] if rules and rules[0].get("ref_arg") is not None else None
     for idx in sorted(indexed.keys()):
+        if anchor and idx == anchor["ref_arg"] and anchor.get("before_arg", True):
+            parts.append("mname")
         parts.append(indexed[idx])
+        if anchor and idx == anchor["ref_arg"] and not anchor.get("before_arg", True):
+            parts.append("mname")
 
-    # keyword-only value slots (is_positional False, any key type) go last
+    # keyword-only value slots (is_positional "keyword", any key type) go last
     # in declaration order. Slots that a specifier references are EXCLUDED
     # here: they are binding targets for the segment expansion, not
     # user-facing spellings — the specifier renderer below already prints
@@ -175,7 +184,7 @@ def _render_spec_grammar(
         if isinstance(ref, str)
     }
     for k, entry in spec.get("args_to_values", {}).items():
-        if str(k).isdigit() and entry.get("is_positional", True):
+        if str(k).isdigit() and entry.get("is_positional", "positional") != "keyword":
             continue  # already interleaved by index above
         if k in spec_bound:
             continue
@@ -187,7 +196,7 @@ def _render_spec_grammar(
     parts.extend(_render_specifiers(spec))
 
     # ngspice order: the kind keyword (off, ON/OFF) comes AFTER the model name
-    if spec.get("model_type"):
+    if spec.get("model_type") and "mname" not in parts:
         parts.append("mname")
     if spec.get("kind"):
         parts.append("|".join(spec["kind"]))
@@ -290,7 +299,7 @@ def model_config_to_grammar(only_declared: bool = True, simulatable_only: bool =
                 # instead of a <value> placeholder
                 _render_zero_slot(entry, name)
                 if entry.get("is_zero")
-                else _render_value_slot({**entry, "is_positional": False}, name)
+                else _render_value_slot({**entry, "is_positional": "keyword"}, name)
                 for name, entry in args_to_values.items()
             ]
             pattern = " ".join([".model mname", model_type, *(s for s in slots if s is not None)])

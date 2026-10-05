@@ -57,7 +57,8 @@ TOKEN NOTATION — what each kind of token in the rules below means:
   bare kw    LITERAL keyword written verbatim: off (device starts off),
              ON / OFF (switch state), DC / AC (source mode specifiers).
   mname      MODEL name: written after all nodes and values of a
-             model-typed element (only off / ON / OFF may follow it),
+             model-typed element (only off / ON / OFF may follow it;
+             C and L write it BEFORE the value: C1 a b CM 1u),
              and a .model card declaring it is REQUIRED in the same
              netlist. The card's TYPE selects the symbol; the COMPLETE
              set of supported TYPEs is: D (D), NPN / PNP / LPNP (Q),
@@ -99,10 +100,11 @@ Passives (plain value forms; semiconductor forms additionally end in mname):
     Rname N+ N- <r>                       resistance; e.g. R1 in out 1k
     Cname N+ N- <C>                       capacitance; e.g. C1 in out 1u
     Lname N+ N- <L>                       inductance; e.g. L1 in out 10u
-    (semiconductor forms — referenced via a .model card, mname LAST):
+    (semiconductor forms — referenced via a .model card; for C and L the
+    mname comes BEFORE the value, ngspice rejects `C1 a b 1u CM`):
     Rname N+ N- [<r>] mname               model R/RES; r defaults 1e-3
-    Cname N+ N- [<CAP>] mname             model C; CAP defaults 0
-    Lname N+ N- [<L>] mname               model L; L defaults 0
+    Cname N+ N- mname [<CAP>]             model C; CAP defaults 0
+    Lname N+ N- mname [<L>]               model L; L defaults 0
     (capacitor specified by charge instead of capacitance):
     Cname N+ N- Q=<charge>                e.g. C1 in out Q=2n
 
@@ -223,9 +225,11 @@ TO_SKIN_CONFIG = {
             },
             "model_type": ["R", "RES"],
             "port_directions": {"+": "input", "-": "input"},
+            # Specify "parse_only" to parse for the netlist statement, but doesn't output it into yosys json
+            # "parse_only": True
         },
     ],
-    # Capacitor — Cname N+ N- <value> [mname] <ic=v>  (ngspice §3.3.6)
+    # Capacitor — Cname N+ N- <value> <ic=v>, or Cname N+ N- mname [<value>]  (ngspice §3.3.6)
     "C": [
         {
             "skin_alias": ["c_h", "c_v"],
@@ -237,6 +241,7 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": "value",
                     "alias": ["C"],
+                    "is_optional": False,
                 },
             },
             "port_directions": {"+": "input", "-": "output"},
@@ -256,7 +261,11 @@ TO_SKIN_CONFIG = {
                     "default_value": "0",
                 },
             },
-            "model_type": ["C"],
+            # ngspice (32 to 47) only reads a model name written BEFORE the
+            # value: `C1 a b CM 1u`; `C1 a b 1u CM` fails with "unknown
+            # parameter (cm)", although the manual's general form shows the
+            # value first
+            "model_type": {"C": {"ref_arg": 2, "before_arg": True}},
             "port_directions": {"+": "input", "-": "output"},
         },
         # Specify by charge
@@ -267,13 +276,21 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                "Q": {"skin_label": "value", "alias": ["Q"], "is_positional": False, "is_optional": False},
+                "Q": {
+                    "skin_label": "value",
+                    "alias": ["Q"],
+                    "is_positional": "keyword",
+                    "is_optional": False,
+                },
                 # 3rd arg may be a model name (mname) — consumed, not shown
             },
+            # ngspice 32 rejects a constant charge (`Q=2n`, `Q={2n}`, `Q='2n'`:
+            # "unknown parameter (q)"); 41+ needs it in {} or ''
+            "simulatable": False,
             "port_directions": {"+": "input", "-": "output"},
         },
     ],
-    # Inductor — Lname N+ N- <value> [mname]  (ngspice §3.3.10)
+    # Inductor — Lname N+ N- <value>, or Lname N+ N- mname [<value>]  (ngspice §3.3.10)
     "L": [
         {
             "skin_alias": ["l_h", "l_v"],
@@ -284,7 +301,9 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": "value",
-                    "alias": ["L", "IND"],
+                    "alias": ["L"],
+                    # required, as in ngspice (and as for C)
+                    "is_optional": False,
                 },
             },
             "port_directions": {"+": "input", "-": "input"},
@@ -296,9 +315,18 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                2: {"skin_label": "value", "alias": ["L", "IND"], "is_optional": True, "default_value": "0"},
+                2: {
+                    "skin_label": "value",
+                    "alias": ["L"],
+                    "is_optional": True,
+                    "default_value": "0",
+                    # ngspice (32, 47) rejects `L1 a b LM L=1m` ("unknown
+                    # parameter (l)"): with a model only the bare value works
+                    "is_positional": "positional_only",
+                },
             },
-            "model_type": ["L"],
+            # as for C: `L1 a b LM 1m`, never `L1 a b 1m LM`
+            "model_type": {"L": {"ref_arg": 2, "before_arg": True}},
             "port_directions": {"+": "input", "-": "input"},
         },
     ],
@@ -354,12 +382,12 @@ TO_SKIN_CONFIG = {
                 "AC": {
                     "skin_label": None,
                     "alias": ["AC", "ac", "mag"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                 },
                 "phase": {
                     "skin_label": None,
                     "alias": ["phase", "Phase"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                 },
             },
             "specifiers": {
@@ -407,12 +435,12 @@ TO_SKIN_CONFIG = {
                 "AC": {
                     "skin_label": None,
                     "alias": ["AC", "ac", "mag"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                 },
                 "phase": {
                     "skin_label": None,
                     "alias": ["phase", "Phase"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                 },
             },
             "specifiers": {
@@ -723,7 +751,7 @@ TO_SKIN_CONFIG = {
         },
         # Non-linear (2-node): the expression keyword is the only argument.
         # It MUST be a keyword (cur=) — the key identifies the
-        # expression form, so is_positional is False.
+        # expression form, so is_positional is "keyword".
         {
             "skin_alias": ["cvs"],
             "arg_to_ports": {
@@ -734,7 +762,7 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": "value",
                     "alias": ["vol"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                     "is_optional": False,
                 }
             },
@@ -763,7 +791,7 @@ TO_SKIN_CONFIG = {
             "port_directions": {"+": "output", "-": "input"},
         },
         # Non-linear (2-node): the expression keyword is the only argument.
-        # It MUST be a keyword (cur=/value=/table=) — is_positional False.
+        # It MUST be a keyword (cur=/value=/table=) — is_positional "keyword".
         {
             "skin_alias": ["ccs"],
             "arg_to_ports": {
@@ -774,7 +802,7 @@ TO_SKIN_CONFIG = {
                 "cur": {
                     "skin_label": "value",
                     "alias": ["cur"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                     "is_optional": False,
                 }
             },
@@ -892,7 +920,7 @@ TO_SKIN_CONFIG = {
                 "Z0": {
                     "skin_label": None,
                     "alias": ["Z0"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                     "is_optional": False,
                 },
             },
@@ -921,7 +949,9 @@ TO_SKIN_CONFIG = {
                     "is_optional": False,
                 },
             },
-            "model_type": ["CSW"],
+            # the model name comes AFTER the controlling V source; ngspice
+            # reads `W1 a b WM V1` as a model named V1
+            "model_type": {"CSW": {"ref_arg": 2, "before_arg": False}},
             "port_directions": {"+": "input", "-": "input"},
         },
         {
@@ -939,7 +969,9 @@ TO_SKIN_CONFIG = {
                     "is_optional": False,
                 },
             },
-            "model_type": ["CSW"],
+            # the model name comes AFTER the controlling V source; ngspice
+            # reads `W1 a b WM V1` as a model named V1
+            "model_type": {"CSW": {"ref_arg": 2, "before_arg": False}},
             "kind": ["ON"],
             "port_directions": {"+": "input", "-": "input"},
         },
@@ -958,7 +990,9 @@ TO_SKIN_CONFIG = {
                     "is_optional": False,
                 },
             },
-            "model_type": ["CSW"],
+            # the model name comes AFTER the controlling V source; ngspice
+            # reads `W1 a b WM V1` as a model named V1
+            "model_type": {"CSW": {"ref_arg": 2, "before_arg": False}},
             "kind": ["OFF"],
             "port_directions": {"+": "input", "-": "input"},
         },
@@ -967,7 +1001,7 @@ TO_SKIN_CONFIG = {
     # The expression is a single token (no spaces in the corpus). Two specs
     # split on the V=/I= alias: a voltage expression draws as a voltage
     # source, a current expression as a current source. The V=/I= token is a
-    # KEYWORD arg (is_positional False) — its key is what discriminates the
+    # KEYWORD arg (is_positional "keyword") — its key is what discriminates the
     # source type, so it can only be provided in keyword form.
     "B": [
         {
@@ -980,7 +1014,7 @@ TO_SKIN_CONFIG = {
                 "V": {
                     "skin_label": "value",
                     "alias": ["V"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                     "is_optional": False,  # V= is the spec discriminator
                 },
             },
@@ -996,7 +1030,7 @@ TO_SKIN_CONFIG = {
                 "I": {
                     "skin_label": "value",
                     "alias": ["I"],
-                    "is_positional": False,
+                    "is_positional": "keyword",
                     "is_optional": False,  # I= is the spec discriminator
                 },
             },
@@ -1037,7 +1071,10 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 4: {"skin_label": None, "alias": ["LEN", "len"]},
             },
-            "model_type": ["txl"],
+            # the model name comes BEFORE the length (`Y1 a 0 b 0 YM LEN=2` or
+            # `... YM 2`); written after it, ngspice (32, 47) reads the
+            # length as the model name ("Unable to find definition of model")
+            "model_type": {"txl": {"ref_arg": 4, "before_arg": True}},
             "port_directions": {"+": "input", "-": "input"},
         },
     ],
@@ -1226,6 +1263,24 @@ MODEL_CONFIG = {
     # fails with "lossy line length must be given". Non-zero G is fine.
     "TXL": [{"args_to_values": _required("R", "L", "G", "C", "LENGTH")}],
 }
+
+# Generation with simulation (netlist_gen/sampling.py): every simulated
+# netlist is allowed (never required) one sample of each group below, so a
+# valid DC operating point is always reachable whatever else was drawn. A
+# group is a list of matchers; each names fields of a component sample
+# (prefix, model_type, kind, specifiers; [] = none). A group already met by
+# the drawn samples adds nothing; otherwise one matching sample is added,
+# drawn by its sampling weight.
+SIMULATION_ANCHORS = [
+    # a source that can carry a non-zero DC value (V or I, DC or DC+AC):
+    # without one every node solves to 0 V. A current source drives a
+    # resistor as well as a voltage source does.
+    {"any_of": [{"prefix": "V"}, {"prefix": "I"}]},
+    # a resistor: the only element that gives any node a DC path to ground
+    # without creating a new failure mode (an inductor is a short at DC, a
+    # diode or transistor conducts only when biased, a source fixes the node)
+    {"any_of": [{"prefix": "R", "model_type": []}]},
+]
 
 # Bare identifiers that ngspice resolves inside expressions without a .param
 # definition (strict parsing only). Matched case-insensitively. Function names

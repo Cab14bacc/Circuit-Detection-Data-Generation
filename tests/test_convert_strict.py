@@ -13,7 +13,7 @@ import logging
 
 import pytest
 
-from tests.conftest import CONNECTED_NETLIST
+from tests.conftest import CONNECTED_NETLIST, requirements_for
 
 
 def _strict_errors(convert, text: str, simulate: bool | None = False) -> str:
@@ -92,6 +92,127 @@ class TestKindKeywordOrder:
         assert "format:Dname N+ N- mname off" in grammar
         assert "format:Sname NP N NC+ NC- mname ON" in grammar
         assert not any("off mname" in line or "ON mname" in line for line in grammar)
+
+
+class TestModelOrder:
+    """Where ngspice (32 to 47) reads the model name, pinned by the spec's
+    {TYPE: {"ref_arg", "before_arg"}} model_type: C, L and Y only BEFORE the
+    value (`C1 a b 1u CM` fails with "unknown parameter (cm)"), W only AFTER
+    its controlling source (`W1 a b WM V1` reads V1 as the model), R either
+    way. Lenient parsing accepts any order, strict only ngspice's."""
+
+    MODELS = (
+        ".model Cm C\n.model Lm L\n.model Rm R\n.model Wm CSW(IT=1m IH=0.1m RON=1 ROFF=1Meg)\n"
+        ".model Ym TXL(R=0.1 L=250n G=0 C=100p LENGTH=1)\n"
+    )
+
+    def _text(self, line: str) -> str:
+        return f"V1 a 0 5\nR1 a b 1k\nR3 c 0 1k\n{line}\n{self.MODELS}"
+
+    @pytest.mark.parametrize(
+        "line, message",
+        [
+            ("C1 b 0 1u Cm", "'Cm' must come before '1u'"),
+            ("L1 b 0 1m Lm", "'Lm' must come before '1m'"),
+            ("Y1 b 0 c 0 2 Ym", "'Ym' must come before '2'"),
+            ("Y1 b 0 c 0 LEN=2 Ym", "'Ym' must come before 'LEN=2'"),
+            ("W1 b c Wm V1", "'Wm' must come after 'V1'"),
+        ],
+    )
+    def test_wrong_side_rejected(self, convert_spice, line, message):
+        text = self._text(line)
+        convert_spice._parse_netlist(text, strict=False)  # lenient: any order
+        assert message in _strict_errors(convert_spice, text)
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "C1 b 0 Cm 1u",
+            "C1 b 0 Cm",
+            "L1 b 0 Lm 1m",
+            "L1 b 0 Lm",
+            "Y1 b 0 c 0 Ym",
+            "Y1 b 0 c 0 Ym 2",
+            "Y1 b 0 c 0 Ym LEN=2",
+            "W1 b c V1 Wm",
+            "W1 b c V1 Wm ON",
+            "R2 b 0 1k Rm",
+            "R2 b 0 Rm 1k",
+        ],
+    )
+    def test_ngspice_order_accepted(self, convert_spice, line):
+        assert _strict_errors(convert_spice, self._text(line)) == ""
+
+    def test_value_is_read_after_the_model(self, convert_spice):
+        parsed = convert_spice._parse_netlist(self._text("C1 b 0 Cm 1u"), strict=True)
+        assert parsed["C1"]["values"]["value"]["value"] == "1u"
+        assert parsed["C1"]["model_type"] == ["C"]
+
+    def test_grammar_renders_the_model_where_ngspice_reads_it(self, convert_spice):
+        grammar = convert_spice.config_to_grammar()
+        assert "format:Cname N+ N- mname [<CAP>]" in grammar
+        assert "format:Lname N+ N- mname [<L>]" in grammar
+        assert "format:Yname N+ N- NP2+ NP2- mname [<LEN>]" in grammar
+        assert "format:Wname N+ N- <Vcontrol> mname ON" in grammar
+        assert "format:Rname N+ N- [<r>] mname" in grammar
+
+    @pytest.mark.parametrize("line, keyword", [("R2 b 0 R=1k Rm", "R=1k"), ("C1 b 0 C=1u Cm", "C=1u")])
+    def test_model_after_keyword_rejected(self, convert_spice, line, keyword):
+        # ngspice reads everything after the first key=value as parameters:
+        # `R2 b 0 R=1k Rm` fails with "unknown parameter (rm)"
+        text = self._text(line)
+        convert_spice._parse_netlist(text, strict=False)  # lenient: any order
+        assert f"must come before '{keyword}'" in _strict_errors(convert_spice, text)
+
+    @pytest.mark.parametrize("line", ["R2 b 0 Rm R=1k", "C1 b 0 Cm C=1u", "C1 b 0 Cm CAP=1u", "C1 b 0 C=1u"])
+    def test_keyword_after_model_accepted(self, convert_spice, line):
+        assert _strict_errors(convert_spice, self._text(line)) == ""
+
+
+class TestPositionalOnly:
+    """is_positional "positional_only": the value sits at its index and is
+    never written as key=value. With a model, L only takes the bare value
+    (ngspice rejects `L1 a b LM L=1m` with "unknown parameter (l)")."""
+
+    TEXT = "V1 a 0 5\nR1 a b 1k\n{line}\n.model Lm L\n"
+
+    def test_keyword_spelling_rejected(self, convert_spice):
+        # a grammar error, so lenient parsing rejects it too
+        with pytest.raises(ValueError, match="Positional-only value argument expects no key, but got 'L'"):
+            convert_spice._parse_netlist(self.TEXT.format(line="L1 b 0 Lm L=1m"), strict=False)
+
+    @pytest.mark.parametrize("line", ["L1 b 0 Lm 1m", "L1 b 0 Lm", "L1 b 0 L=1m", "L1 b 0 1m"])
+    def test_bare_value_accepted(self, convert_spice, line):
+        assert _strict_errors(convert_spice, self.TEXT.format(line=line)) == ""
+
+    def test_other_instance_parameter_is_not_the_value(self, convert_spice):
+        # another key at the slot is an instance parameter, the value left out
+        text = self.TEXT.format(line="L1 b 0 Lm m=2")
+        assert _strict_errors(convert_spice, text) == ""
+        assert convert_spice._parse_netlist(text, strict=False)["L1"]["values"]["unknown_m"]["value"] == "2"
+
+
+class TestCapacitorByCharge:
+    """`Cname N+ N- Q=<value>` cannot be simulated with ngspice 32, which
+    rejects a constant charge in every spelling ("unknown parameter (q)")."""
+
+    TEXT = "V1 a 0 5\nR1 a b 1k\nC1 b 0 Q=2n\n"
+
+    def test_matches_the_charge_spec(self, convert_spice):
+        # the plain C value is required, so a Q= line is not a plain C with
+        # an unknown instance parameter
+        parsed = convert_spice._parse_netlist(self.TEXT, strict=False)
+        assert parsed["C1"]["simulatable"] is False
+        assert parsed["C1"]["values"]["value"]["value"] == "2n"
+
+    def test_rejected_only_when_simulating(self, convert_spice):
+        assert _strict_errors(convert_spice, self.TEXT, simulate=False) == ""
+        errors = _strict_errors(convert_spice, self.TEXT, simulate=True)
+        assert "the form `Cname N+ N- Q=<value>` cannot be simulated; write it as `Cname N+ N- <C>`" in errors
+
+    def test_plain_value_is_required(self, convert_spice):
+        with pytest.raises(ValueError):
+            convert_spice._parse_netlist("V1 a 0 5\nR1 a b 1k\nC1 b 0\n", strict=False)
 
 
 class TestModelConfig:
@@ -247,6 +368,95 @@ class TestReferences:
         assert element["values"]["value"]["value"] == "amp"
 
 
+class TestGround:
+    def test_missing_ground_rejected(self, convert_spice):
+        errors = _strict_errors(convert_spice, "V1 a b 5\nR1 a b 1k\n")
+        assert "The netlist has no ground node" in errors
+
+    @pytest.mark.parametrize("ground", ["0", "GND", "gnd"])
+    def test_any_ground_name_counts(self, convert_spice, ground):
+        assert _strict_errors(convert_spice, f"V1 a {ground} 5\nR1 a {ground} 1k\n") == ""
+
+    def test_ground_inside_a_subcircuit_counts(self, convert_spice):
+        # node 0 is global in SPICE: a body tying to it grounds the netlist
+        text = "V1 a b 5\nR1 a b 1k\nX1 a b blk\n.subckt blk p n\nR9 p 0 1k\nR8 n 0 1k\n.ends\n"
+        assert _strict_errors(convert_spice, text) == ""
+
+    def test_lenient_parsing_does_not_require_ground(self, convert_spice):
+        convert_spice._parse_netlist("V1 a b 5\nR1 a b 1k\n", strict=False)
+
+
+class TestLetterCase:
+    """ngspice ignores letter case; the render does not."""
+
+    def test_component_names_differing_in_case(self, convert_spice):
+        errors = _strict_errors(convert_spice, "V1 a 0 5\nR1 a 0 1k\nr1 a 0 2k\n")
+        assert "Components R1, r1 are the same device for ngspice" in errors
+
+    def test_node_names_differing_in_case(self, convert_spice):
+        errors = _strict_errors(convert_spice, "V1 Out 0 5\nR1 out 0 1k\n")
+        assert "Nodes Out, out are one net for ngspice" in errors
+
+    def test_ground_spellings_are_not_flagged(self, convert_spice):
+        # 0 / GND / gnd are merged anyway
+        assert _strict_errors(convert_spice, "V1 a GND 5\nR1 a gnd 1k\n") == ""
+
+
+class TestSubcircuitBodies:
+    """Strict parsing checks .subckt bodies: ngspice runs them, the render
+    never draws them."""
+
+    HEAD = "V1 a 0 5\nR1 a b 1k\nX1 b 0 blk\n"
+
+    def _errors(self, convert, body: str, header: str = ".subckt blk p n") -> str:
+        return _strict_errors(convert, f"{self.HEAD}{header}\n{body}.ends\n")
+
+    def test_valid_body(self, convert_spice):
+        assert self._errors(convert_spice, "R9 p mid 1k\nR8 mid n 1k\n") == ""
+
+    def test_header_params_and_body_models(self, convert_spice):
+        body = ".param r2=1k\nR9 p mid {g*1k}\nD1 mid n Dm\nR8 mid n {r2}\n.model Dm D\n"
+        assert self._errors(convert_spice, body, ".subckt blk p n params: g=2") == ""
+
+    def test_body_line_must_match_a_spec(self, convert_spice):
+        errors = self._errors(convert_spice, "R9 p n 1k\nQ1 p n 0 Qmissing\n")
+        assert ".subckt blk: All specs failed for prefix 'Q'" in errors
+
+    def test_body_directives_and_symbols_are_checked(self, convert_spice):
+        errors = self._errors(convert_spice, "R9 p n {unk}\n.tran 1u 1m\n")
+        assert ".subckt blk: Directive '.tran 1u 1m' is not allowed" in errors
+        assert ".subckt blk: Component R9: value 'unk' uses undefined symbol(s) unk" in errors
+
+    def test_control_block_inside_body_is_rejected(self, convert_spice):
+        errors = self._errors(convert_spice, "R9 p n 1k\n.control\nshell rm -rf x\n.endc\n")
+        assert ".subckt blk: A .control block is not allowed" in errors
+
+    def test_unused_port_and_floating_internal_node(self, convert_spice):
+        errors = self._errors(convert_spice, "R9 p x 1k\n")
+        assert ".subckt blk: port n is not connected to anything inside the subcircuit." in errors
+        assert ".subckt blk: internal node(s) x connect to only one element" in errors
+
+    def test_empty_body(self, convert_spice):
+        assert ".subckt blk: the body has no elements" in self._errors(convert_spice, "")
+
+    def test_nested_definition_rejected(self, convert_spice):
+        body = ".subckt inner q r\nR1 q r 1k\n.ends\nR2 p n 1k\n"
+        assert "nested .subckt definitions are not allowed" in self._errors(convert_spice, body)
+
+    def test_nested_ends_does_not_close_the_outer_block(self, convert_spice):
+        # before depth tracking, the inner .ends closed the outer block and
+        # R2 (a body line) was parsed as a top-level element
+        text = self.HEAD + ".subckt blk p n\n.subckt inner q r\nR1 q r 1k\n.ends\nR2 p n 1k\n.ends\n"
+        parsed = convert_spice._parse_netlist(text, strict=False)
+        assert "R2" not in parsed
+
+    def test_simulation_check_applies_inside_bodies(self, convert_spice):
+        body = "R9 p b2 1k\nQ1 n b2 0 QL\nR8 b2 n 1k\n.model QL LPNP\n"
+        text = f"{self.HEAD}.subckt blk p n\n{body}.ends\n"
+        errors = _strict_errors(convert_spice, text, simulate=True)
+        assert ".subckt blk: Component Q1: model QL has type LPNP, which cannot be simulated" in errors
+
+
 class TestSimulationComponents:
     """With simulate on, strict parsing rejects what ngspice cannot simulate:
     specs marked "simulatable": False (N/P/A/U generics) and .model TYPEs
@@ -340,7 +550,6 @@ class TestExplicitGenerics:
 class TestGenerationStrictness:
     def test_smoke_test_render_parses_strictly(self, convert_spice, monkeypatch, tmp_path):
         from circuit_data_gen.netlist_gen import setup
-        from circuit_data_gen.netlist_gen.parallel import CircuitRequirements
 
         monkeypatch.setattr(setup, "GEN_STRICT", True)
         monkeypatch.setattr(setup, "GEN_SIMULATE", False)
@@ -348,11 +557,7 @@ class TestGenerationStrictness:
         net_path.write_text(CONNECTED_NETLIST + ".tran 1u 1m\n", encoding="utf-8")
         state = {
             "logger": logging.getLogger("test-strict"),
-            "requirements": [
-                CircuitRequirements(
-                    num_components=4, component_subset=[("C", (), ()), ("R", (), ()), ("V", (), ("dc",))]
-                )
-            ],
+            "requirements": [requirements_for(CONNECTED_NETLIST)],
         }
         valid, errors = setup.smoke_test_render(
             state, 0, net_path, tmp_path / "s.png", tmp_path / "a.json", tmp_path / "o.png"

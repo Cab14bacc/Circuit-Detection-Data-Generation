@@ -1,4 +1,5 @@
-from .parser.convert import IS_SPICE, _merge_nodes, WIRE, GROUND_NAMES
+from .parser.convert import _merge_nodes, WIRE, GROUND_NAMES
+from .netlist_gen.sampling import samples_in
 
 
 def undefined_components(parsed_netlist):
@@ -46,14 +47,15 @@ def hanging_nodes(parsed_netlist):
                 # when a connection is dropped, it may cause a node to become hanging
                 # (i.e., connected to only one component).
                 continue
-            if node_name not in hanging_nodes_after_drop:
-                hanging_nodes_after_drop[node_name] = 0
-            hanging_nodes_after_drop[node_name] += 1
+
+            hanging_nodes_after_drop[node_name] = hanging_nodes_after_drop.get(node_name, 0) + 1
+
     # Ground Components are different as they are created as soon as a ground node name
     # (e.g., "0" or "GND") is used. So they could be referenced only once in the netlist,
     # but are implicitly referenced again by the creation of the ground component.
     hanging_nodes_after_drop = {
-        node for node, count in hanging_nodes_after_drop.items() if count == 1 and node not in GROUND_NAMES
+        node for node, count in hanging_nodes_after_drop.items() 
+        if count == 1 and node not in GROUND_NAMES 
     }
 
     hanging_nodes_before_drop = {}
@@ -61,11 +63,11 @@ def hanging_nodes(parsed_netlist):
         connections = comp_data["connections"]
         for pid, conn_data in connections.items():
             node_name = conn_data["node_name"]
-            if node_name not in hanging_nodes_before_drop:
-                hanging_nodes_before_drop[node_name] = 0
-            hanging_nodes_before_drop[node_name] += 1
+            hanging_nodes_before_drop[node_name] = hanging_nodes_before_drop.get(node_name, 0) + 1
+    
     hanging_nodes_before_drop = {
-        node for node, count in hanging_nodes_before_drop.items() if count == 1 and node not in GROUND_NAMES
+        node for node, count in hanging_nodes_before_drop.items() 
+        if count == 1 and node not in GROUND_NAMES
     }
 
     hanging_nodes_from_dropping = hanging_nodes_after_drop - hanging_nodes_before_drop
@@ -154,49 +156,31 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
         errors.append(f"Some components are not using valid prefixes: {undefined_comp_names}.")
 
     # ================================================================
-    # check for required components
+    # check the component types: every required one must appear, and
+    # none outside the allowed set may
     # ================================================================
-    types_in_netlist = {
-        (data["prefix"], tuple(map(str.lower, data["kind"])), tuple(map(str.lower, data["specifiers"])))
-        for name, data in parsed_netlist.items()
-    }
-    comps_in_netlist = {
-        (name, data["prefix"], tuple(map(str.lower, data["kind"])), tuple(map(str.lower, data["specifiers"])))
-        for name, data in parsed_netlist.items()
-    }
+    used = samples_in(parsed_netlist)
+    used_keys = {sample.key() for sample in used}
+    allowed_keys = {sample.key() for sample in requirement.allowed}
 
-    extra_components = [
-        cmp_type for cmp_type in types_in_netlist if cmp_type not in requirement.component_subset
-    ]
 
-    if logger:
-        logger.info(f"types_in_netlist: {types_in_netlist}")
-        logger.info(f"components_in_netlist: {comps_in_netlist}")
-
-    # ================================================================
-    # check for required components that are missing from the netlist
-    # ================================================================
-    if len(extra_components) > 0:
-        no_specifer_str = ", and without specifiers" if IS_SPICE else ""
-        extra_components_str = ", ".join(
-            (
-                f"`{prefix}{' with kind keyword: ' + ', '.join(kind) if kind else ' without kind keyword.'}"
-                f"{' with specifiers: ' + ', '.join(specifiers) if specifiers else no_specifer_str}`"
-            )
-            for prefix, kind, specifiers in extra_components
-        )
+    missing = [sample for sample in requirement.required if sample.key() not in used_keys]
+    if missing:
         errors.append(
-            f"Netlist can not contain components that are not in the specified subset, "
-            f"these components are not allowed: {extra_components_str}."
+            "Netlist is missing required components; use each of these at least once:\n"
+            + "\n".join(f"- {sample.describe()}" for sample in missing)
+        )
+
+    extra = [sample for sample in used if sample.key() not in allowed_keys]
+    if extra:
+        errors.append(
+            "Netlist uses components that are not allowed; remove them or replace them "
+            "with allowed ones:\n" + "\n".join(f"- {sample.describe()}" for sample in extra)
         )
 
     (hanging_nodes_before_drop, hanging_nodes_after_drop, hanging_nodes_from_dropping) = hanging_nodes(
         parsed_netlist
     )
-
-    if logger:
-        logger.info(f"hanging_nodes_before_drop: {hanging_nodes_before_drop}")
-        logger.info(f"hanging_nodes_after_drop: {hanging_nodes_after_drop}")
 
     # ================================================================
     # check for hanging nodes after dropping unsupported connections due to skin limits
@@ -215,6 +199,27 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
         errors.append(msg)
 
     # ================================================================
+    # the reverse case: a node whose ONLY connection is a hidden (dropped)
+    # port, e.g. an E/G/S control pin wired to nothing else. After the drop
+    # it has no connection at all, so the check above misses it, but it is
+    # still a floating pin of the netlist (and a singular matrix in ngspice).
+    # ================================================================
+    hidden_only = hanging_nodes_before_drop - hanging_nodes_after_drop
+    if hidden_only:
+        pins = [
+            f"{node} (hidden pin {pid} of {comp_name})"
+            for node in sorted(hidden_only)
+            for comp_name, comp_data in parsed_netlist.items()
+            for pid, conn in comp_data["connections"].items()
+            if conn["node_name"] == node
+        ]
+        errors.append(
+            f"Netlist has {len(hidden_only)} node(s) connected only to a hidden pin: {', '.join(pins)}. "
+            "Hidden pins are not drawn but are still connected: connect each of these nodes to "
+            "another component too."
+        )
+
+    # ================================================================
     # check if circuit is a connected graph (i.e., no isolated subgraphs).
     # ================================================================
     is_connected, comp_groups = connected_component_groups(parsed_netlist)
@@ -225,5 +230,10 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
             f"isolated subgraphs: [{subgraphs_str}]. "
             "Connect all components electrically."
         )
+
+    if logger:
+        logger.info(f"component types in netlist: {[sample.key() for sample in used]}\n"
+                    f"hanging_nodes_before_drop: {hanging_nodes_before_drop}\n"
+                    f"hanging_nodes_after_drop: {hanging_nodes_after_drop}\n")
 
     return errors

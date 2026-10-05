@@ -33,9 +33,7 @@ def _selected_formats() -> tuple[str, ...]:
     if not requested:
         return NETLIST_FORMATS
     if requested not in NETLIST_FORMATS:
-        raise ValueError(
-            f"{_FORMAT_ENV} must be one of {NETLIST_FORMATS}, got '{requested}'"
-        )
+        raise ValueError(f"{_FORMAT_ENV} must be one of {NETLIST_FORMATS}, got '{requested}'")
     return (requested,)
 
 
@@ -90,6 +88,24 @@ def netlist_format():
 
     return NETLIST_FORMAT
 
+
+def requirements_for(netlist_text: str, num_components: int | None = None, required: bool = True):
+    """CircuitRequirements a netlist satisfies exactly: its own component
+    types, all required (or only allowed with required=False), and its own
+    component count unless given. Parsed with the currently loaded dialect,
+    so call it inside the test body, not at module import."""
+    import circuit_data_gen.parser.convert as convert
+    from circuit_data_gen.netlist_gen.sampling import CircuitRequirements, samples_in
+
+    parsed = convert._parse_netlist(netlist_text, strict=False, simulate=False)
+    samples = samples_in(parsed)
+    return CircuitRequirements(
+        num_components=len(parsed) if num_components is None else num_components,
+        required=list(samples) if required else [],
+        allowed=list(samples),
+    )
+
+
 # A minimal, fully-connected netlist: voltage source + divider into ground.
 # Value written without the 'dc' specifier so the fixture parses in BOTH
 # dialects (SPICE 'dc 5' interleaved form is not yet supported).
@@ -137,6 +153,21 @@ def skin_path() -> Path:
             "or change the config to point to a valid skin"
         )
     return p
+
+
+@pytest.fixture(scope="session")
+def ngspice() -> None:
+    """Skips unless a simulation can run with the pinned ngspice version
+    (simulate.NGSPICE_VERSION): the expected messages and pass rules are
+    those of that version."""
+    from circuit_data_gen.simulate import check_ngspice, ngspice_available
+
+    if not ngspice_available():
+        pytest.skip("PySpice not installed; `pip install -e .[sim]`")
+    try:
+        check_ngspice()
+    except RuntimeError as e:
+        pytest.skip(str(e))
 
 
 @pytest.fixture(scope="session")

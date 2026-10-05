@@ -1,11 +1,11 @@
 # Circuit Data Generation
 
-This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). The current generated circuits are not electrically simulated, the validation is purely structural, in that all components are connected and the graph is a single connected component.
+This repository contains a tool for generating circuit data: **netlists**, **rendered schematics** (SVG/PNG/JPG), and **annotations** (bounding boxes of components and labels, exact pin coordinates). By default the validation is structural: every netlist parses, renders, uses the requested components and forms one connected circuit. Optionally (`--simulate`), each netlist is also simulated with [ngspice](https://ngspice.sourceforge.io/) through [PySpice](https://github.com/PySpice-org/PySpice) and only kept when it has a DC operating point, so the dataset's netlists are electrically valid circuits.
 [An example dataset](https://github.com/Cab14bacc/spice-circuit-dataset.git).
 The pipeline is:
 
-1. Generate a random netlist using an LLM. The netlist is in either a Spice Netlist or a simplified [lcapy](https://github.com/mph-/lcapy) styled format (following `grammar.py` in lcapy), simplified as in supporting only a subset of components, and not reading lcapy hints (arguments after `;`). To see which components are supported, read the docstring in `circuit_data_gen/config/spice_convert_config.py` for the supported Spice grammar, and `default_convert_config.py` for the lcapy grammar.
-2. Validate the candidate with a smoke test: the netlist must parse, render, contain the required components, and form a single electrically-connected graph. Invalid candidates are fed back to the LLM with the error messages for regeneration.
+1. Generate a random netlist using an LLM. The netlist is in either a [Spice](https://ngspice.sourceforge.io/docs/ngspice-manual.pdf) Netlist or a simplified [lcapy](https://github.com/mph-/lcapy) styled format (following `grammar.py` in lcapy), simplified as in supporting only a subset of components, and not reading lcapy hints (arguments after `;`). To see which components are supported, read the docstring in `circuit_data_gen/config/spice_convert_config.py` for the supported Spice grammar, and `default_convert_config.py` for the lcapy grammar.
+2. Validate the candidate with a smoke test: the netlist must parse, render, contain the required components, and form a single electrically-connected graph. With `--simulate`, it must also pass strict SPICE parsing and reach a DC operating point in ngspice. Invalid candidates are fed back to the LLM with the error messages for regeneration.
 3. Render the validated netlist to a schematic using our [netlistsvg fork](https://github.com/Cab14bacc/netlistsvg). netlistsvg lays out the netlist with ELK (a multipurpose graph layout algorithm) and draws components from a **skin file** (SVG). The default skin is `dataset/skins/skin.svg`, built by `circuit_data_gen/build_skin.py`. Read more about skins in [docs/SKIN_STRUCTURE.md](docs/SKIN_STRUCTURE.md).
 4. Emit structured **annotations** alongside the render: component bounding boxes, nested label (ref/value) boxes, and exact pin coordinates — all in output-image coordinates.
 
@@ -43,6 +43,30 @@ cd ..
 
 This exposes the `cirdg` (circuit data generation) command.
 
+### Optional: simulation (`--simulate`)
+
+Simulation needs PySpice (the `sim` extra) and **ngspice 32**:
+
+```bash
+pip install -e ".[sim]"
+# Windows: download the ngspice 32 DLL into PySpice's own folder
+pyspice-post-installation --ngspice-version 32 --install-ngspice-dll
+# Linux / WSL / macOS: install the library into the active conda environment
+conda install -c conda-forge ngspice-lib=32
+```
+
+The version is pinned (`NGSPICE_VERSION` in `circuit_data_gen/simulate.py`) because ngspice's messages and fallbacks change between versions; 37+ adds a "transient op" convergence aid, for example. PySpice finds either install by itself: on Windows it loads its bundled DLL, and on Linux the conda environment's Python finds `libngspice.so` in the environment's `lib`. Without `--ngspice-version`, `pyspice-post-installation` installs ngspice 34, and reinstalling PySpice restores its default DLL, so rerun the command after upgrading PySpice. To use a library installed elsewhere, set `NGSPICE_LIBRARY_PATH` to the library file (on Windows also `SPICE_LIB_DIR` to its `share/ngspice` directory). `cirdg gen_data --simulate` loads ngspice at start-up and stops with these instructions when PySpice or ngspice 32 is missing.
+
+### Windows and WSL sharing one checkout
+
+`npm install` fetches a platform-specific binary for the PNG rasterizer (`@resvg/resvg-js`), so a `netlistsvg/node_modules` installed on Windows cannot render under WSL/Linux (and vice versa). Use a separate clone per OS, or install the Linux binary outside the shared folder and point Node at it:
+
+```bash
+# in WSL; use the version in netlistsvg/node_modules/@resvg/resvg-js/package.json
+npm install --prefix ~/.cache/cirdg-node @resvg/resvg-js-linux-x64-gnu@2.6.2
+export NODE_PATH=~/.cache/cirdg-node/node_modules
+```
+
 ### Environment Variables
 
 Create a `.env` file in the root directory (or export the variables). These are needed for the LLM that generates netlists. Any OpenAI-compatible endpoint works (we use LangChain's `ChatOpenAI`):
@@ -71,14 +95,30 @@ cirdg gen_data -n 20 --gen-seed myseed      # reproducible batch (seeded prompts
 cirdg gen_data -n 10 -cmin 8 -cmax 15       # component-count range
 cirdg gen_data -n 5 -o path/to/out -p myproj  # custom output root + project name
 cirdg gen_data -n 5 --strict                # strict SPICE parsing + strict system prompt (overrides config)
+cirdg gen_data -n 5 --simulate              # also require a DC operating point from ngspice (implies --strict)
+cirdg gen_data -n 5 --max-attempts 5        # LLM generations per session before a netlist is dropped
+cirdg gen_data -n 5 --persevere             # re-run sessions for failed netlists until all succeed
+cirdg gen_data -n 5 --no-rename             # keep seed-based file names (no global index)
 ```
 
 Each generation worker:
 
-- samples a random component-count target and a random subset of **required** component types (seeded by `--gen-seed`, so batches are reproducible),
-- asks the LLM for a netlist inside `<netlist>...</netlist>` tags,
-- smoke-tests it: parse → render → validate (min components, required components present, no hanging nodes, single connected graph),
-- on failure, feeds the error messages back to the LLM for regeneration.
+- samples an exact component count and a weighted set of component types (seeded by `--gen-seed`, so batches are reproducible): the types the netlist **must** use, the ones it **may** use, and nothing else (see `SAMPLING_CONFIG` in `config.py`),
+- asks the LLM for a netlist inside `<netlist0>...</netlist0>` tags,
+- smoke-tests it: parse → render → validate (exact component count, required types present, no disallowed types, no hanging nodes, single connected graph),
+- with `--simulate`, runs ngspice on netlists that passed: each simulation runs in its own process, with gmin and source stepping turned off, and must produce a DC operating point in which not every node is at 0 V,
+- on failure, feeds the error messages back to the LLM for regeneration, up to `--max-attempts` times.
+
+Output layout of a project:
+
+```text
+<project>/netlists/netlist_<global idx>_<gen seed>_<worker>_<idx>.net
+<project>/schematics/schematic_…png, yosys_…json
+<project>/annotations/annotation_…json, overlay_…png
+<project>/simulations/simulation_…json     # --simulate only: node voltages and branch currents
+```
+
+With `--no-rename` the `<global idx>_` part is left out. Without `--persevere` the global index follows completion order, so it can differ between runs with the same seed.
 
 Per-worker logs (Initial seed prompt, LLM responses, validation errors) are written to `circuit_data_gen/debug/netlist_gen_logs/<project_name>/debug_<gen_seed>_<worker>.log` (the initial system prompt is not logged).
 
@@ -148,7 +188,8 @@ All tunable parameters live in `circuit_data_gen/configs/config.py`. All path co
 - **`netlistsvg`** — everything the renderer needs: `BIN_PATH` (node entry point), `SKIN_PATH` (shared skin), label font metrics (`FONT_SIZE`, `FONT_CHAR_WIDTH`, `FONT_CHAR_HEIGHT`, `FONT_CAP_HEIGHT`, `FONT_DESC_SHIFT`), `WIRE_STROKE_WIDTH`, and `ANNOTATION.CLASSES_PATH`.
 - **`cli`** — default output dirs for each command.
 - **`convert`** — path to `TO_SKIN_CONFIG` (the per-component skin mapping: netlist prefix → skin alias, ports, value specs, drop rules. Whether the netlist is in lcapy or Spice format is specified in `config.py`). `STRICT_PARSING` (SPICE only) makes the parser reject anything ngspice would misread or refuse: braced node tokens (`{n1}`), directives other than `.model`/`.param`/`.subckt`/`.ends`/`.end`, undefined symbols in `{expressions}`, and references to elements, inductors, subcircuits or models that don't exist. All problems are reported in one error.
-- **`simulation`** — `ENABLED` turns on the ngspice simulation step for `cirdg gen_data` (the step itself is not implemented yet). `gen_data` parses strictly when `convert.STRICT_PARSING` **or** `simulation.ENABLED` is set; `cirdg render`/`convert` stay lenient unless `STRICT_PARSING` is set, so external netlists (with `.tran`, `.lib`, ...) still render.
+- **`simulation`** — `ENABLED` is the default of `cirdg gen_data --simulate/--no-simulate`. When simulating, every netlist that passes the other checks is run through ngspice (in its own process, killed after `TIMEOUT_S`) and must reach a DC operating point without convergence aids; otherwise the translated ngspice errors are fed back to the LLM. Only warnings matching `IGNORED_WARNINGS` are tolerated. With `SAVE_RESULTS`, each valid netlist's operating point is written to `simulations/simulation_<id>.json`. Simulating implies strict parsing, rejects components ngspice cannot simulate, and uses the simulation system prompt; `cirdg render`/`convert` stay lenient unless `convert.STRICT_PARSING` is set, so external netlists (with `.tran`, `.lib`, ...) still render.
+- **`sampling`** — how each netlist's component types are drawn: `WEIGHTING` (`by_skin` or `uniform`) splits each element prefix's weight among its variants, `REQUIRED_FRACTION` is the share of the drawn types that must appear (the rest may).
 
 Font metrics and stroke widths are **emitted into the skin** as `<s:properties ...>` attributes by `build_skin.py`; netlistsvg reads them from there at render time. The skin is the single runtime source of truth — after changing `config.py`, rebuild with `cirdg build_skin --all` or the new values won't take effect.
 
@@ -160,12 +201,14 @@ Font metrics and stroke widths are **emitted into the skin** as `<s:properties .
     │   ├── build_skin.py                      # Skin svg builder using latex package CircuitTikz
     │   ├── validate.py                        # hanging-node + connectivity checks
     │   ├── render_netlist.py                  # A python interface to the netlistsvg
+    │   ├── simulate.py                        # ngspice simulation step (DC operating point)
     │   ├── parser/                            # netlist parser
     │   │   ├── convert.py                     # netlist -> yosys JSON (parsing pipeline)
     │   │   ├── dialect.py                     # lcapy/spice dialect selection + shared constants
     │   │   ├── tokens.py                      # tokenizer + lexical repairs of SPICE args
     │   │   ├── strict.py                      # strict SPICE parsing checks
     │   │   ├── grammar.py                     # config -> grammar listing (LLM docs, parse errors)
+    │   │   ├── export.py                      # netlist -> ngspice input deck
     │   │   └── errors.py                      # NetlistError, SpecError
     │   ├── convert_old.py                     # Spice netlist -> yosys JSON (not guranteed to work, kept for reference)
     │   ├── cli.py                             # Interface to package, typer CLI (defines the cirdg command)
@@ -180,8 +223,10 @@ Font metrics and stroke widths are **emitted into the skin** as `<s:properties .
     │   │   └── app.log
     │   └── netlist_gen/                       # LLM generation pipeline
     │       ├── prompts/agent_system_prompt.md # supported components + netlist grammar
-    │       ├── setup.py                       # LangGraph generate -> validate loop
-    │       └── parallel.py                    # batch workers + requirements sampling
+    │       ├── setup.py                       # LangGraph generate -> validate (-> simulate) loop
+    │       ├── sampling.py                    # component-type pool, weights, per-netlist requirements
+    │       ├── helper.py                      # seed prompt
+    │       └── parallel.py                    # batch workers
     ├── tests/                                 # pytest suite (one file per pipeline stage)
     ├── dataset/                               # default dataset dir (configurable)
     │   ├── classes.txt                        # shared annotation-class registry
@@ -233,6 +278,8 @@ npx tsc
 python -m pytest tests/
 ```
 
+The simulation tests (`tests/test_simulate.py`, and the simulation cases in `tests/test_netlist_gen_graph.py`) run real ngspice and are skipped when PySpice or the ngspice library is missing. Rendering tests need the skin (`cirdg build_skin --all --write-classes`).
+
 ### Linter
 
 ```bash
@@ -244,7 +291,7 @@ ruff format
 
 ### Other notes
 
-- Some component ports are **dropped** when the skin can't render them (e.g. a VCVS's control inputs on a bipole symbol). Dropped connections don't count for connectivity/hanging checks — mirroring what actually appears in the schematic.
+- Some component ports are **dropped** (hidden) when the skin can't render them (e.g. a VCVS's control inputs on a bipole symbol). Dropped connections don't count for the connectivity check, which mirrors what appears in the schematic, but a node connected *only* to hidden pins is still reported as floating.
 - After changing any `netlistsvg` config value, rebuild the skin (`cirdg build_skin --all`); after changing `netlistsvg/lib/*.ts`, rebuild the JS (`npx tsc`).
 
 ## Example Output

@@ -14,179 +14,117 @@ SPICE netlists use this syntax:
 - **Function values:** Time-domain source shapes are single tokens written without spaces before the parenthesis: `SIN(0 1 1k)`, `PULSE(0 5 100u 10n 10n 500u 1m)`, `PWL(0,0 1m,5)`.
 
 ## 2. Supported Prefixes and Arguments
+
+Each netlist line defines exactly ONE element: `<Name> <args...>`. The name is the element letter plus an instance id (`R1`, `Vsrc`, `Mload`), and the element letter selects the rules below. Lines are case-insensitive, continuation lines start with `+`, and comments start with `*` or `;`.
+
 Some general rules are:
 
-- parameters that starts with 'N' are node names.
-- parameters enclosed in square brackets are optional.
-- parameters that are specified as [param=something] are optional and are required to be specified in the form of a keyword argument, e.g., [Value=1k] or [Phase=0].
-- parameters that are specified as [param] are optional and are positional arguments, specified without key.
-- parameters without square brackets are required and are positional arguments, specified without key.
-- kind keyword: a bare word (no value, no `=`) that selects WHICH VARIANT of the component the line is — i.e. which symbol is drawn or the state of the element. It takes no operands and is written right AFTER the model name (`D1 a b Dmod off`, `S1 a b c 0 Smod ON`). In this dialect the on-line kind keywords are: `off` (start the device in its off state for the DC solution — same symbol), and `ON` / `OFF` for switches (S with model SW, W with model CSW: ON = closed, OFF = open, omitted = default open switch). Omitting the kind keyword selects the default variant. For model-typed elements (D/Q/J/M/Z/R/C/L) the variant is instead chosen by the .model card's TYPE (NPN vs PNP, NMOS vs PMOS, NJF vs PJF, D, R, C, L, ...), which acts as an implicit kind keyword.
-- specifier: a different way of selecting a variant, present ONLY in 'V' and 'I' components. A specifier is a bare keyword that OPENS a mode segment and consumes a FIXED number of operands directly after it. Only two exist: `DC` and `AC`. `DC <value>` is transparent — `V1 a b DC 5` parses exactly like `V1 a b 5`. `AC <mag> [<phase>]` turns the source into an AC source (drawn with the AC symbol); bare `AC` with no operands means magnitude 1 (`V2 in 0 AC` == `V2 in 0 AC 1`). A V/I line containing `AC` is an AC source, one without is a DC source, and both segments may coexist (`V3 a b 5 AC 1m` = DC 5 plus AC magnitude 1m). Note: `SIN(...)`, `PULSE(...)`, `PWL(...)` are NOT specifiers — they are function-call values, single tokens that sit where a plain value would.
-- Hidden nodes: some node arguments (marked "hidden" in the rules below) are written in the line and electrically connected, but the drawn symbol has no pin for them. Write them as plain node names like any other node (never in curly braces).
-- Reserved bare words — never use them as net names: `DC`, `AC`, `off`, `ON`, `OFF` (they would be misparsed as kind keywords or specifiers).
+- Parameters that start with `N` are node names: write the net's real name there (`in`, `out`, `vdd`, `0`). Node `0` (also `GND` / `gnd`) is ground.
+- Parameters in angle brackets, like `<value>`, are values: write the number or expression itself (`1k`, `5`, `2m`, `SIN(0 1m 100)`), never the placeholder word.
+- Parameters in square brackets are optional: the whole bracketed group may be left out.
+- `Key=<value>` parameters are keyword arguments, written exactly in that form (`Q=2n`, `Z0=50`, `V=5`). Unbracketed they are required, as `[Key=<value>]` optional.
+- `a|b` means: write exactly one of the alternatives.
+- `mname` is a model name. It comes where its rule places it: after all nodes and values, except for C and L, where it comes right after the nodes, before the value (`C1 a b CM 1u`, never `C1 a b 1u CM`). A `.model mname TYPE` card declaring it is REQUIRED in the same netlist. The card's TYPE picks the variant (NPN vs PNP, NMOS vs PMOS, ...), as given per rule. The supported TYPEs are: D, NPN, PNP, LPNP, NJF, PJF, NMOS, PMOS, NMF, PMF, SW, CSW, R, RES, C, L, LTRA, TXL. A TYPE outside this list (URC, LTspice's VDMOS / CAP / IND, ...) has no rule, and a model name without a `.model` card cannot be resolved: both make the line fail.
+- Kind keyword: a bare word with no value that selects the variant of the line, written right AFTER the model name (`D1 a b Dmod off`, `S1 a b c 0 Smod ON`). `off` starts the device off for the DC solution (same symbol); `ON` / `OFF` set a switch closed / open (omitted = open).
+- Specifier (V and I sources only): a bare keyword that opens a segment with a fixed number of operands. `DC <value>` is transparent (`V1 a b DC 5` is the same as `V1 a b 5`). `AC <mag> [<phase>]` makes the source an AC source, drawn with the AC symbol; a bare `AC` means `AC 1`. `SIN(...)`, `PULSE(...)` and `PWL(...)` are not specifiers but values, each a single token.
+- Hidden nodes (marked "hidden" below) are written in the line and electrically connected, but the symbol has no pin for them, so they are not drawn. Write them as plain node names (`0` or a real net), never in curly braces.
+- Reserved words, never to be used as node names: `DC`, `AC`, `off`, `ON`, `OFF`.
 
-Each netlist line defines exactly ONE element:
-    <Name> <args...>
-Name = element letter + instance id (R1, Vsrc, Mload); the element letter
-selects the rule below. Node "0" (also GND / gnd) is ground — all ground
-nodes are merged into one. Lines are case-insensitive.
+The following is a list of all the supported prefixes and their arguments; each line defines a rule. The meaning of every parameter is given right after the list.
 
-TOKEN NOTATION — what each kind of token in the rules below means:
-  Ncode      NODE placeholder: write the net's real name (in, out, vdd, 0).
-             N+ is the main positive terminal and N- the negative one;
-             element-specific codes are named per rule below (NC collector,
-             NB base, NE emitter, ND drain, NG gate, NS source, NP/N switch
-             terminals). Real net names are any word.
-             Some nodes are HIDDEN (named in the rule's comment): they are
-             STILL REQUIRED in the line and electrically connected, but the
-             symbol has no pin for them, so they are NOT drawn. Used for:
-             Q substrate NS, M bulk NB, E/G/S control pairs NC+ NC-, and
-             the far-end pair NP2+ NP2- of transmission lines. Write 0 or a
-             real net, as a plain name (no curly braces).
-  <value>    REQUIRED value token: write the number/expression itself
-             (1k, 5, 2m, SIN(0 1m 100)), never the placeholder word.
-  [ ... ]    OPTIONAL: the whole bracketed group may be omitted.
-  Key=val    KEYWORD argument, written exactly in that form (Q=2n, Z0=50,
-             TD=10n, cur='...', V='...'). Unbracketed Key=val = required,
-             bracketed [Key=val] = optional.
-  bare kw    LITERAL keyword written verbatim: off (device starts off),
-             ON / OFF (switch state), DC / AC (source mode specifiers).
-  mname      MODEL name: written after all nodes and values of a
-             model-typed element (only off / ON / OFF may follow it),
-             and a .model card declaring it is REQUIRED in the same
-             netlist. The card's TYPE selects the symbol; the COMPLETE
-             set of supported TYPEs is: D (D), NPN / PNP / LPNP (Q),
-             NJF / PJF (J), NMOS / PMOS (M), NMF / PMF (Z), SW (S),
-             CSW (W), R / RES (R), C (C), L (L), LTRA (O), TXL (Y) —
-             element letter in parentheses. A model TYPE outside this set
-             (URC, LTspice's VDMOS / CAP / IND, ...) has NO spec, and a
-             model name without a .model card cannot be resolved: both
-             make the line fail. Only use the listed TYPEs.
-  Vcontrol   Controlling-source REFERENCE: the NAME of a V element defined
-             elsewhere in the netlist (e.g. V1) — not a node, not drawn.
+```text
+format:Rname N+ N- <r>                                     , component:Resistor
+format:Rname N+ N- [<r>] mname                             , component:Resistor with a model card, TYPE: R | RES (r defaults to 1m)
+format:Cname N+ N- <C>                                     , component:Capacitor
+format:Cname N+ N- Q=<charge>                              , component:Capacitor given by its charge
+format:Cname N+ N- mname [<CAP>]                           , component:Capacitor with a model card, TYPE: C (CAP defaults to 0)
+format:Lname N+ N- <L>                                     , component:Inductor
+format:Lname N+ N- mname [<L>]                             , component:Inductor with a model card, TYPE: L (L defaults to 0)
+format:Vname N+ N- [<value>|DC <value>]                    , component:DC voltage source
+format:Vname N+ N- [<value>|DC <value>] AC <mag> [<phase>] , component:AC voltage source
+format:Iname N+ N- [<value>|DC <value>]                    , component:DC current source
+format:Iname N+ N- [<value>|DC <value>] AC <mag> [<phase>] , component:AC current source
+format:Ename N+ N- NC+ NC- <gain>                          , component:Voltage controlled voltage source (NC+ NC- hidden)
+format:Ename N+ N- vol='<expr>'                            , component:Non-linear voltage source
+format:Gname N+ N- NC+ NC- <gm>                            , component:Voltage controlled current source (NC+ NC- hidden)
+format:Gname N+ N- cur='<expr>'                            , component:Non-linear current source
+format:Fname N+ N- Vcontrol <gain>                         , component:Current controlled current source
+format:Hname N+ N- Vcontrol <resistance>                   , component:Current controlled voltage source
+format:Bname N+ N- V=<expr>                                , component:Behavioral voltage source
+format:Bname N+ N- I=<expr>                                , component:Behavioral current source
+format:Dname N+ N- mname [off]                             , component:Diode, TYPE: D
+format:Qname NC NB NE [NS] mname [off]                     , component:NPN transistor, TYPE: NPN (NS hidden)
+format:Qname NC NB NE [NS] mname [off]                     , component:PNP transistor, TYPE: PNP (NS hidden)
+format:Qname NC NB NE [NS] mname [off]                     , component:Lateral PNP transistor, TYPE: LPNP (NS hidden)
+format:Jname ND NG NS mname [off]                          , component:N channel JFET, TYPE: NJF
+format:Jname ND NG NS mname [off]                          , component:P channel JFET, TYPE: PJF
+format:Mname ND NG NS NB mname [off]                       , component:N channel MOSFET, TYPE: NMOS (NB hidden)
+format:Mname ND NG NS NB mname [off]                       , component:P channel MOSFET, TYPE: PMOS (NB hidden)
+format:Zname ND NG NS mname [off]                          , component:N channel MESFET, TYPE: NMF
+format:Zname ND NG NS mname [off]                          , component:P channel MESFET, TYPE: PMF
+format:Sname NP N NC+ NC- mname                            , component:Voltage controlled switch, open, TYPE: SW (NC+ NC- hidden)
+format:Sname NP N NC+ NC- mname ON                         , component:Voltage controlled switch, closed, TYPE: SW (NC+ NC- hidden)
+format:Sname NP N NC+ NC- mname OFF                        , component:Voltage controlled switch, open, TYPE: SW (NC+ NC- hidden)
+format:Wname N+ N- Vcontrol mname [ON|OFF]                 , component:Current controlled switch, TYPE: CSW
+format:Tname N+ N- NP2+ NP2- Z0=<value> [TD=<value>] [F=<freq> [NL=<len>]] [IC=<v1,i1,v2,i2>] , component:Lossless transmission line (NP2+ NP2- hidden)
+format:Oname N+ N- NP2+ NP2- mname                         , component:Lossy transmission line, TYPE: LTRA (NP2+ NP2- hidden)
+format:Yname N+ N- NP2+ NP2- mname [LEN=<len>]             , component:Lossy transmission line (KSPICE), TYPE: TXL (NP2+ NP2- hidden)
+format:Xname N1 ... Nn SUBNAM [param=<value> ...]          , component:Subcircuit instance (drawn as a generic box)
+format:Aname N1 ... Nn mname                               , component:XSPICE code model (drawn as a generic box)
+format:Nname N1 ... Nn mname                               , component:OSDI (Verilog-A) device (drawn as a generic box)
+format:Pname N1 ... Nn mname                               , component:Coupled multiconductor line (drawn as a generic box)
+format:Uname N1 ... Nn mname                               , component:Uniform RC line / digital device (drawn as a generic box)
+```
 
-KIND KEYWORDS vs SPECIFIERS — two classes of bare literal words, not
-interchangeable:
-  kind keyword  ONE bare word, NO operands, written right after mname;
-                selects which VARIANT of the element the line is
-                (symbol or state):
-                off (device starts off, same symbol), ON / OFF (switch
-                state: ON closed, OFF open, omitted = default open).
-                Omitting it selects the default variant. For model-typed
-                elements the variant comes from the .model TYPE instead
-                (NPN vs PNP, NMOS vs PMOS, ...) — the model type acts as
-                an implicit kind keyword.
-  specifier     V/I SOURCES ONLY: a bare keyword that OPENS a mode
-                segment with a fixed operand arity, expanded into
-                keyword slots before matching:
-                  DC <value>           transparent — binds like a bare value
-                  AC <mag> [<phase>]   makes the source an AC source
-                                       (different symbol); bare AC == AC 1
-                The AC specifier doubles as DC-vs-AC source
-                discrimination: the DC-source rule treats a bare AC
-                token as foreign and rejects it, the AC-source rule
-                requires it. DC and AC segments may coexist on one line
-                (V3 a b 5 AC 1m = DC 5 with AC magnitude 1m).
-Reserved spellings — never use as net names: DC, AC, off, ON, OFF.
-================================ start of list ===========================================
+Notes on the rules:
 
-Passives (plain value forms; semiconductor forms additionally end in mname):
-    Rname N+ N- <r>                       ;resistance; e.g. R1 in out 1k
-    Cname N+ N- <C>                       ;capacitance; e.g. C1 in out 1u
-    Lname N+ N- <L>                       ;inductance; e.g. L1 in out 10u
-    (semiconductor forms — referenced via a .model card, mname LAST):
-    Rname N+ N- [<r>] mname               ;model: R/RES; r defaults 1e-3
-    Cname N+ N- [<CAP>] mname             ;model: C; CAP defaults 0
-    Lname N+ N- [<L>] mname               ;model: L; L defaults 0
-    (capacitor specified by charge instead of capacitance):
-    Cname N+ N- Q=<charge>                ;e.g. C1 in out Q=2n
+- **Source values:** `[<value>|DC <value>]` is AT MOST ONE of a bare value or `DC` with its value; they fill the same slot, so never write both (`Vname N+ N- 5 DC 7` is invalid). The group may be left out entirely: `Vname N+ N-` means no value. It must come BEFORE the `AC` segment; extra `Key=<value>` parameters may follow it. Function values are single tokens written without a space before the parenthesis: `SIN(0 1m 1k)`, `PULSE(0 5 100u 10n 10n 500u 1m)`, `PWL(0,0 1m,5)`.
+- **Transmission line models:** the `.model` cards of `O` and `Y` REQUIRE the line parameters (per-unit-length R, L, G, C and the line length); ngspice has no defaults, so write them all:
 
-Independent sources (the AC specifier decides DC vs AC source):
-    Vname N+ N- [<value>|DC <value>]      ;DC source; e.g. V1 in 0 5 / V2 in 0 DC 5
-    Vname N+ N- [<value>|DC <value>] AC <mag> [<phase>]
-                                          ;AC source;
-                                          e.g. V3 in 0 AC 1  /  V4 a b 5 AC 1m
-    Iname N+ N- [<value>|DC <value>]      ;DC source; e.g. I1 vdd 0 2m
-    Iname N+ N- [<value>|DC <value>] AC <mag> [<phase>]
-                                          ;AC source
-    - `[<value>|DC <value>]` = pick AT MOST ONE: a bare value, or the DC
-      specifier with its value — they bind the SAME slot, never write both
-      (Vname N+ N- 5 DC 7 is invalid). The whole group may be omitted:
-      `Vname N+ N-` and a trailing bare `DC` are valid and mean no value.
-    - a bare AC segment (AC, then magnitude, then optional phase) makes the
-      element an AC source; a line without AC is a DC source. Bare AC with
-      no operands means magnitude 1. The value/DC group must come BEFORE
-      the AC segment; extra Key=val parameters may follow it.
-    - DC is transparent: `DC 5` binds exactly like a bare `5`.
-    - function values are single tokens: SIN(0 1m 1k) PULSE(0 5 ...)
-      PWL(0,0 1m,5)
+  ```text
+  .model mname LTRA R=<value> L=<value> C=<value> LEN=<value> G=0
+  .model mname TXL R=<value> L=<value> G=<value> C=<value> LENGTH=<value>
+  ```
 
-Controlled sources (control terminals are written even though not drawn):
-    Ename N+ N- NC+ NC- <gain>            ;VCVS (voltage_gain); NC+ NC- hidden
-    Ename N+ N- vol='<expr>'              ;non-linear V source (2 nodes only)
-    Gname N+ N- NC+ NC- <gm>              ;VCCS (transconductance); NC+ NC- hidden
-    Gname N+ N- cur='<expr>'              ;non-linear I source (2 nodes only)
-    Fname N+ N- Vcontrol <gain>           ;CCCS (current_gain)
-    Hname N+ N- Vcontrol <resistance>     ;CCVS (transresistance)
+  LTRA: `G` MUST be 0 (only RLC, RC and LC lines are implemented; write `L=0` for an RC line, `R=0` for an LC line). TXL: the length belongs in the CARD; `LEN=` on the `Y` line only overrides it.
+- **Subcircuits:** `SUBNAM` is the last non-keyword token, and a `.subckt SUBNAM N1 ... Nn` ... `.ends` block defining it is REQUIRED in the netlist. Its port names label the box's pins; the body is not drawn, but it follows the same rules as the netlist.
+- **Other generic elements** (`A`, `N`, `P`, `U`): the pin count depends on a definition, so they are drawn as a generic box with numbered pins; the last non-keyword token is the definition name.
+- **Directives** (not drawn). ONLY these may appear: `.model mname TYPE(param=val ...)` (required for every model name), `.param name=value [name2=value2 ...]` (names used in `{expressions}`), `.subckt SUBNAM N1 ... Nn` ... `.ends`, and an optional final `.end`. Every other directive is REJECTED, in particular analyses (`.op`, `.tran`, `.ac`, `.dc`; the validator adds its own), file access (`.lib`, `.include`) and `.control` ... `.endc` blocks.
 
-Behavioral sources (exactly one of V= / I=; the keyword selects the symbol):
-    Bname N+ N- V=<expr>                  ;draws as a voltage source
-    Bname N+ N- I=<expr>                  ;draws as a current source
+Here are all the parameters used in the rules above, and their meanings:
 
-Model-typed elements (mname follows the nodes and matches a .model card;
-optional `off` after mname starts the device off; the card's TYPE
-picks the symbol variant — accepted TYPEs listed per rule):
-    Dname N+ N- mname [off]               ;TYPE: D
-    Qname NC NB NE [NS] mname [off]       ;NS = substrate node, hidden;
-                                          ;TYPE: NPN | PNP | LPNP
-    Jname ND NG NS mname [off]            ;TYPE: NJF | PJF
-    Mname ND NG NS NB mname [off]         ;NB = bulk node, hidden;
-                                          ;TYPE: NMOS | PMOS
-    Zname ND NG NS mname [off]            ;MESFET; TYPE: NMF | PMF
-
-Switches (model TYPE SW for S, CSW for W; ON or OFF selects the state,
-omitted = default open switch):
-    Sname NP N NC+ NC- mname [ON|OFF]     voltage-controlled; NP/N = switch
-                                          terminals, NC+ NC- = control
-                                          pair, hidden
-    Wname N+ N- Vcontrol mname [ON|OFF]   current-controlled
-
-Transmission lines (the far-end pair NP2+ NP2- is hidden: still written,
-not drawn — the bipole symbol has one pin pair):
-    Tname N+ N- NP2+ NP2- Z0=<val> [TD=<val>] [F=<freq> [NL=<len>]]
-                                          [IC=<v1,i1,v2,i2>]
-    Oname N+ N- NP2+ NP2- mname           lossy line (LTRA model)
-    Yname N+ N- NP2+ NP2- mname [LEN=<len>]   KSPICE TXL
-    Their .model cards REQUIRE the line parameters (per-unit-length R, L,
-    G, C and the line length); ngspice has no defaults, write them all:
-    .model mname LTRA R=<value> L=<value> C=<value> LEN=<value> G=0
-    .model mname TXL R=<value> L=<value> G=<value> C=<value> LENGTH=<value>
-    LTRA: G MUST be 0 (only RLC / RC / LC lines are implemented; write
-    L=0 for an RC line, R=0 for an LC line). TXL: the length belongs in
-    the CARD, LEN= on the Y line only overrides it.
-
-Generic elements (pin count depends on a definition; drawn as a generic box
-with numbered pins; the last non-keyword token is the definition name):
-    Xname N1 ... Nn SUBNAM [param=value ...]   subcircuit instance; a
-                                          .subckt SUBNAM N1 ... Nn ... .ends
-                                          block defining it is REQUIRED
-    Aname ...                             XSPICE code model
-    Nname ...                             OSDI (Verilog-A) device
-    Pname ...                             coupled multiconductor line (CPL)
-    Uname ...                             uniform RC line / digital device
-
-Directives — ONLY these may appear, none of them is drawn:
-    .model mname TYPE(param=val ...)      REQUIRED for every model-typed
-                                          element reference
-    .param name=value [name2=value2 ...]  defines names used in {expressions}
-    .subckt SUBNAM N1 ... Nn / .ends      subcircuit definition for X lines
-    .end                                  optional last line
-Every other directive is REJECTED, in particular analyses (.op, .tran, .ac,
-.dc — the validator adds its own), file access (.lib, .include) and
-.control ... .endc blocks. Do not write them.
-Continuation lines start with '+'; comments start with '*' or ';'.
-=================================== end of list ========================================
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `N+`, `N-` | node | Positive / negative terminal |
+| `NC+`, `NC-` | node | Positive / negative control node (hidden) |
+| `NC`, `NB`, `NE` | node | Collector, base, emitter (Q) |
+| `NS` | node | Source (J, M, Z); substrate (Q, hidden) |
+| `ND`, `NG` | node | Drain, gate |
+| `NB` | node | Bulk (M, hidden) |
+| `NP`, `N` | node | Switch terminals (S) |
+| `NP2+`, `NP2-` | node | Far-end terminal pair of a transmission line (hidden) |
+| `N1 ... Nn` | node | Pins, in the order of the definition's ports |
+| `<r>` | value | Resistance |
+| `<C>`, `<CAP>` | value | Capacitance |
+| `<L>` | value | Inductance |
+| `<charge>` | value | Capacitor charge |
+| `<value>` | value | DC value of a source, or the value of a keyword argument |
+| `<mag>`, `<phase>` | value | AC magnitude, AC phase (degrees) |
+| `<gain>` | value | Voltage gain (E), current gain (F) |
+| `<gm>` | value | Transconductance (G) |
+| `<resistance>` | value | Transresistance (H) |
+| `<expr>` | value | Expression (e.g. `2*v(a)`, `{R0*2}`) |
+| `Z0`, `TD` | keyword | Characteristic impedance, delay |
+| `F`, `NL` | keyword | Frequency, normalized length at `F` |
+| `IC` | keyword | Initial conditions `v1,i1,v2,i2` |
+| `LEN` | keyword | Line length, overriding the model card's |
+| `Q`, `V`, `I`, `vol`, `cur` | keyword | Charge; behavioral voltage / current expression; non-linear source expression |
+| `mname` | name | Model name, declared by a `.model` card |
+| `Vcontrol` | name | Name of a V element of the netlist (e.g. `V1`); not a node, not drawn |
+| `SUBNAM` | name | Subcircuit name, declared by `.subckt` |
+| `param=<value>` | keyword | Subcircuit parameter |
+| `off`, `ON`, `OFF` | kind keyword | Device starts off; switch closed; switch open |
+| `DC`, `AC` | specifier | Source mode segments |
 
 ## 3. Ground Component
 
@@ -251,6 +189,14 @@ component, and thus those ports are dropped in the rendering process, which caus
 
 Those that are listed in the first part and not the second part of the message are hanging in the netlist itself.
 
+The reverse also happens: a node whose ONLY connection is a hidden pin (for example the control pin of an E, G or S element, wired to a node nothing else uses):
+
+```
+Netlist has 1 node(s) connected only to a hidden pin: M1 (hidden pin c+ of G1). Hidden pins are not drawn but are still connected: connect each of these nodes to another component too.
+```
+
+A hidden pin is still an electrical connection, so the node floats; connect it to another component (or write an existing node, such as 0, in that position).
+
 4. Disconnected Subgraph Errors:
 You might receive something like this:
 
@@ -261,30 +207,35 @@ Then it means that the netlist has multiple isolated subgraphs, and you will hav
 
 Also, the node dropping describe in "3. Hanging Node Errors:" can also cause the netlist to become disconnected in that we have isolated subgraphs, look out for this too.
 
-5. Using Extra Components:
+5. Required and Allowed Components:
+Each netlist comes with components it MUST use (each at least once) and components it MAY use; nothing else is allowed. You might receive something like this:
 
 ```
-Netlist can not contain components that are not in the specified subset, these components are not allowed: `R without kind keyword, and without specifiers.`, `S without kind keyword, and without specifiers.`
+Netlist is missing required components; use each of these at least once:
+- `Q` with a `.model` card of TYPE PNP, without a kind keyword; written as `Qname NC NB NE mname` or `Qname NC NB NE NS mname`
+Netlist uses components that are not allowed; remove them or replace them with allowed ones:
+- `R` without a model name; written as `Rname N+ N- <r>`
 ```
 
-R is the prefix for a resistor, and this says that the netlist is using a resistor component without a kind keyword, which is not in the allowed subset. Though R doesn't have a variant where it has a kind keyword, so this is just saying that the netlist is using a resistor component. The fix is to remove the resistor component from the netlist, or replace it with a component that is allowed in the subset.
-
-The second message is saying that the netlist is using a switch component without a kind keyword, which is again not in the allowed subset. The fix is to remove or replace it with a allowed component.
+The first message lists required components the netlist does not contain: add at least one of each, written in one of the forms shown (here a Q line whose `.model` card has TYPE PNP). The second lists components that are neither required nor allowed: remove them, or replace them with allowed components, keeping the exact component count. A component's type is its prefix together with its model TYPE, kind keyword and specifiers, so a `Q` with an NPN model does not count as a `Q` with a PNP model, and an `R` written with a model name is a different type from a plain `R`.
 
 6. Strict Parsing Errors:
 The netlist must be valid ngspice input. All problems of this kind are reported together, one per line:
 
 ```
-Strict parsing found 6 problem(s):
+Strict parsing found 9 problem(s):
 - Directive '.tran 1u 1m' is not allowed; remove it. Only .model, .param, .subckt/.ends and .end may appear (the validator adds its own analysis).
 - .model Om LTRA: G must be 0.
 - Component G1: node {n1} is written in curly braces; write it as n1. Braces are not allowed on node names.
 - Component D1: 'off' must come after the model name 'Dmod'; write `... Dmod off`.
 - Component R2: value 'R_2' uses undefined symbol(s) R_2; define them with .param (e.g. .param R_2=1k) or write a number.
 - Component F1: 'V9' must name a V element of the netlist.
+- The netlist has no ground node: connect at least one element to node 0 (or GND); ngspice measures every voltage against it.
+- Nodes Out, out are one net for ngspice, which ignores letter case; write the net with one spelling, or rename one if they are meant to be different nets.
+- .subckt amp: port n is not connected to anything inside the subcircuit.
 ```
 
-Fix each line as it says: delete forbidden directives (and whole `.control ... .endc` blocks), add the missing parameters to `.model` cards, write node names without braces, put `off` / `ON` / `OFF` after the model name, define every symbol used in an expression with `.param` (or replace it with a number), and make references point at existing elements: `Vcontrol` of F/H/W and `i(...)` must name a V source, `v(...)` must name a node, K lines must name L inductors, X lines must name a `.subckt` defined in the netlist.
+Fix each line as it says: delete forbidden directives (and whole `.control ... .endc` blocks), add the missing parameters to `.model` cards, write node names without braces, put `off` / `ON` / `OFF` after the model name, define every symbol used in an expression with `.param` (or replace it with a number), and make references point at existing elements: `Vcontrol` of F/H/W and `i(...)` must name a V source, `v(...)` must name a node, K lines must name L inductors, X lines must name a `.subckt` defined in the netlist. Connect at least one element to ground. ngspice ignores letter case, so give every component and every net a name that differs from the others by more than case. Subcircuit bodies (between `.subckt` and `.ends`) follow the same rules as the netlist itself: their lines must be valid elements, every port must be used inside, every internal node needs two connections, and definitions may not be nested.
 
 7. Other Errors:
 You might receive other errors, attempt to figure it out from context and fix it.

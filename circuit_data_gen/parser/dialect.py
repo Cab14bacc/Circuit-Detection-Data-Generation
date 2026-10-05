@@ -27,10 +27,14 @@ if IS_SPICE:
     }
     # .model TYPE (upper case) -> {"args_to_values": ..., "simulatable": ...}
     MODEL_CONFIG = get_config_value("convert", "convert_spice_config_path", "MODEL_CONFIG")
+    # generation sampling: groups of component samples, one of each group is
+    # allowed in every simulated netlist (see netlist_gen/sampling.py)
+    SIMULATION_ANCHORS = get_config_value("convert", "convert_spice_config_path", "SIMULATION_ANCHORS")
 else:
     TO_SKIN_CONFIG = get_config_value("convert", "convert_lcapy_config_path", "TO_SKIN_CONFIG")
     EXPRESSION_CONSTANTS = set()
     MODEL_CONFIG = {}
+    SIMULATION_ANCHORS = []
 
 WIRE = "W"
 SUBCKT_PREFIX = "X"
