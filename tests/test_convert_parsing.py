@@ -3,10 +3,9 @@
 Covers: tokenization, comment/continuation handling, prefix lookup, line
 parsing into component dicts, duplicate detection, and value extraction.
 
-Dialect-sensitive tests request the ``convert`` fixture, which reloads the
-module per dialect so both lcapy and spice grammars are exercised. Those tests
-read state as ``convert.IS_SPICE`` in the body (never a module-level import,
-which would go stale across a reload).
+Tests request the ``convert`` fixture for the parser module (SPICE netlists).
+Prefixes, model names and model types are lower case after parsing; component
+and node names keep their spelling.
 """
 
 import pytest
@@ -31,11 +30,11 @@ def test_preprocess_model_table_extracted(convert_spice):
     out, model_table, subckt_table, _ = convert_spice._preprocess_lines(lines)
     # directives filtered out of the element lines
     assert out == ["Q1 C B E QN3904"]
-    # name -> {name, model_type, args} mapping (keys and types upper-cased,
+    # name -> {name, model_type, args} mapping (keys and types lower-cased,
     # "name" keeps the card's spelling, level suffix stripped)
     assert model_table == {
-        "QN3904": {"name": "QN3904", "model_type": "NPN", "args": ["Is=1f"]},
-        "DP": {"name": "DP", "model_type": "D", "args": []},
+        "qn3904": {"name": "QN3904", "model_type": "npn", "args": ["Is=1f"]},
+        "dp": {"name": "DP", "model_type": "d", "args": []},
     }
     assert subckt_table == {}
 
@@ -84,75 +83,52 @@ class TestGetTokens:
 
 class TestGetPrefix:
     def test_exact_prefix(self):
-        assert _get_prefix("R1") == "R"
+        assert _get_prefix("R1") == "r"
 
-    def test_case_insensitive_fallback(self, convert):
-        # prefix lookup is dialect-dependent: in the spice dialect 'r1' (damper)
-        # is not a prefix, so the case-insensitive fallback maps it to 'R'
-        if convert.IS_SPICE:
-            assert _get_prefix("r1") == "R"
-        else:
-            # lcapy dialect has case-sensitive mechanical analogues k/m/r
-            assert _get_prefix("r1") == "r"
+    def test_case_insensitive(self):
+        # SPICE ignores letter case: r1 and R1 are both resistors
+        assert _get_prefix("r1") == "r"
 
     def test_wire(self):
-        assert _get_prefix("W1") == "W"
+        assert _get_prefix("W1") == "w"
 
-    def test_unknown_is_generic(self, convert):
-        # spice dialect: X is a real prefix (subcircuit invocation)
-        if convert.IS_SPICE:
-            assert _get_prefix("X1") == "X"
-        else:
-            assert _get_prefix("X1") is None
+    def test_subcircuit_prefix(self):
+        # X is a real prefix (subcircuit invocation)
+        assert _get_prefix("X1") == "x"
 
 
 class TestParseLine:
     def test_resistor_parsed(self, convert):
         name, element = convert._parse_line("R1 N1 N2 1k")
         assert name == "R1"
-        assert element["prefix"] == "R"
+        assert element["prefix"] == "r"
         assert not element["if_generic"]
         assert set(element["connections"].keys()) == {"+", "-"}
         assert element["connections"]["+"]["node_name"] == "N1"
         assert element["connections"]["-"]["node_name"] == "N2"
-        # values are {value, alias} dicts; the resistor alias list differs
-        # between dialects (spice: r/R, lcapy: Value/resistance/r)
+        # values are {value, alias} dicts
         assert element["values"]["value"]["value"] == "1k"
         assert "resistance" in element["values"]["value"]["alias"]
         assert "r" in element["values"]["value"]["alias"]
 
-    def test_vsource_kind_keyword(self, convert):
-        # 'DC 5': in lcapy mode 'dc' is a kind keyword; in SPICE mode the
-        # DC specifier is transparently expanded so the operand lands in the
-        # value slot (same outcome, different mechanism).
+    def test_vsource_dc_specifier(self, convert):
+        # the DC specifier's operand lands in the value slot
         name, element = convert._parse_line("V1 N1 0 dc 5")
-        assert element["prefix"] == "V"
-        if convert.IS_SPICE:
-            assert element["values"]["value"]["value"] == "5"
-            assert element["kind"] == []
-        else:
-            assert element["kind"] == ["dc"]
+        assert element["prefix"] == "v"
+        assert element["values"]["value"]["value"] == "5"
+        assert element["kind"] == []
 
-    def test_wire_uniquified(self, convert):
-        # W means different things per dialect: an lcapy structural wire
-        # (2 tokens) vs a SPICE current-controlled switch (5 tokens:
-        # N+ N- VNAM MODEL, resolved through the .model table).
-        if convert.IS_SPICE:
-            model_table = {"SWM": {"model_type": "CSW", "args": []}}
-            name, element = convert._parse_line("W1 N1 N2 V1 SWM", model_table=model_table)
-            assert name == "W1"
-            assert element["prefix"] == "W"
-            # SPICE: W is the current-controlled switch — a normal component
-            assert element["skin_alias"] == ["csw"]
-        else:
-            name, element = convert._parse_line("W1 N1 N2")
-            assert element["prefix"] == "W"
-            # lcapy: wires get a uuid suffix to stay unique
-            assert name != "W1"
-            assert name.startswith("W")
+    def test_current_controlled_switch(self, convert):
+        # W is the current-controlled switch (N+ N- VNAM MODEL, the model
+        # resolved through the .model table)
+        model_table = {"swm": {"name": "SWM", "model_type": "csw", "args": []}}
+        name, element = convert._parse_line("W1 N1 N2 V1 SWM", model_table=model_table)
+        assert name == "W1"
+        assert element["prefix"] == "w"
+        assert element["skin_alias"] == ["csw"]
 
     def test_duplicate_component_raises(self, convert):
-        with pytest.raises(ValueError, match="Duplicate"):
+        with pytest.raises(ValueError, match="duplicate component name"):
             text = "V1 N1 0 5\nV1 N2 0 3\n"
             convert._parse_netlist(text)
 
@@ -175,31 +151,31 @@ class TestSpecifiers:
 
     def test_ac_mag(self, convert_spice):
         _, e = convert_spice._parse_line("V1 a b AC 1")
-        assert e["values"]["unknown_AC"]["value"] == "1"
+        assert e["values"]["unknown_ac"]["value"] == "1"
         assert "value" not in e["values"]  # AC-only source: no DC value
 
     def test_ac_mag_phase(self, convert_spice):
         _, e = convert_spice._parse_line("V1 a b AC 1 90")
-        assert e["values"]["unknown_AC"]["value"] == "1"
-        assert e["values"]["unknown_phase"]["value"] == "90"
+        assert e["values"]["unknown_ac"]["value"] == "1"
+        assert e["values"]["unknown_acphase"]["value"] == "90"
 
     def test_ac_bare_defaults_mag_1(self, convert_spice):
         _, e = convert_spice._parse_line("V1 a b AC")
-        assert e["values"]["unknown_AC"]["value"] == "1"
+        assert e["values"]["unknown_ac"]["value"] == "1"
 
     def test_value_then_ac(self, convert_spice):
         _, e = convert_spice._parse_line("V1 a b 5 AC 1")
         assert e["values"]["value"]["value"] == "5"
-        assert e["values"]["unknown_AC"]["value"] == "1"
+        assert e["values"]["unknown_ac"]["value"] == "1"
 
     def test_ac_case_insensitive(self, convert_spice):
         _, e = convert_spice._parse_line("V1 a b ac 1m")
-        assert e["values"]["unknown_AC"]["value"] == "1m"
+        assert e["values"]["unknown_ac"]["value"] == "1m"
 
     def test_isource_same_grammar(self, convert_spice):
         _, e = convert_spice._parse_line("I1 x y 2m AC 1")
         assert e["values"]["value"]["value"] == "2m"
-        assert e["values"]["unknown_AC"]["value"] == "1"
+        assert e["values"]["unknown_ac"]["value"] == "1"
 
     def test_function_value_with_space_before_paren(self, convert_spice):
         # LTspice 'PWL (' form: space before the paren is legal
@@ -248,7 +224,7 @@ class TestModelTable:
     def test_diode_with_infile_model(self, convert_spice):
         parsed = convert_spice._parse_netlist("D1 N1 N2 1N4148\n.model 1N4148 D\n")
         assert parsed["D1"]["skin_alias"] == ["d_h"]
-        assert parsed["D1"]["model_type"] == ["D"]
+        assert parsed["D1"]["model_type"] == ["d"]
         # model token consumed — only the two nodes remain as connections
         assert set(parsed["D1"]["connections"]) == {"+", "-"}
 
@@ -349,7 +325,7 @@ class TestAllLineErrorsReported:
     @pytest.mark.parametrize("strict", [False, True])
     def test_every_bad_line_is_reported(self, convert_spice, strict):
         with pytest.raises(ValueError) as error:
-            convert_spice._parse_netlist(self.BAD, strict=strict, simulate=False)
+            convert_spice._parse_netlist(self.BAD, strict=strict)
         message = str(error.value)
         assert message.startswith("2 netlist lines have errors:")
         assert "on line 'D1 a b'" in message and "on line 'Q1 b 0 0'" in message
@@ -358,25 +334,25 @@ class TestAllLineErrorsReported:
         with pytest.raises(ValueError) as error:
             convert_spice._parse_netlist(self.BAD)
         lines = str(error.value).splitlines()
-        assert lines[1].startswith("1. All specs failed for prefix 'D'")
+        assert lines[1].startswith("1. All specs failed for prefix 'd'")
         second = next(i for i, line in enumerate(lines) if line.startswith("2. "))
         # every line of an error's details is indented under its number
         assert all(line.startswith("   ") for line in lines[2:second])
         assert all(line.startswith("   ") for line in lines[second + 1 :])
 
     def test_single_error_keeps_its_message(self, convert_spice):
-        with pytest.raises(ValueError, match=r"^All specs failed for prefix 'D'"):
+        with pytest.raises(ValueError, match=r"^All specs failed for prefix 'd'"):
             convert_spice._parse_netlist("V1 a 0 5\nD1 a 0\n")
 
     def test_duplicates_are_collected_too(self, convert_spice):
         with pytest.raises(ValueError) as error:
             convert_spice._parse_netlist("V1 a 0 5\nR1 a 0 1k\nR1 a 0 2k\nD1 a 0\n")
-        assert "Duplicate component name 'R1'" in str(error.value)
+        assert "duplicate component name found in netlist: R1" in str(error.value)
         assert "on line 'D1 a 0'" in str(error.value)
 
     def test_strict_checks_wait_for_a_complete_parse(self, convert_spice):
         # no ground and a bad line: only the line is reported, the strict
         # "no ground" check does not run on the incomplete netlist
         with pytest.raises(ValueError) as error:
-            convert_spice._parse_netlist("V1 a b 5\nD1 a b\n", strict=True, simulate=False)
+            convert_spice._parse_netlist("V1 a b 5\nD1 a b\n", strict=True)
         assert "no ground node" not in str(error.value)

@@ -3,10 +3,9 @@
 Exercises validate_circuit's netlist-tag handling directly (the node function
 is pulled off the compiled graph), the regenerate loop's max_attempts budget
 end to end with a fake LLM, so no API call is made, and (when ngspice is
-available) the simulation step of validate_circuit.
+available) the ngspice smoke test of strict generation.
 """
 
-import json
 import logging
 
 import pytest
@@ -28,10 +27,9 @@ from tests.conftest import (
 # (gen idx 0 of a gen_count_per_session=1 session)
 WELL_FORMED_TAGGED = "<netlist0>\n" + CONNECTED_NETLIST + "</netlist0>"
 ISOLATED_TAGGED = "<netlist0>\n" + ISOLATED_NETLIST + "</netlist0>"
-# structurally fine (every node has two connections, one ground), but the
-# node between the capacitors has no DC path: only simulation rejects it
-FLOATING_CAP_NETLIST = "V1 N1 0 5\nC1 N1 N2 1u\nC2 N2 0 1u\n"
-FLOATING_CAP_TAGGED = "<netlist0>\n" + FLOATING_CAP_NETLIST + "</netlist0>"
+# passes the strict parser, but ngspice has no `v` instance parameter
+NGSPICE_REJECTED_NETLIST = "V1 N1 0 v=5\nR1 N1 N2 1k\nR2 N2 0 1k\n"
+NGSPICE_REJECTED_TAGGED = "<netlist0>\n" + NGSPICE_REJECTED_NETLIST + "</netlist0>"
 
 
 def _state(
@@ -56,7 +54,6 @@ def _state(
         "output_annotations": [""],
         "output_overlays": [""],
         "output_yosys": [""],
-        "output_simulations": [""],
     }
 
 
@@ -65,7 +62,7 @@ def validate_node(tmp_path):
     netlist_dir = tmp_path / "netlists"
     schematic_dir = tmp_path / "schematics"
     annotation_dir = tmp_path / "annotations"
-    graph = netlist_gen_setup(netlist_dir, schematic_dir, annotation_dir, temperature=0.0, simulate=False)
+    graph = netlist_gen_setup(netlist_dir, schematic_dir, annotation_dir, temperature=0.0, strict=False)
     # langgraph wraps node fns in a Runnable; validate_circuit is async
     node = graph.nodes["validate_circuit"]
     return node, netlist_dir, schematic_dir, annotation_dir
@@ -91,8 +88,6 @@ class TestValidateCircuitTags:
         assert (schematic_dir / "yosys_test_0_0.json").exists()
         assert (annotation_dir / "annotation_test_0_0.json").exists()
         assert (annotation_dir / "overlay_test_0_0.png").exists()
-        # no simulation, no operating point
-        assert result["output_simulations"] == [""]
 
     async def test_isolated_netlist_feeds_errors_back(self, validate_node):
         node, netlist_dir, _, _ = validate_node
@@ -139,7 +134,7 @@ def fake_graph(tmp_path, monkeypatch):
     def build(content: str, **setup_kwargs):
         llm = _FakeLLM(content)
         monkeypatch.setattr(gen_setup, "ChatOpenAI", llm)
-        setup_kwargs.setdefault("simulate", False)
+        setup_kwargs.setdefault("strict", False)
         graph = netlist_gen_setup(
             tmp_path / "netlists",
             tmp_path / "schematics",
@@ -220,60 +215,96 @@ class TestLLMSeed:
         assert llm.bound == [{"seed": llm_seed("test_0")}] * 2
 
 
-class TestSimulationStep:
-    def test_simulate_without_ngspice_fails_early(self, fake_graph, monkeypatch):
-        monkeypatch.setattr(gen_setup, "ngspice_available", lambda: False)
-        with pytest.raises(RuntimeError, match=r"pip install -e \.\[sim\]"):
-            fake_graph(WELL_FORMED_TAGGED, simulate=True)
-
-    async def test_valid_circuit_is_simulated_and_saved(self, convert_spice, ngspice, fake_graph, tmp_path):
-        graph, llm = fake_graph(WELL_FORMED_TAGGED, simulate=True)
-        final = await graph.ainvoke({**_state(""), "messages": []})
-        assert final["circuits_valid"] == [True]
-        saved = tmp_path / "simulations" / "simulation_test_0_0.json"
-        assert final["output_simulations"] == [str(saved.resolve())]
-        op = json.loads(saved.read_text(encoding="utf-8"))
-        # divider: N1 = 5 V, N2 = 2.5 V (the capacitor is open at DC)
-        assert op["node_voltages"]["N1"] == pytest.approx(5.0)
-        assert op["node_voltages"]["N2"] == pytest.approx(2.5)
-
-    async def test_simulation_errors_are_fed_back(self, convert_spice, ngspice, fake_graph, tmp_path):
-        graph, llm = fake_graph(FLOATING_CAP_TAGGED, simulate=True)
+class TestNgspiceStep:
+    async def test_ngspice_errors_are_fed_back(
+        self, convert_spice, ngspice, fake_graph, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(gen_setup, "find_ngspice", lambda: ngspice)
+        graph, llm = fake_graph(NGSPICE_REJECTED_TAGGED, strict=True)
         final = await graph.ainvoke(
-            {**_state("", max_attempts=1, netlist=FLOATING_CAP_NETLIST), "messages": []}
+            {**_state("", max_attempts=1, netlist=NGSPICE_REJECTED_NETLIST), "messages": []}
         )
         assert final["circuits_valid"] == [False]
-        assert "Node N2 has no DC path to ground" in final["messages"][-1].content
+        assert "ngspice rejected the netlist" in final["messages"][-1].content
         assert not any((tmp_path / "netlists").glob("*.net"))
-        assert not (tmp_path / "simulations").exists()
 
-    @pytest.mark.parametrize("rename", [True, False])
-    async def test_batch_saves_operating_points(self, convert_spice, ngspice, tmp_path, monkeypatch, rename):
-        # a whole batch through scale_generation: fake LLM, fixed requirements
+    async def test_valid_circuit_passes_ngspice(self, convert_spice, ngspice, fake_graph, monkeypatch):
+        monkeypatch.setattr(gen_setup, "find_ngspice", lambda: ngspice)
+        graph, llm = fake_graph(WELL_FORMED_TAGGED, strict=True)
+        final = await graph.ainvoke({**_state(""), "messages": []})
+        assert final["circuits_valid"] == [True]
+
+    async def test_without_ngspice_the_step_is_skipped(self, convert_spice, fake_graph, monkeypatch):
+        monkeypatch.setattr(gen_setup, "find_ngspice", lambda: None)
+        graph, llm = fake_graph(NGSPICE_REJECTED_TAGGED, strict=True)
+        final = await graph.ainvoke(
+            {**_state("", max_attempts=1, netlist=NGSPICE_REJECTED_NETLIST), "messages": []}
+        )
+        assert final["circuits_valid"] == [True]
+
+    async def test_lenient_generation_never_runs_ngspice(self, convert_spice, fake_graph, monkeypatch):
+        def fail(*args, **kwargs):
+            raise AssertionError("ngspice ran")
+
+        monkeypatch.setattr(gen_setup, "ngspice_smoke_test", fail)
+        graph, llm = fake_graph(WELL_FORMED_TAGGED, strict=False)
+        final = await graph.ainvoke({**_state(""), "messages": []})
+        assert final["circuits_valid"] == [True]
+
+
+class TestNgspiceVersion:
+    def test_installed_version_is_read(self, ngspice):
+        from circuit_data_gen.ngspice_check import ngspice_version  # noqa: PLC0415
+
+        assert isinstance(ngspice_version(ngspice), int)
+
+    def test_unreadable_version_is_none(self, tmp_path):
+        from circuit_data_gen.ngspice_check import ngspice_version  # noqa: PLC0415
+
+        assert ngspice_version(str(tmp_path / "missing.exe")) is None
+
+    @pytest.mark.parametrize("version, warned", [(47, False), (32, True), (None, True)])
+    def test_warns_unless_tested_version(self, monkeypatch, caplog, version, warned):
+        from circuit_data_gen import ngspice_check  # noqa: PLC0415
+
+        monkeypatch.setattr(ngspice_check, "ngspice_version", lambda exe: version)
+        with caplog.at_level(logging.WARNING):
+            ngspice_check.warn_if_untested_version("ngspice")
+        assert ("checked against ngspice 47" in caplog.text) is warned
+
+    def test_strict_setup_checks_the_version(self, fake_graph, monkeypatch):
+        checked = []
+        monkeypatch.setattr(gen_setup, "find_ngspice", lambda: "ngspice")
+        monkeypatch.setattr(gen_setup, "warn_if_untested_version", checked.append)
+        fake_graph(WELL_FORMED_TAGGED, strict=True)
+        fake_graph(WELL_FORMED_TAGGED, strict=False)
+        assert checked == ["ngspice"]
+
+
+class TestTimings:
+    def test_session_llm_time_is_counted_once(self):
+        timings = {0: {"llm": 10.0, "smoke": 1.0}, 1: {"llm": 10.0, "smoke": 2.0, "ngspice": 0.5}}
+        assert gen_setup.stage_timings(timings) == {"llm": 10.0, "smoke": 3.0, "ngspice": 0.5}
+
+    @pytest.mark.parametrize("content, valid", [(WELL_FORMED_TAGGED, 2), (ISOLATED_TAGGED, 0)])
+    async def test_batch_summary(self, tmp_path, monkeypatch, caplog, content, valid):
+        # a whole batch through scale_generation: fake LLM, fixed requirements;
+        # the summary at the end must not fail, also when nothing is valid
         from circuit_data_gen.netlist_gen import parallel  # noqa: PLC0415
 
-        monkeypatch.setattr(gen_setup, "ChatOpenAI", _FakeLLM(WELL_FORMED_TAGGED))
+        monkeypatch.setattr(gen_setup, "ChatOpenAI", _FakeLLM(content))
         fixed = requirements_for(CONNECTED_NETLIST)
         monkeypatch.setattr(parallel, "sample_requirements", lambda *args, **kwargs: fixed)
-        out = tmp_path / "project"
-        results = await scale_generation(
-            out,
-            num_netlists=2,
-            concurrency=2,
-            simulate=True,
-            gen_seed="e2e",
-            project_name="pytest_sim",
-            rename=rename,
-        )
-        assert [r.ok for r in results] == [True, True]
-        saved = sorted(p.name for p in (out / "simulations").glob("*.json"))
-        if rename:
-            # simulation_{global_idx}_{rng_seed}.json; the global index follows
-            # completion order, so only the set of indices is fixed
-            assert {name.split("_")[1] for name in saved} == {"0", "1"}
-            assert sorted(name.split("_", 2)[2] for name in saved) == ["e2e_0_0.json", "e2e_1_0.json"]
-        else:
-            assert saved == ["simulation_e2e_0_0.json", "simulation_e2e_1_0.json"]
-        assert len(list((out / "netlists").glob("*.net"))) == 2
-        op = json.loads((out / "simulations" / saved[0]).read_text(encoding="utf-8"))
-        assert op["node_voltages"]["N2"] == pytest.approx(2.5)
+        with caplog.at_level(logging.INFO):
+            results = await scale_generation(
+                tmp_path / "project",
+                num_netlists=2,
+                concurrency=2,
+                max_attempts=1,
+                gen_seed="batch",
+                project_name="pytest_batch",
+                strict=False,
+            )
+        assert sum(r.ok for r in results) == valid
+        assert f"Batch generation complete: {valid}/2 valid schematics" in caplog.text
+        assert ("average time per schematic: n/a" in caplog.text) is (valid == 0)

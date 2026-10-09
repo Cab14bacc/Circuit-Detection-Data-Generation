@@ -176,7 +176,7 @@ def convert_cmd(
     input_file_or_dir: Path = typer.Argument(help="Netlist file or directory"),
     output_file_or_dir: Optional[Path] = typer.Argument(None, help="Output SVG path or directory"),
 ):
-    """converts lcapy style netlists into yosys json"""
+    """Convert SPICE netlist(s) into yosys JSON without rendering."""
     from .parser.convert import to_yosys_json  # noqa: PLC0415
     import json
 
@@ -267,15 +267,8 @@ def generate_data_cmd(
         None,
         "--strict/--no-strict",
         help="SPICE only: validate with strict parsing (proper ngspice input: no {node} tokens, "
-        "only .model/.param/.subckt/.end directives, no undefined symbols) and use the strict "
-        "system prompt. Defaults to config: convert.strict_parsing.",
-    ),
-    simulate: Optional[bool] = typer.Option(
-        None,
-        "--simulate/--no-simulate",
-        help="SPICE only: the netlists will be simulated with ngspice. Implies --strict, rejects "
-        "components ngspice cannot simulate and uses the simulation system prompt. "
-        "Defaults to config: simulation.enabled.",
+        "only .model/.param/.subckt/.end directives, no undefined symbols), then load each "
+        "netlist into ngspice when it is found. Defaults to config: convert.strict_parsing.",
     ),
     persevere: bool = typer.Option(
         False,
@@ -322,7 +315,6 @@ def generate_data_cmd(
             max_attempts=max_attempts,
             project_name=project_name,
             strict=strict,
-            simulate=simulate,
             persevere=persevere,
             rename=rename,
         )

@@ -4,8 +4,6 @@ Hanging nodes = nets touching only one component. Some appear from skin
 port drops, some are genuine netlist mistakes.
 """
 
-import pytest
-
 from circuit_data_gen.parser.convert import _parse_netlist
 from circuit_data_gen.validate import full_validation, hanging_nodes
 
@@ -50,15 +48,6 @@ class TestHangingNodes:
         assert "M1" not in before  # 3 connections pre-drop
         assert "M1" in after  # 1 kept connection (G2.+)
         assert "M1" in from_drop  # drops pushed 3 -> 1
-
-    def test_wire_shared_nodes_not_hanging(self, convert):
-        if convert.IS_SPICE:
-            pytest.skip("W is not a wire in the SPICE dialect")
-        # three components on one net via a wire: not hanging
-        parsed = convert._parse_netlist("V1 A 0 5\nW1 A B\nR1 B C 1k\nC1 C 0 1u\n")
-        before, after, _ = hanging_nodes(parsed)
-        assert "A" not in after
-        assert "C" not in after
 
 
 class TestHiddenPinOnlyNodes:

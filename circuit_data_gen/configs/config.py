@@ -110,42 +110,16 @@ CLI_CONFIG = {
 
 
 CONVERT_CONFIG = {
-    "CONVERT_LCAPY_CONFIG_PATH": "configs/convert/lcapy_convert_config.py",
     "CONVERT_SPICE_CONFIG_PATH": "configs/convert/spice_convert_config.py",
-    # Input netlist dialect: "lcapy" (default, simplified lcapy grammar) or
-    # "spice" (SPICE/ngspice/LTspice grammar).
-    "NETLIST_FORMAT": "spice",
-    # SPICE only. When True, the parser rejects netlists that ngspice would
+    # When True, the parser rejects netlists that ngspice would
     # misread or refuse: braced node tokens ({n1}), directives outside the
     # allowlist (.tran, .include, .control, ...), undefined symbols in
     # expressions, and dangling references (controlling sources, K inductors,
     # X subckts). Model names always need an in-file .model card.
-    # `cirdg gen_data` parses strictly when this OR simulation.enabled is set;
-    # `cirdg render`/`convert` only when this is set, so external netlists
-    # still render by default.
+    # It is the default of `cirdg gen_data --strict/--no-strict` (strict
+    # generation also runs the ngspice smoke test when ngspice is found) and
+    # of `cirdg render`/`convert`, so external netlists render by default.
     "STRICT_PARSING": False,
-}
-
-
-SIMULATION_CONFIG = {
-    # Run the ngspice (PySpice) simulation step during `cirdg gen_data`
-    # (default of --simulate/--no-simulate). Simulating also turns on strict
-    # parsing for generation, and selects the simulation system prompt.
-    "ENABLED": False,
-    # Seconds one ngspice run may take before its process is killed.
-    "TIMEOUT_S": 10,
-    # Regexes of ngspice warnings that do not make a circuit invalid; any
-    # other warning rejects the netlist (and is logged), so extend this list
-    # deliberately.
-    "IGNORED_WARNINGS": [
-        # a SIN/PULSE source without DC value: .op uses its t=0 value
-        r"no DC value, transient time 0 value used",
-        # an AC-only source, which really is 0 V at DC
-        r"has no value, DC 0 assumed",
-    ],
-    # Write each valid netlist's operating point (node voltages, branch
-    # currents) to simulations/simulation_<id>.json next to the dataset.
-    "SAVE_RESULTS": True,
 }
 
 
@@ -157,23 +131,24 @@ SAMPLING_CONFIG = {
     "WEIGHTING": "by_skin",
     # Share of each netlist's drawn component types that MUST appear (at
     # least once each); the rest may. 1.0 = all required, 0.0 = allow-list
-    # only. Components outside the drawn set (plus the simulation anchors and
-    # referenced V sources) are never allowed.
+    # only. Components outside the drawn set (plus the V sources that F/H/W
+    # reference) are never allowed.
     "REQUIRED_FRACTION": 1.0,
 }
 
 
 NETLIST_GEN_CONFIG = {
+    "DEBUG_DIR": "debug/netlist_gen_logs",
     "LLM_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt.md",
-    # "LLM_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/lcapy_agent_system_prompt.md",
-    # SPICE only: used instead of LLM_SYSTEM_PROMPT_PATH when generation parses
-    # strictly without simulating (convert.strict_parsing / --strict); it
-    # documents the strict rules and their error messages.
-    "LLM_STRICT_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt_strict.md",
-    # SPICE only: used when generated netlists are simulated
-    # (simulation.enabled / --simulate); the strict rules plus the
-    # simulatable components and the rules for a DC operating point.
-    "LLM_SIMULATE_SYSTEM_PROMPT_PATH": "netlist_gen/prompts/spice_agent_system_prompt_simulate.md",
+    # Strict generation (--strict) checks every netlist that passes the render
+    # smoke test with ngspice too (ngspice_check.py): the netlist must load.
+    # Skipped, with a warning, when no ngspice executable is found.
+    # The executable: a path or a command name; "" = `ngspice_con`, else
+    # `ngspice`, from PATH (on Windows ngspice.exe is the GUI build).
+    "NGSPICE_PATH": "",
+    # Seconds one ngspice smoke test may take; a run that times out is not
+    # counted against the netlist.
+    "NGSPICE_TIMEOUT_S": 10,
 }
 
 CONFIGS = {
@@ -183,7 +158,6 @@ CONFIGS = {
     "convert": CONVERT_CONFIG,
     "logging": LOGGING_CONFIG,
     "netlist_gen": NETLIST_GEN_CONFIG,
-    "simulation": SIMULATION_CONFIG,
     "sampling": SAMPLING_CONFIG,
 }
 
@@ -223,7 +197,7 @@ def _path_to_module(path: str) -> str:
     return base_module + "." + module_rel
 
 
-def get_config_path_value(config_name: str, key_path: str) -> Path:
+def get_config_path_value(config_name: str, key_path: str, default: str | None = None) -> Path:
     """Get config value from the CONFIGS dictionary.
 
     Parameters
@@ -232,11 +206,21 @@ def get_config_path_value(config_name: str, key_path: str) -> Path:
         The name of the config section (e.g., "cli").
     key_path : str
         The dot-separated path to the desired key (e.g., "render.default_render_dir"). Letter case agnostic.
+    default : str | None
+        The default value to return if the key is not found.
     """
 
     config_or_str = get_config_value(config_name, key_path)
+    base_module_dir = Path(__file__).parent.parent.resolve()
 
     if not isinstance(config_or_str, str):
+        if default is not None:
+            default_path = Path(default)
+            if default_path.is_absolute():
+                return default_path
+            else:
+                return base_module_dir / default_path
+
         raise ValueError(
             f"Expected a string value for config '{config_name}' and key "
             f"'{key_path}', but got type: {type(config_or_str)}"
@@ -244,12 +228,13 @@ def get_config_path_value(config_name: str, key_path: str) -> Path:
 
     p = Path(config_or_str)
     if not p.is_absolute():
-        base_module_dir = Path(__file__).parent.parent.resolve()
         p = base_module_dir / p
     return p
 
 
-def get_config_value(config_name: str, key_path: str, attr_name: str | None = None) -> str | dict:
+def get_config_value(
+    config_name: str, key_path: str, attr_name: str | None = None, default: str | None = None
+) -> str | dict:
     """Get config value from the CONFIGS dictionary.
 
     Parameters
@@ -265,6 +250,9 @@ def get_config_value(config_name: str, key_path: str, attr_name: str | None = No
     cur_config_or_value = CONFIGS.get(config_name)
 
     if cur_config_or_value is None:
+        if default is not None:
+            return default
+
         raise ValueError(f"Config '{config_name}' not found in CONFIGS.")
 
     for part in key_path.split("."):
@@ -272,6 +260,9 @@ def get_config_value(config_name: str, key_path: str, attr_name: str | None = No
             part.lower(), cur_config_or_value.get(part.upper(), None)
         )
         if cur_config_or_value is None:
+            if default is not None:
+                return default
+
             raise ValueError(f"Key path '{key_path}' not found in config '{config_name}'.")
 
     if attr_name is not None:
@@ -282,8 +273,13 @@ def get_config_value(config_name: str, key_path: str, attr_name: str | None = No
             module = importlib.import_module(module_path)
             cur_config_or_value = getattr(module, attr_name, None)
             if cur_config_or_value is None:
+                if default is not None:
+                    return default
                 raise ValueError(f"Attribute '{attr_name}' not found in module '{module_path}'")
         else:
+            if default is not None:
+                return default
+
             raise ValueError(
                 f"When attr_name is specified, expected a .py file for config '{config_name}' "
                 f"and key '{key_path}', but got: {cur_config_or_value}"

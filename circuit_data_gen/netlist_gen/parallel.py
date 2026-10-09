@@ -3,13 +3,16 @@ import json
 import random
 import shutil
 import uuid
+import time
+
 from tempfile import mkdtemp
 from dataclasses import dataclass, field
 from pathlib import Path
-
 from .helper import generate_seed_prompt
 from .sampling import CircuitRequirements, ComponentSample, build_pool, sample_requirements
-from ..configs.config import get_logger
+from ..configs.config import get_logger, get_config_path_value
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -19,6 +22,9 @@ class GenResult:
     ok: bool = False
     worker_id: int = 0
     gen_idx: int = 0
+
+    # stage -> time spent in seconds (the LLM stage is shared by all circuits of the session)
+    timing: dict[str, float] = field(default_factory=dict)
     # LLM generations the session used (shared by the netlists of a session)
     attempts: int = 0
     exception: str | None = None
@@ -29,8 +35,6 @@ class GenResult:
     output_annotation: Path = field(default_factory=Path)
     output_overlay: Path = field(default_factory=Path)
     output_yosys: Path = field(default_factory=Path)
-    # simulating only: the operating point JSON ("" when not saved)
-    output_simulation: Path | str = ""
     # what the netlist was asked to contain (for per-type pass rates)
     requirements: CircuitRequirements | None = None
 
@@ -43,13 +47,12 @@ async def run_pipeline_worker(
     worker_id: int | None = None,
     gen_ids: list[int] = [0],
     log_dir: Path | None = None,
-    simulate: bool = False,
     max_attempts: int = 3,
 ) -> GenResult:
     """Run a single generation pipeline worker.
 
     Each netlist's requirements are drawn from `pool` (see
-    sampling.sample_requirements; `simulate` adds the simulation anchors).
+    sampling.sample_requirements).
     Returns a GenResult; any unexpected exception is captured. Netlists
     still invalid when the graph's retry budget (max_attempts, set by
     netlist_gen_setup) runs out come back not ok.
@@ -62,7 +65,7 @@ async def run_pipeline_worker(
 
     # draw each netlist's requirements from its own seeded rng (reproducible)
     constraints = [
-        sample_requirements(random.Random(f"{rng_seeds[idx]}"), pool, num_components_range, simulate=simulate)
+        sample_requirements(random.Random(f"{rng_seeds[idx]}"), pool, num_components_range)
         for idx in range(gen_count_per_session)
     ]
 
@@ -114,7 +117,6 @@ async def run_pipeline_worker(
         output_annotations = final_state.get("output_annotations", ["" for _ in range(gen_count_per_session)])
         output_overlays = final_state.get("output_overlays", ["" for _ in range(gen_count_per_session)])
         output_yosyss = final_state.get("output_yosys", ["" for _ in range(gen_count_per_session)])
-        output_simulations = final_state.get("output_simulations", ["" for _ in range(gen_count_per_session)])
 
         result = [
             GenResult(
@@ -124,10 +126,10 @@ async def run_pipeline_worker(
                 output_annotation=output_annotations[idx],
                 output_overlay=output_overlays[idx],
                 output_yosys=output_yosyss[idx],
-                output_simulation=output_simulations[idx],
                 worker_id=worker_id,
                 gen_idx=gen_ids[idx],
                 attempts=attempts,
+                timing=final_state["timings"][idx],
                 requirements=constraints[idx],
             )
             for idx, k in enumerate(ok)
@@ -153,12 +155,13 @@ async def run_pipeline_worker(
                 exception=str(e),
                 gen_idx=gen_ids[idx],
                 attempts=max_attempts,
+                timing={},
             )
             for idx in range(gen_count_per_session)
         ]
 
 
-def rename_outputs(gen_result, global_idx, netlist_dir, schematic_dir, annotation_dir, simulation_dir):
+def rename_outputs(gen_result, global_idx, netlist_dir, schematic_dir, annotation_dir):
     output_netlist_path = Path(gen_result.output_netlist)
     netlist_name = output_netlist_path.name.replace("netlist", f"netlist_{global_idx}")
     output_netlist_path = output_netlist_path.rename(netlist_dir / netlist_name)
@@ -182,12 +185,6 @@ def rename_outputs(gen_result, global_idx, netlist_dir, schematic_dir, annotatio
     yosys_name = output_yosys_path.name.replace("yosys", f"yosys_{global_idx}")
     output_yosys_path = output_yosys_path.rename(schematic_dir / yosys_name)
 
-    if gen_result.output_simulation:
-        simulation_dir.mkdir(parents=True, exist_ok=True)
-        output_simulation_path = Path(gen_result.output_simulation)
-        simulation_name = output_simulation_path.name.replace("simulation", f"simulation_{global_idx}")
-        output_simulation_path.rename(simulation_dir / simulation_name)
-
 
 async def scale_generation(
     output_dir: Path | str,
@@ -200,7 +197,6 @@ async def scale_generation(
     temperature: float = 0.9,
     project_name: str = "default_project",
     strict: bool | None = None,
-    simulate: bool | None = None,
     persevere: bool = False,
     rename: bool = True,
 ) -> list[GenResult]:
@@ -223,14 +219,11 @@ async def scale_generation(
     temperature : float
         LLM sampling temperature.
     strict : bool | None
-        SPICE strict parsing (and the strict system prompt) for validation.
-        None = config (convert.strict_parsing).
-    simulate : bool | None
-        SPICE: the netlists will be simulated (implies strict parsing; uses
-        the simulation system prompt). None = config (simulation.enabled).
+        SPICE strict parsing for validation, plus the ngspice smoke test
+        when ngspice is found. None = config (convert.strict_parsing).
     """
     # prevent circular import
-    from .setup import _resolve_simulate, netlist_gen_setup  # noqa: PLC0415
+    from .setup import netlist_gen_setup, stage_timings  # noqa: PLC0415
 
     if max_attempts < 1:
         raise ValueError(f"max_attempts must be at least 1, got {max_attempts}")
@@ -239,47 +232,42 @@ async def scale_generation(
     netlist_dir = output_dir / "netlists"
     schematic_dir = output_dir / "schematics"
     annotation_dir = output_dir / "annotations"
-    simulation_dir = output_dir / "simulations"
 
     # Create output directories
     netlist_dir.mkdir(parents=True, exist_ok=True)
     schematic_dir.mkdir(parents=True, exist_ok=True)
     annotation_dir.mkdir(parents=True, exist_ok=True)
 
-    # the component types netlists may be asked to use (what ngspice cannot
-    # simulate is left out when simulating)
-    simulate = _resolve_simulate(simulate)
-    pool = build_pool(simulate=simulate)
+    pool = build_pool()
 
     # Use a semaphore to limit concurrency
     semaphore = asyncio.Semaphore(concurrency)
-    log_dir = Path(__file__).parent.parent / "debug" / "netlist_gen_logs" / project_name
+    netlist_gen_debug_dir = get_config_path_value(
+        "netlist_gen", "DEBUG_DIR", default="debug/netlist_gen_logs"
+    )
+    log_dir = netlist_gen_debug_dir / project_name
     log_dir.mkdir(parents=True, exist_ok=True)
 
     gen_seed = gen_seed if gen_seed is not None else f"{uuid.uuid4().hex[:5]}"
-
+    total_start = time.perf_counter()
     try:
         if rename:
             temp_dir = Path(mkdtemp())
             work_netlist_dir = temp_dir / "netlists"
             work_schematic_dir = temp_dir / "schematics"
             work_annotation_dir = temp_dir / "annotations"
-            work_simulation_dir = temp_dir / "simulations"
         else:
             work_netlist_dir = netlist_dir
             work_schematic_dir = schematic_dir
             work_annotation_dir = annotation_dir
-            work_simulation_dir = simulation_dir
 
         # Build the graph
         graph = netlist_gen_setup(
             work_netlist_dir,
             work_schematic_dir,
             annotation_dir=work_annotation_dir,
-            simulation_dir=work_simulation_dir,
             temperature=temperature,
             strict=strict,
-            simulate=simulate,
         )
 
         async def bounded_worker(
@@ -298,7 +286,6 @@ async def scale_generation(
                     base_seed=str(gen_seed),
                     gen_ids=_gen_ids,
                     pool=pool,
-                    simulate=simulate,
                     log_dir=log_dir,
                     max_attempts=max_attempts,
                 )
@@ -319,11 +306,17 @@ async def scale_generation(
         valid_samples = []
         invalid_results = {}
         global_idx = 0
+        # stage -> seconds over all sessions (each session's LLM time once)
+        global_stage_timings: dict[str, float] = {}
         while pending:
             done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
 
             for task in done:
                 results = task.result()
+                # one task is one session: its circuits share the LLM time
+                session_timings = stage_timings({idx: r.timing for idx, r in enumerate(results)})
+                for stage, seconds in session_timings.items():
+                    global_stage_timings[stage] = global_stage_timings.get(stage, 0.0) + seconds
 
                 for gen_result in results:
                     if gen_result.ok:
@@ -346,7 +339,6 @@ async def scale_generation(
                                 netlist_dir,
                                 schematic_dir,
                                 annotation_dir,
-                                simulation_dir,
                             )
 
                         global_idx += 1
@@ -360,7 +352,7 @@ async def scale_generation(
                                 bounded_worker(
                                     worker_id,
                                     [gen_result.gen_idx for gen_result in gen_results],
-                                    gen_result.attempts * 2,
+                                    max(gen_result.attempts for gen_result in gen_results) * 2,
                                 )
                             )
                         )
@@ -378,6 +370,17 @@ async def scale_generation(
         if rename:
             shutil.rmtree(temp_dir)
 
-    print(f"Batch complete: {len(valid_samples)}/{num_netlists} valid schematics generated.")
+    total_elapsed = time.perf_counter() - total_start
+    total_time = sum(global_stage_timings.values())
+    saved_time = total_time - total_elapsed
+    stages = ", ".join(f"{stage} {seconds:.2f}s" for stage, seconds in global_stage_timings.items())
+    per_schematic = f"{total_elapsed / len(valid_samples):.2f}s" if valid_samples else "n/a"
+
+    logger.info(
+        f"Batch generation complete: {len(valid_samples)}/{num_netlists} valid schematics generated "
+        f"in {total_elapsed:.2f}s\n"
+        f"Saved time (IO): {saved_time:.2f}s, stage timings: {stages or 'none'}\n"
+        f"average time per schematic: {per_schematic}"
+    )
 
     return results

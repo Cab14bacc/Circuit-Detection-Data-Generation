@@ -1,20 +1,11 @@
 """Shared fixtures and helpers for the circuit_data_gen test suite.
 
-Provides the repo root, the built skin, and small netlist fixtures used
-across the pipeline tests.
-
-Netlist dialect selection
--------------------------
-`convert.py` locks its dialect at import time (``IS_SPICE``, ``TO_SKIN_CONFIG``
-are module-level constants read once from ``CONVERT_CONFIG["NETLIST_FORMAT"]``).
-Tests that care which grammar is active request the ``convert`` fixture, which
-swaps the config and reloads the module so the suite exercises BOTH dialects
-(lcapy and spice) in a single pytest run. Set ``CIRD_NETLIST_FORMAT=lcapy|spice``
-to restrict the run to one dialect.
+Provides the repo root, the built skin, the ngspice executable, and small
+netlist fixtures used across the pipeline tests. The parser handles SPICE
+netlists only; tests request the ``convert`` (or ``convert_spice``) fixture
+for the parser module.
 """
 
-import importlib
-import os
 from pathlib import Path
 
 import pytest
@@ -22,82 +13,29 @@ import pytest
 REPO_ROOT = Path(__file__).parent.parent
 DATASET_DIR = REPO_ROOT / "dataset"
 
-# --- netlist dialect plumbing -----------------------------------------------
-NETLIST_FORMATS = ("lcapy", "spice")
-_FORMAT_ENV = "CIRD_NETLIST_FORMAT"
 
+@pytest.fixture
+def convert():
+    """The parser module (circuit_data_gen.parser.convert)."""
+    import circuit_data_gen.parser.convert as convert_module
 
-def _selected_formats() -> tuple[str, ...]:
-    """Dialects to parametrize over: both by default, or the env override."""
-    requested = os.environ.get(_FORMAT_ENV, "").strip().lower()
-    if not requested:
-        return NETLIST_FORMATS
-    if requested not in NETLIST_FORMATS:
-        raise ValueError(f"{_FORMAT_ENV} must be one of {NETLIST_FORMATS}, got '{requested}'")
-    return (requested,)
-
-
-def _reload_convert(netlist_format: str):
-    """Reload ``circuit_data_gen.parser.convert`` with ``netlist_format`` active.
-
-    The dialect state lives in ``parser.dialect``: it is reloaded first, then
-    ``convert`` (which binds that state at import). ``importlib.reload``
-    re-executes a module body into the SAME module ``__dict__`` object, so
-    already-imported function objects (whose ``__globals__`` is that dict)
-    transparently see the reloaded ``IS_SPICE`` / ``TO_SKIN_CONFIG``; the
-    helper modules (tokens, strict, grammar) read ``dialect.X`` at call time.
-    Only names bound via ``from convert import X`` go stale — so tests must
-    read dialect state off the returned module object rather than a
-    module-level import.
-    """
-    import circuit_data_gen.configs.config as config
-    import circuit_data_gen.parser.convert as convert
-    import circuit_data_gen.parser.dialect as dialect
-
-    config.CONVERT_CONFIG["NETLIST_FORMAT"] = netlist_format
-    importlib.reload(dialect)
-    return importlib.reload(convert)
-
-
-@pytest.fixture(params=_selected_formats())
-def convert(request):
-    """The converter module, parametrized over the supported netlist dialects.
-
-    Each test requesting this fixture runs once per dialect. Read dialect state
-    as ``convert.IS_SPICE`` inside the test body (not at module import).
-    """
-    return _reload_convert(request.param)
+    return convert_module
 
 
 @pytest.fixture
 def convert_spice(convert):
-    """Like ``convert``, but skips the lcapy dialect (SPICE-only behavior).
-
-    Depending on ``convert`` guarantees the module was reloaded for the
-    current dialect before the test body runs.
-    """
-    if not convert.IS_SPICE:
-        pytest.skip("SPICE-only behavior")
+    """Same as ``convert`` (kept for the tests written for SPICE-only behavior)."""
     return convert
-
-
-@pytest.fixture
-def netlist_format():
-    """The dialect currently loaded into ``convert`` (the configured default)."""
-    from circuit_data_gen.parser.convert import NETLIST_FORMAT
-
-    return NETLIST_FORMAT
 
 
 def requirements_for(netlist_text: str, num_components: int | None = None, required: bool = True):
     """CircuitRequirements a netlist satisfies exactly: its own component
     types, all required (or only allowed with required=False), and its own
-    component count unless given. Parsed with the currently loaded dialect,
-    so call it inside the test body, not at module import."""
+    component count unless given."""
     import circuit_data_gen.parser.convert as convert
     from circuit_data_gen.netlist_gen.sampling import CircuitRequirements, samples_in
 
-    parsed = convert._parse_netlist(netlist_text, strict=False, simulate=False)
+    parsed = convert._parse_netlist(netlist_text, strict=False)
     samples = samples_in(parsed)
     return CircuitRequirements(
         num_components=len(parsed) if num_components is None else num_components,
@@ -107,8 +45,6 @@ def requirements_for(netlist_text: str, num_components: int | None = None, requi
 
 
 # A minimal, fully-connected netlist: voltage source + divider into ground.
-# Value written without the 'dc' specifier so the fixture parses in BOTH
-# dialects (SPICE 'dc 5' interleaved form is not yet supported).
 CONNECTED_NETLIST = """V1 N1 0 5
 R1 N1 N2 1k
 R2 N2 0 1k
@@ -121,13 +57,6 @@ ISOLATED_NETLIST = """V1 N1 0 5
 R1 N1 N2 1k
 V2 M1 M2 3
 R2 M1 M2 2k
-"""
-
-# Two loops bridged through a wire (W N2 M2) — must count as connected.
-WIRE_BRIDGED_NETLIST = """V1 N1 0 5
-R1 N1 N2 1k
-W1 N2 M1
-R2 M1 0 2k
 """
 
 NETLIST_WITH_DESCENDERS = """V1 N1 0 5
@@ -156,18 +85,14 @@ def skin_path() -> Path:
 
 
 @pytest.fixture(scope="session")
-def ngspice() -> None:
-    """Skips unless a simulation can run with the pinned ngspice version
-    (simulate.NGSPICE_VERSION): the expected messages and pass rules are
-    those of that version."""
-    from circuit_data_gen.simulate import check_ngspice, ngspice_available
+def ngspice() -> str:
+    """The ngspice executable the smoke test would use; skips without one."""
+    from circuit_data_gen.ngspice_check import find_ngspice
 
-    if not ngspice_available():
-        pytest.skip("PySpice not installed; `pip install -e .[sim]`")
-    try:
-        check_ngspice()
-    except RuntimeError as e:
-        pytest.skip(str(e))
+    executable = find_ngspice()
+    if executable is None:
+        pytest.skip("no ngspice executable (ngspice_con / ngspice on PATH, or netlist_gen.ngspice_path)")
+    return executable
 
 
 @pytest.fixture(scope="session")
@@ -195,20 +120,3 @@ def tmp_netlist(tmp_path: Path):
         return p
 
     return _write
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _restore_default_netlist_format():
-    """Leave the process in the configured default dialect after the run.
-
-    The ``convert`` fixture swaps CONVERT_CONFIG["NETLIST_FORMAT"] per test;
-    session-scoped fixtures (skin_path/classes_path) and any later code should
-    see the repository default, not whichever dialect ran last. The configured
-    default is captured BEFORE the first test mutates it.
-    """
-    import circuit_data_gen.configs.config as config
-
-    original = config.CONVERT_CONFIG["NETLIST_FORMAT"]
-    yield
-    if config.CONVERT_CONFIG["NETLIST_FORMAT"] != original:
-        _reload_convert(original)

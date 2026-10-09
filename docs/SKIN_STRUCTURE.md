@@ -7,8 +7,9 @@ to the skin config, changing the builder, or debugging layout/annotation issues.
 ## Pipeline: how a component becomes a skin entry
 
 ```
-TO_SKIN_CONFIG (configs/convert/default_convert_config.py)
-    │  lcapy prefix + kind -> skin_alias (+ port/drop/value specs)
+TO_SKIN_CONFIG (configs/convert/spice_convert_config.py)
+    │  SPICE prefix + model TYPE / kind / specifiers -> skin_alias
+    │  (+ port/drop/value specs)
     ▼
 COMPONENTS (configs/skins/default_skin_config.py)
     │  skin_alias -> CircuitTikz spec (cpt, anchors, label slots)
@@ -17,7 +18,7 @@ COMPONENTS (configs/skins/default_skin_config.py)
 build_skin.py  ──  pdflatex + pdftocairo ──►  per-component CircuitTikz SVG
     │                                         (body paths, leads, color
     ▼                                          markers, glyph defs)
-dataset/skins/lcapy.svg  ── the skin this document describes
+dataset/skins/skin.svg  ── the skin this document describes
     │
     ▼
 netlistsvg (fork) ── ELK layout + SVG render + annotation JSON
@@ -25,10 +26,12 @@ netlistsvg (fork) ── ELK layout + SVG render + annotation JSON
 
 Two mappings work together:
 
-- **`TO_SKIN_CONFIG`** (`configs/convert/default_convert_config.py`): maps a
-  lcapy prefix (+ optional kind keyword) to a `skin_alias` — e.g. `R` →
-  `["r_h", "r_v"]` (orientation picked randomly per render), `D led` →
-  `d_led_h`. `convert.py` emits that alias as the Yosys cell's `type`.
+- **`TO_SKIN_CONFIG`** (`configs/convert/spice_convert_config.py`, see
+  [CONVERT_CONFIG.md](CONVERT_CONFIG.md)): maps a SPICE element (its prefix,
+  plus the `.model` TYPE, kind keyword or specifiers that select a variant)
+  to a `skin_alias` — e.g. `R` → `["r_h", "r_v"]` (orientation picked
+  randomly per render), `Q` with a PNP model → `q_pnp`, `S ... ON` →
+  `sw_nc`. `convert.py` emits that alias as the Yosys cell's `type`.
 - **`COMPONENTS`** (`configs/skins/default_skin_config.py`): the skin builder's
   spec table, keyed by `skin_alias` — which CircuitTikz component (`cpt`) to
   draw, where its pins/labels anchor, and which annotation class it maps to.
@@ -165,11 +168,13 @@ aliases). For analog bipoles (R, L, C, V, I, D, SW) both pins are **lateral**
 leads in the cell bbox.
 
 Pin positions come from **color markers**: the builder's generated `.tex`
-places a colored dot (`MARKER_RGB`) on each CircuitTikz anchor
-(`pin_anchors`), the rendered SVG is scanned for those exact `rgb(...)`
-colors, and each marker's center becomes a pin `s:x/s:y`. That's why
-`TO_SKIN_CONFIG` specs list anchors like `west`/`east`/`north` — they're
-CircuitTikz anchor names on the rendered component.
+places a dot of a distinct color (`MARKER_RGB` in `build_skin.py`) on each
+CircuitTikz anchor (`pin_anchors`), the rendered SVG is scanned for those
+exact `rgb(...)` colors, and each marker's center becomes a pin `s:x/s:y`.
+The color is what identifies the anchor, so every marker of a component gets
+its own. That's why the `COMPONENTS` entries (`configs/skins/default_skin_config.py`)
+list anchors like `west`/`east`/`north` — they're CircuitTikz anchor names on
+the rendered component.
 
 ---
 
@@ -207,9 +212,12 @@ Key differences from normal cells:
 3. **`genericsLaterals` property**: when `true` (our setting), generic cell
    ports are treated as laterals (sideways routing) rather than top/bottom.
 
-4. **Port-name remap**: `convert.py` emits bare numbers (`1`, `2`, ...) for
-   unknown components; `Port.getGenericElkPort` assigns them to the `in`/`out`
-   slots in order (inputs to `in{i}`, outputs to `out{i}`).
+4. **Port placement**: `convert.py` names a subcircuit instance's ports
+   after the `.subckt` header (`X1 a b 0 DIV` with `.subckt DIV p q r` gives
+   ports `p`, `q`, `r`), or numbers them `1`, `2`, ... when the definition is
+   missing. `Port.getGenericElkPort` places them on the `in`/`out` slots in
+   order (inputs to `in{i}`, outputs to `out{i}`), and draws each port's name
+   as its pin text.
 
 ---
 
@@ -228,7 +236,7 @@ after changing config values.
 | Property | Source (config.py) | Effect |
 |----------|--------------------|--------|
 | `constants` | — (fixed `false`) | Render constant value cells. |
-| `splitsAndJoins` | — (fixed `false`) | Render split/join junction dots. (Doesn't matter for our use case for analog circuits.) |
+| `splitsAndJoins` | — (fixed `false`) | Insert split/join cells for multi-bit buses (digital only; the junction dots on wires are drawn regardless). |
 | `genericsLaterals` | — (fixed `true`) | Generic ports route sideways. |
 | `fontCharWidth` | `FONT_CHAR_WIDTH` | Per-character advance for label box widths. |
 | `fontCharHeight` | `FONT_CHAR_HEIGHT` | Line height (1.1 em); annotation label boxes use this as their height. |
@@ -242,7 +250,7 @@ after changing config values.
 For each component in `COMPONENTS`:
 
 1. **`_component_tex`** — generates a standalone CircuitTikz document drawing
-   the component at `name=T`, with a colored marker dot (`\fill[red] ...`)
+   the component at `name=T`, with a marker dot of its own `MARKER_RGB` color
    on every `pin_anchors` / `label_anchors` / `extra_anchors` position.
 2. **`_render_circuitikz`** — `pdflatex` → PDF, `pdftocairo` → SVG.
 3. **`_parse_render_svg`** — splits paths into **body** (stroke width =
@@ -284,7 +292,7 @@ The class registry (`classes.txt`) is the deduplicated set of every emitted
      - `s:pid` must match the Yosys JSON port names
      - `s:position` classifies input (top) / output (bottom) / lateral (left/right)
      - `s:x`/`s:y` fix pin positions for ELK (`FIXED_POS`)
-   - `<s:class>` doubles as the annotation class → `classes.txt` registry
+   - `s:class` doubles as the annotation class → `classes.txt` registry
 4. **`generic` cell** — fallback for unknown types; pins use `in`/`out`
    prefixes; body rect marked `s:generic="body"` for dynamic resizing.
 
@@ -299,6 +307,29 @@ wrong class — or the whole port falls to the fallback path — so keep
 `TO_SKIN_CONFIG`'s `arg_to_ports` aliases and the skin's `s:pid` values in
 agreement (both are driven by the same spec).
 
+---
+
+## How wires are drawn
+
+Wires are not part of the skin: ELK routes them between the pins, and
+netlistsvg draws what it returns. Two consequences show up in the renders
+(and in the `wires` of the annotation JSON, which record what is drawn):
+
+- **Loops on busy nets.** `buildElkGraph` (`lib/elkGraph.ts`) turns a net into
+  one ELK edge per (source, target) port pair, and ELK routes each edge on its
+  own. Two edges of the same net can reach a point by different paths, so the
+  net is drawn twice there and closes a loop, with junction dots where the
+  paths meet. It is most common on ground and other nets with many pins.
+- **Tilted pieces.** A net whose ports are all riders, or all drivers, is
+  routed through a zero-size dummy node. `removeDummyEdges`
+  (`lib/drawModule.ts`) then moves every edge's end to the bend nearest the
+  dummy and drops each edge's last bend; for edges whose last bend was not
+  that one, the result is a diagonal piece.
+
+Which side of a cell a port is on (left/right lateral, top input, bottom
+output) decides whether it counts as a driver, rider or lateral, so the skin's
+`s:position` values change how nets are routed.
+
 ### Debugging checklist
 
 - Wrong/no drawing → check `circuit_data_gen/debug/circuitikz_renders/<skin_type>.svg`:
@@ -307,3 +338,5 @@ agreement (both are driven by the same spec).
   `s:pid` values, and `port_directions` vs `s:position` classification.
 - Label boxes off → check `FONT_CHAR_HEIGHT`/`FONT_DESC_SHIFT` vs rendered
   glyphs (see the overlay from `cirdg render --debug`).
+- Odd wires (loops, diagonal pieces) → see "How wires are drawn" above; the
+  overlay draws the annotated wires in green.

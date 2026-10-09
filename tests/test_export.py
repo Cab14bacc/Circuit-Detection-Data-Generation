@@ -3,20 +3,25 @@ the deck is plain text."""
 
 import pytest
 
-from circuit_data_gen.parser.export import DEFAULT_TITLE, SOLVER_OPTIONS, to_ngspice_netlist
+from circuit_data_gen.parser.export import DEFAULT_TITLE, to_ngspice_netlist
 
 NETLIST = "V1 in 0 5\nR1 in out 1k\nR2 out 0 2k\n.model Dm D\n"
 
 
 class TestDeckFrame:
-    def test_title_first_then_body_then_options_analysis_end(self):
+    def test_title_first_then_body_then_end(self):
         lines = to_ngspice_netlist(NETLIST).splitlines()
         assert lines[0] == DEFAULT_TITLE
         assert lines[1:5] == NETLIST.splitlines()
-        assert lines[5:] == [SOLVER_OPTIONS, ".op", ".end"]
+        assert lines[5:] == [".end"]
 
-    def test_convergence_aids_are_off(self):
-        assert "gminsteps=0" in SOLVER_OPTIONS and "srcsteps=0" in SOLVER_OPTIONS
+    def test_analysis_before_end(self):
+        lines = to_ngspice_netlist(NETLIST, analysis=".op").splitlines()
+        assert lines[5:] == [".op", ".end"]
+
+    def test_no_solver_options(self):
+        # the saved netlists carry no simulation settings
+        assert ".options" not in to_ngspice_netlist(NETLIST, analysis=".op")
 
     def test_first_netlist_line_is_not_the_title(self):
         # ngspice reads line 1 as the title: the element must move down
@@ -52,9 +57,9 @@ class TestBody:
         # .param, K lines, continuations and comments reach ngspice as written
         text = ".param R0=1k\nL1 a 0 1u\nL2 b 0 1u\nK1 L1 L2 0.9\nR1 a b\n+ {R0}\n* note\n"
         lines = to_ngspice_netlist(text).splitlines()
-        assert lines[1:-3] == text.splitlines()
+        assert lines[1:-1] == text.splitlines()
 
     def test_surrounding_blank_lines_trimmed(self):
         lines = to_ngspice_netlist("\n\nV1 in 0 5\n\nR1 in 0 1k\n\n").splitlines()
         assert lines[1:4] == ["V1 in 0 5", "", "R1 in 0 1k"]
-        assert lines[4] == SOLVER_OPTIONS
+        assert lines[4] == ".end"

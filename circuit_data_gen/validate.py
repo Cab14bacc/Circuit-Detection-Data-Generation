@@ -1,4 +1,5 @@
-from .parser.convert import _merge_nodes, WIRE, GROUND_NAMES
+from .parser.helper import _merge_nodes
+from .parser.macro import GROUND_NAMES
 from .netlist_gen.sampling import samples_in
 
 
@@ -37,36 +38,42 @@ def hanging_nodes(parsed_netlist):
     hanging_nodes_from_dropping : set
         A set of node names that became hanging after dropping unsupported connections.
     """
+    # nodes are counted ignoring letter case, as in ngspice (Out and out are
+    # one net); the returned names keep the spelling first seen in the netlist
+    spellings: dict[str, str] = {}
     hanging_nodes_after_drop = {}
     for comp_name, comp_data in parsed_netlist.items():
         connections = comp_data["connections"]
         for pid, conn_data in connections.items():
-            node_name = conn_data["node_name"]
+            node_key = conn_data["node_name"].lower()
+            spellings.setdefault(node_key, conn_data["node_name"])
             if conn_data.get("drop", False):
                 # drop this connection when it is NOT supported in the corresponding skin.
                 # when a connection is dropped, it may cause a node to become hanging
                 # (i.e., connected to only one component).
                 continue
 
-            hanging_nodes_after_drop[node_name] = hanging_nodes_after_drop.get(node_name, 0) + 1
+            hanging_nodes_after_drop[node_key] = hanging_nodes_after_drop.get(node_key, 0) + 1
 
     # Ground Components are different as they are created as soon as a ground node name
     # (e.g., "0" or "GND") is used. So they could be referenced only once in the netlist,
     # but are implicitly referenced again by the creation of the ground component.
     hanging_nodes_after_drop = {
-        node for node, count in hanging_nodes_after_drop.items() 
-        if count == 1 and node not in GROUND_NAMES 
+        spellings[node]
+        for node, count in hanging_nodes_after_drop.items()
+        if count == 1 and node not in GROUND_NAMES
     }
 
     hanging_nodes_before_drop = {}
     for comp_name, comp_data in parsed_netlist.items():
         connections = comp_data["connections"]
         for pid, conn_data in connections.items():
-            node_name = conn_data["node_name"]
-            hanging_nodes_before_drop[node_name] = hanging_nodes_before_drop.get(node_name, 0) + 1
-    
+            node_key = conn_data["node_name"].lower()
+            hanging_nodes_before_drop[node_key] = hanging_nodes_before_drop.get(node_key, 0) + 1
+
     hanging_nodes_before_drop = {
-        node for node, count in hanging_nodes_before_drop.items() 
+        spellings[node]
+        for node, count in hanging_nodes_before_drop.items()
         if count == 1 and node not in GROUND_NAMES
     }
 
@@ -116,8 +123,6 @@ def connected_component_groups(parsed_netlist) -> tuple[bool, list[list[str]]]:
     # components sharing a canonical node belong to the same group
     node_to_comp: dict[str, str] = {}
     for component_name, element in parsed_netlist.items():
-        if element["prefix"] == WIRE:
-            continue
         cfind(component_name)
         for pid, connection in element["connections"].items():
             if connection.get("drop", False):
@@ -145,7 +150,9 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
         errors.append(
             f"Netlist has {len(parsed_netlist)} components, "
             f"which is not equal to the required number of "
-            f"{requirement.num_components}."
+            f"{requirement.num_components}. Only the element lines outside .subckt bodies count "
+            f"(an X instance counts once; directives, K lines and the elements inside a "
+            f".subckt ... .ends block do not)."
         )
 
     # ================================================================
@@ -162,7 +169,6 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
     used = samples_in(parsed_netlist)
     used_keys = {sample.key() for sample in used}
     allowed_keys = {sample.key() for sample in requirement.allowed}
-
 
     missing = [sample for sample in requirement.required if sample.key() not in used_keys]
     if missing:
@@ -211,7 +217,7 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
             for node in sorted(hidden_only)
             for comp_name, comp_data in parsed_netlist.items()
             for pid, conn in comp_data["connections"].items()
-            if conn["node_name"] == node
+            if conn["node_name"].lower() == node.lower()
         ]
         errors.append(
             f"Netlist has {len(hidden_only)} node(s) connected only to a hidden pin: {', '.join(pins)}. "
@@ -232,8 +238,10 @@ def full_validation(parsed_netlist, requirement, logger=None) -> dict:
         )
 
     if logger:
-        logger.info(f"component types in netlist: {[sample.key() for sample in used]}\n"
-                    f"hanging_nodes_before_drop: {hanging_nodes_before_drop}\n"
-                    f"hanging_nodes_after_drop: {hanging_nodes_after_drop}\n")
+        logger.info(
+            f"component types in netlist: {[sample.key() for sample in used]}\n"
+            f"hanging_nodes_before_drop: {hanging_nodes_before_drop}\n"
+            f"hanging_nodes_after_drop: {hanging_nodes_after_drop}\n"
+        )
 
     return errors

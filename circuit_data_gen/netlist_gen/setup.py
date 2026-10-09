@@ -22,15 +22,14 @@ from langgraph.graph import StateGraph, START, END
 from ..configs.config import get_logger, get_config_path_value, get_config_value
 from ..validate import full_validation
 from ..render_netlist import render_netlist
-from ..simulate import check_ngspice, ngspice_available, simulation_validation
+from ..parser.export import to_ngspice_netlist
+from ..ngspice_check import find_ngspice, ngspice_smoke_test, warn_if_untested_version
 from .sampling import CircuitRequirements
 
 
 SKIN_PATH = get_config_path_value("netlistsvg", "skin_path").resolve()
-# config defaults of the generation flags (--strict / --simulate). Simulating
-# always parses strictly too: ngspice needs the strict guarantees.
+# config default of the generation flag --strict/--no-strict
 GEN_STRICT = bool(get_config_value("convert", "strict_parsing"))
-GEN_SIMULATE = bool(get_config_value("simulation", "enabled"))
 # LLM generations per session (the first one included) before giving up
 DEFAULT_MAX_ATTEMPTS = 3
 
@@ -46,7 +45,7 @@ class CircuitState(TypedDict):
     max_attempts: int
     attempts: int
     # timing diagnostics: time.perf_counter() when the session started, and
-    # the seconds spent per stage ("llm", "smoke_test", "simulation") summed
+    # the seconds spent per stage ("llm", "smoke_test", "ngspice") summed
     # over all attempts, summarized when the session ends
     started_at: float
     timings: dict[str, float]
@@ -59,8 +58,6 @@ class CircuitState(TypedDict):
     output_annotations: list[Path]
     output_overlays: list[Path]
     output_yosys: list[Path]
-    # simulating only: the operating point JSON of each valid netlist
-    output_simulations: list[Path]
 
 
 def llm_seed(seed: str) -> int:
@@ -78,41 +75,33 @@ def _elapsed(state: CircuitState) -> float:
     return now - state.get("started_at", now)
 
 
-def _add_timings(state: CircuitState, **seconds: float) -> dict[str, float]:
+def stage_timings(timings) -> dict[str, float]:
+    stage_timings = {}
+    for circuit_idx, timing in timings.items():
+        for stage, spent in timing.items():
+            if stage == "llm":
+                # the LLM stage is shared by all circuits of the session
+                stage_timings[stage] = max(stage_timings.get(stage, 0.0), spent)
+            else:
+                stage_timings[stage] = stage_timings.get(stage, 0.0) + spent
+    return stage_timings
+
+
+def _add_timings(state: CircuitState, circuit_idx: int, **seconds: float) -> dict[str, float]:
     """The session's stage timings with `seconds` added (a new dict, to
     return as the node's state update)."""
     timings = dict(state.get("timings") or {})
+    timing = timings.get(circuit_idx, {})
     for stage, spent in seconds.items():
-        timings[stage] = timings.get(stage, 0.0) + spent
+        timing[stage] = timing.get(stage, 0.0) + spent
+    timings[circuit_idx] = timing
     return timings
 
 
-def _resolve_simulate(simulate: bool | None) -> bool:
-    """Whether generated netlists are simulated: the explicit value (e.g.
-    `cirdg gen_data --simulate/--no-simulate`), else GEN_SIMULATE."""
-    return GEN_SIMULATE if simulate is None else simulate
-
-
-def _resolve_strict(strict: bool | None, simulate: bool | None = None) -> bool:
+def _resolve_strict(strict: bool | None) -> bool:
     """Generation strictness: the explicit value (e.g. `cirdg gen_data
-    --strict/--no-strict`), else GEN_STRICT; always on when simulating,
-    even with an explicit strict=False."""
-    return (GEN_STRICT if strict is None else strict) or _resolve_simulate(simulate)
-
-
-def system_prompt_key(strict: bool | None = None, simulate: bool | None = None) -> str:
-    """Config key (under netlist_gen) of the LLM system prompt: the
-    simulation prompt when netlists are simulated, the strict prompt when
-    they are only parsed strictly, else the default one. Both are SPICE only,
-    so the lcapy dialect always uses the default."""
-    is_spice = str(get_config_value("convert", "netlist_format")).lower() == "spice"
-    if not is_spice:
-        return "LLM_SYSTEM_PROMPT_PATH"
-    if _resolve_simulate(simulate):
-        return "LLM_SIMULATE_SYSTEM_PROMPT_PATH"
-    if _resolve_strict(strict, simulate):
-        return "LLM_STRICT_SYSTEM_PROMPT_PATH"
-    return "LLM_SYSTEM_PROMPT_PATH"
+    --strict/--no-strict`), else GEN_STRICT."""
+    return GEN_STRICT if strict is None else strict
 
 
 def smoke_test_render(
@@ -124,13 +113,10 @@ def smoke_test_render(
     temp_overlay_path: Path,
     strict: bool | None = None,
     elk_seed: str | int | None = None,
-    simulate: bool | None = None,
 ) -> tuple[bool, list[str]]:
     """Attempt to render the netlist and return (valid, errors).
 
-    `strict` selects strict SPICE parsing (None = GEN_STRICT), `simulate`
-    whether the netlist will be simulated (None = GEN_SIMULATE), which also
-    rejects components ngspice cannot simulate and implies strict parsing.
+    `strict` selects strict SPICE parsing (None = GEN_STRICT).
     `elk_seed` fixes the ELK randomization seed for the render; None keeps
     the skin's seed. Callers pass the worker's rng_base_seed so the smoke-test
     layout matches the persisted render layout for the same sample.
@@ -148,8 +134,7 @@ def smoke_test_render(
             format="png",
             debug_overlay=True,
             debug_overlay_path=temp_overlay_path,
-            strict=_resolve_strict(strict, simulate),
-            simulate=_resolve_simulate(simulate),
+            strict=_resolve_strict(strict),
             elk_seed=elk_seed,
         )
 
@@ -170,10 +155,8 @@ def netlist_gen_setup(
     netlist_dir: str | Path,
     schematic_dir: str | Path,
     annotation_dir: str | Path,
-    simulation_dir: str | Path | None = None,
     temperature: float = 0.9,
     strict: bool | None = None,
-    simulate: bool | None = None,
 ):
     """Build the LangGraph state machine for netlist generation.
 
@@ -189,33 +172,23 @@ def netlist_gen_setup(
         If given, annotations (component/label/pin boxes) are written
         here as <stem>.txt alongside a shared classes.txt registry.
     strict : bool | None
-        SPICE strict parsing for the smoke test, and the matching (strict)
-        system prompt. None = GEN_STRICT (convert.strict_parsing).
-    simulate : bool | None
-        SPICE only: the generated netlists will be simulated. Implies strict
-        parsing, rejects components ngspice cannot simulate, and selects the
-        simulation system prompt. None = GEN_SIMULATE (simulation.enabled).
-        Netlists that pass every other check are then simulated with ngspice
-        (simulate.simulation_validation) and must reach a DC operating point.
-    simulation_dir : str | Path | None
-        Simulating only: where the operating point of each valid netlist is
-        written (when simulation.save_results). None = a "simulations"
-        directory next to `netlist_dir`.
+        SPICE strict parsing for the smoke test. None = GEN_STRICT
+        (convert.strict_parsing). Netlists that pass the render smoke test
+        are then loaded by ngspice too (ngspice_check.ngspice_smoke_test),
+        when an ngspice executable is found; without one that step is
+        skipped with a warning. Strict and lenient generation use the same
+        system prompt.
     """
-    strict = _resolve_strict(strict, simulate)
-    simulate = _resolve_simulate(simulate)
-    if simulate:
-        if not ngspice_available():
-            raise RuntimeError(
-                "Simulation needs PySpice: install it with `pip install -e .[sim]` "
-                "(then ngspice itself, see the README), or run without --simulate."
-            )
-        # the pinned version, or fail now rather than on the first netlist
-        check_ngspice()
-    save_simulations = simulate and bool(get_config_value("simulation", "save_results"))
-    simulation_dir = (
-        Path(simulation_dir) if simulation_dir is not None else Path(netlist_dir).parent / "simulations"
-    )
+    strict = _resolve_strict(strict)
+    ngspice_exe = find_ngspice() if strict else None
+    if strict and ngspice_exe is None:
+        get_logger(__name__).warning(
+            "Strict generation without the ngspice smoke test: no ngspice executable found "
+            "(set netlist_gen.ngspice_path, or put ngspice_con / ngspice on PATH)."
+        )
+    elif ngspice_exe is not None:
+        warn_if_untested_version(ngspice_exe)
+
     load_dotenv()
     api_key = os.getenv("CIRDG_API_KEY")
     model_name = os.getenv("CIRDG_MODEL_NAME")
@@ -229,7 +202,7 @@ def netlist_gen_setup(
         temperature=temperature,
     )
 
-    sys_prompt_path = get_config_path_value("netlist_gen", system_prompt_key(strict, simulate)).resolve()
+    sys_prompt_path = get_config_path_value("netlist_gen", "llm_system_prompt_path").resolve()
 
     with open(sys_prompt_path, "r", encoding="utf-8") as f:
         sys_prompt = f.read()
@@ -250,7 +223,6 @@ def netlist_gen_setup(
 
         init_state["attempts"] = 0
         init_state["started_at"] = time.perf_counter()
-        init_state["timings"] = {}
 
         if not state.get("gen_count_per_session"):
             init_state["gen_count_per_session"] = 1 or len(state.get("requirements", ["dummy"]))
@@ -267,12 +239,15 @@ def netlist_gen_setup(
         if not state.get("max_attempts"):
             init_state["max_attempts"] = DEFAULT_MAX_ATTEMPTS
 
+        init_state["timings"] = {
+            circuit_idx: {} for circuit_idx in range(init_state["gen_count_per_session"])
+        }
+
         init_state["output_netlists"] = ["" for _ in range(init_state["gen_count_per_session"])]
         init_state["output_schematics"] = ["" for _ in range(init_state["gen_count_per_session"])]
         init_state["output_annotations"] = ["" for _ in range(init_state["gen_count_per_session"])]
         init_state["output_overlays"] = ["" for _ in range(init_state["gen_count_per_session"])]
         init_state["output_yosys"] = ["" for _ in range(init_state["gen_count_per_session"])]
-        init_state["output_simulations"] = ["" for _ in range(init_state["gen_count_per_session"])]
 
         return init_state
 
@@ -287,9 +262,12 @@ def netlist_gen_setup(
         llm_start = time.perf_counter()
         response = await seeded_llm.ainvoke([system] + state["messages"])
         llm_s = time.perf_counter() - llm_start
+        timings = {}
+        for i in range(state["gen_count_per_session"]):
+            timings.update(_add_timings(state, i, llm=llm_s))
         logger.info(f"LLM response in {llm_s:.2f}s")
 
-        return {"messages": [response], "timings": _add_timings(state, llm=llm_s)}
+        return {"messages": [response], "timings": timings}
 
     # validate_circuit  (smoke test: attempt to render the netlist)
     async def validate_circuit(state: CircuitState) -> dict:
@@ -323,7 +301,8 @@ def netlist_gen_setup(
 
         # ---- smoke test: write temp netlist and try to render it ---- #
         list_of_errors: list[list[str]] = [[] for _ in range(state["gen_count_per_session"])]
-        smoke_test_s = simulation_s = 0.0
+        smoke_test_s = ngspice_s = 0.0
+        timings = {}
 
         # ===========================================================
         # Iterate through each of the generated netlists, validate
@@ -357,7 +336,6 @@ def netlist_gen_setup(
                         temp_annotation_path,
                         temp_overlay_path,
                         strict=strict,
-                        simulate=simulate,
                         # the circuits's rng_base_seed drives the ELK layout seed
                         elk_seed=state["rng_seeds"][idx],
                     )
@@ -365,32 +343,24 @@ def netlist_gen_setup(
                     errors.append(str(e))
                 smoke_s = time.perf_counter() - smoke_start
                 smoke_test_s += smoke_s
+                timings.update(_add_timings(state, circuit_idx=idx, smoke=smoke_s))
                 logger.info(f"smoke test of netlist {idx} in {smoke_s:.2f}s")
 
                 # ===========================================================
-                # simulation: only netlists that pass every other check (a
-                # hanging node would otherwise also surface as a pile of
-                # singular-matrix errors). ngspice runs in its own process;
-                # the thread keeps the other workers of the batch running.
+                # ngspice smoke test (strict, ngspice found): the netlist
+                # must load into ngspice. Runs in a thread so the other
+                # workers of the batch keep going while ngspice runs.
                 # ===========================================================
-                simulation = None
-                if if_valid and simulate:
-                    logger.info(f"simulating netlist {idx}...")
-                    sim_start = time.perf_counter()
-                    try:
-                        simulation = await asyncio.to_thread(simulation_validation, netlist)
-                    except Exception as e:
-                        if_valid, errors = False, [f"Simulation failed: {e}"]
-                    sim_s = time.perf_counter() - sim_start
-                    simulation_s += sim_s
-                    if simulation is not None:
-                        logger.info(
-                            f"simulation of netlist {idx} in {sim_s:.2f}s: "
-                            f"ok={simulation.ok} {simulation.errors}"
-                        )
-                        if not simulation.ok:
-                            if_valid, errors = False, simulation.errors
-                            logger.debug(f"ngspice output for netlist {idx}:\n{simulation.raw_log}")
+                if if_valid and ngspice_exe is not None:
+                    ngspice_start = time.perf_counter()
+                    ngspice_errors = await asyncio.to_thread(ngspice_smoke_test, netlist, ngspice_exe)
+                    spent = time.perf_counter() - ngspice_start
+                    ngspice_s += spent
+                    timings.update(_add_timings(state, circuit_idx=idx, ngspice=spent))
+                    verdict = "ok" if not ngspice_errors else "rejected"
+                    logger.info(f"ngspice smoke test of netlist {idx} in {spent:.2f}s: {verdict}")
+                    if ngspice_errors:
+                        if_valid, errors = False, ngspice_errors
 
                 list_of_errors[idx] = errors
                 state["circuits_valid"][idx] = if_valid
@@ -413,6 +383,11 @@ def netlist_gen_setup(
                     Path(schematic_dir).mkdir(parents=True, exist_ok=True)
                     Path(annotation_dir).mkdir(parents=True, exist_ok=True)
 
+                    netlist = to_ngspice_netlist(
+                        netlist,
+                        title=f"* netlist {state['rng_seeds'][idx]} generated by circuit_data_gen",
+                        analysis=None,
+                    )
                     netlist_path.write_text(netlist, encoding="utf-8")
 
                     schematic_bytes = temp_schematic_path.read_bytes()
@@ -435,14 +410,6 @@ def netlist_gen_setup(
                     state["output_annotations"][idx] = str(annotation_path.resolve())
                     state["output_overlays"][idx] = str(overlay_path.resolve())
 
-                    if save_simulations and simulation is not None:
-                        simulation_path = simulation_dir / f"simulation_{state['rng_seeds'][idx]}.json"
-                        simulation_dir.mkdir(parents=True, exist_ok=True)
-                        simulation_path.write_text(
-                            json.dumps(simulation.to_json(), indent=2), encoding="utf-8"
-                        )
-                        state["output_simulations"][idx] = str(simulation_path.resolve())
-
         if all(state["circuits_valid"]):
             message = HumanMessage(
                 content=(
@@ -459,39 +426,36 @@ def netlist_gen_setup(
                 error_str = "\n".join(errors) if errors else "Unknown validation error."
                 final_msg += (
                     f"Circuit validation result for netlist {idx}: {if_valid}\n"
-                    f"Here are the errors for netlist {idx}:\n{error_str}'\n\n"
+                    f"Here are the errors for netlist {idx}:\n{error_str}\n\n"
                 )
             message = HumanMessage(content=final_msg)
 
         logger.info(f"{type(message).__name__}:\n {message.content}\n")
 
-        stage_seconds = {"smoke_test": smoke_test_s}
-        if simulate:
-            stage_seconds["simulation"] = simulation_s
         return {
             "messages": [message],
             "attempts": attempts,
-            "timings": _add_timings(state, **stage_seconds),
+            "timings": timings,
             "circuits_valid": state["circuits_valid"],
             "output_netlists": state["output_netlists"],
             "output_schematics": state["output_schematics"],
             "output_annotations": state["output_annotations"],
             "output_overlays": state["output_overlays"],
             "output_yosys": state["output_yosys"],
-            "output_simulations": state["output_simulations"],
         }
 
     def route_for_regeneration(state: CircuitState) -> str:
-        stages = ", ".join(f"{stage} {spent:.2f}s" for stage, spent in (state.get("timings", {})).items())
+        _stage_timings = stage_timings(state["timings"])
+        stages = ", ".join(f"{stage} {spent:.2f}s" for stage, spent in _stage_timings.items())
         timing_summary = f"{_elapsed(state):.2f}s in total ({stages or 'no stage timed'})"
 
         if all(state["circuits_valid"]):
-            stages = ", ".join(f"{stage} {spent:.2f}s" for stage, spent in (state.get("timings", {})).items())
+            stages = ", ".join(f"{stage} {spent:.2f}s" for stage, spent in _stage_timings.items())
 
             state["logger"].info(
                 f"Session {state['rng_base_seed']} done after {state['attempts']} attempt(s): \n"
                 f"{timing_summary}\n"
-                f"On average, {sum(state['timings'].values()) / state['gen_count_per_session']:.2f}s "
+                f"On average, {sum(_stage_timings.values()) / state['gen_count_per_session']:.2f}s "
                 f"per circuit\n"
             )
             return END

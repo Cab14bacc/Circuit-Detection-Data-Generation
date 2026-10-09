@@ -20,10 +20,16 @@ def generate_seed_prompt(gen_count_per_session: int, circuit_requirements: list[
         lines = [
             f"## Constraints for Netlist {idx}:",
             f"This is the exact number of components for this instance: {requirement.num_components}, "
-            f"you can't go over nor go under this number.",
+            f"you can't go over nor go under this number. Only the element lines outside "
+            f".subckt bodies count (an X instance counts once; directives, K lines and the "
+            f"elements inside a .subckt ... .ends block do not).",
         ]
         if requirement.required:
-            lines.append("You MUST use each of the following components at least once:")
+            lines.append(
+                "You MUST use each of the following components at least once, at the top level of the "
+                "netlist (not only inside a .subckt body). Each line is its own component type: the same "
+                "letter with another model TYPE, or with or without a kind keyword, does not count for it."
+            )
             lines.extend(f"- {sample.describe()}" for sample in requirement.required)
         if optional:
             lines.append("You MAY also use the following components:")

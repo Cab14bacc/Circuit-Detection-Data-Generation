@@ -6,5 +6,5 @@ class NetlistError(Exception):
 
 
 class SpecError(Exception):
-    """Raised when a skin spec in LCAPY_TO_SKIN is malformed (e.g. duplicate
+    """Raised when a spec in TO_SKIN_CONFIG is malformed (e.g. duplicate
     argument indices between arg_to_ports and args_to_values)."""

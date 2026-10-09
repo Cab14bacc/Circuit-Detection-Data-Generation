@@ -1,10 +1,7 @@
 """Tests for component sampling (netlist_gen/sampling.py): the pool of
 component samples, their weights, the per-netlist draw with its required
-and allowed samples, the simulation anchors and references, and the seed
-prompt built from them. No LLM involved.
-
-Tests request ``convert`` (both dialects) or ``convert_spice`` so the
-dialect is loaded before sampling reads it.
+and allowed samples, the references, and the seed prompt built from them.
+No LLM involved. Prefixes and model types are lower case (parser.macro).
 """
 
 import math
@@ -42,74 +39,60 @@ def _sample(pool, prefix, **fields):
 
 
 class TestPool:
-    @pytest.mark.parametrize("simulate", [False, True])
-    def test_no_duplicate_keys(self, convert, simulate):
-        keys = [s.key() for s in build_pool(simulate=simulate)]
+    def test_no_duplicate_keys(self, convert):
+        keys = [s.key() for s in build_pool()]
         assert len(keys) == len(set(keys))
 
     def test_spice_current_switch_is_sampled(self, convert_spice):
-        # W is the lcapy wire, but a switch in SPICE: it must be in the pool
-        assert any(s.prefix == "W" for s in build_pool())
+        # W is the current-controlled switch: it must be in the pool
+        assert any(s.prefix == "w" for s in build_pool())
 
-    def test_lcapy_wire_is_not_sampled(self, convert):
-        if convert.IS_SPICE:
-            pytest.skip("lcapy-only behavior")
-        assert not any(s.prefix == "W" for s in build_pool())
-
-    def test_simulation_drops_unsimulatable(self, convert_spice):
-        full = {s.key() for s in build_pool()}
-        sim = build_pool(simulate=True)
-        assert {s.key() for s in sim} < full
-        assert not any("LPNP" in s.model_type for s in sim)
-        assert not {s.prefix for s in sim} & {"N", "P", "A", "U"}
-        assert any(s.prefix == "X" for s in sim)
-        # C by charge cannot be simulated (ngspice 32), C by value can
-        c_forms = {form for s in sim if s.prefix == "C" for form in s.forms()}
-        assert not any("Q=" in form for form in c_forms)
-        assert any(form.startswith("Cname N+ N- <C>") for form in c_forms)
+    def test_generics_other_than_x_are_not_sampled(self, convert_spice):
+        prefixes = {s.prefix for s in build_pool()}
+        assert not prefixes & {"n", "p", "a", "u"}
+        assert "x" in prefixes
 
     def test_symbols_split_samples(self, convert_spice):
         pool = build_pool()
         # B V= and B I= share every field but the symbol
-        assert {s.skin for s in pool if s.prefix == "B"} == {("v",), ("i",)}
+        assert {s.skin for s in pool if s.prefix == "b"} == {("v",), ("i",)}
         # NPN and PNP differ in model type and symbol
-        assert {s.model_type for s in pool if s.prefix == "Q" and not s.kind} >= {("NPN",), ("PNP",)}
+        assert {s.model_type for s in pool if s.prefix == "q" and not s.kind} >= {("npn",), ("pnp",)}
 
     def test_specs_with_same_fields_merge(self, convert_spice):
         # the 3- and 4-node NPN specs draw the same symbol: one sample, two forms
-        npn = _sample(build_pool(), "Q", model_type=("NPN",), kind=())
+        npn = _sample(build_pool(), "q", model_type=("npn",), kind=())
         assert len(npn.specs()) == 2
         assert npn.forms() == ["Qname NC NB NE mname", "Qname NC NB NE NS mname"]
 
 
 class TestWeights:
     @pytest.mark.parametrize("weighting", ["by_skin", "uniform"])
-    @pytest.mark.parametrize("simulate", [False, True])
-    def test_each_prefix_sums_to_one(self, convert, weighting, simulate):
-        for prefix, samples in _pool_by_prefix(build_pool(simulate, weighting)).items():
+    def test_each_prefix_sums_to_one(self, convert, weighting):
+        for prefix, samples in _pool_by_prefix(build_pool(weighting)).items():
             assert math.isclose(sum(s.weight for s in samples), 1.0), prefix
 
     def test_by_skin_splits_per_symbol(self, convert_spice):
         # S: sw_no is drawn by SW and SW OFF, sw_nc by SW ON alone
         pool = build_pool(weighting="by_skin")
-        assert _sample(pool, "S", kind=("ON",)).weight == pytest.approx(0.5)
-        assert _sample(pool, "S", kind=("OFF",)).weight == pytest.approx(0.25)
-        assert _sample(pool, "S", kind=()).weight == pytest.approx(0.25)
+        assert _sample(pool, "s", kind=("on",)).weight == pytest.approx(0.5)
+        assert _sample(pool, "s", kind=("off",)).weight == pytest.approx(0.25)
+        assert _sample(pool, "s", kind=()).weight == pytest.approx(0.25)
 
     def test_uniform_splits_per_sample(self, convert_spice):
         pool = build_pool(weighting="uniform")
-        assert all(s.weight == pytest.approx(1 / 3) for s in pool if s.prefix == "S")
+        assert all(s.weight == pytest.approx(1 / 3) for s in pool if s.prefix == "s")
 
     def test_unknown_weighting_rejected(self, convert):
         with pytest.raises(ValueError, match="weighting"):
             build_pool(weighting="by_prefix")
 
     def test_weighted_order_follows_weights(self, convert):
-        heavy = ComponentSample("R", weight=0.75)
-        light = ComponentSample("C", weight=0.25)
+        heavy = ComponentSample("r", weight=0.75)
+        light = ComponentSample("c", weight=0.25)
         rng = random.Random(0)
         firsts = Counter(sampling._weighted_order(rng, [heavy, light])[0].prefix for _ in range(20000))
-        assert firsts["R"] / 20000 == pytest.approx(0.75, abs=0.02)
+        assert firsts["r"] / 20000 == pytest.approx(0.75, abs=0.02)
 
 
 class TestDraw:
@@ -128,9 +111,9 @@ class TestDraw:
         assert 5 <= reqs.num_components <= 20
         keys = [s.key() for s in reqs.allowed]
         assert len(keys) == len(set(keys))
-        # without simulation nothing is added: all drawn, all required
+        # only references are added: all drawn, all required
         assert keys == [s.key() for s in reqs.required] or any(
-            s.prefix in ("F", "H", "W") for s in reqs.allowed
+            s.prefix in ("f", "h", "w") for s in reqs.allowed
         )
         assert reqs.num_components // 2 <= len(reqs.required) <= reqs.num_components
 
@@ -149,65 +132,18 @@ class TestDraw:
             sample_requirements(random.Random(0), build_pool(), (5, 5), required_fraction=1.5)
 
 
-class TestAnchors:
-    def test_unmet_groups_are_filled(self, convert_spice):
-        pool = build_pool(simulate=True)
-        capacitor = _sample(pool, "C", model_type=())
-        added = sampling._fill_anchors(
-            random.Random(0), pool, [capacitor], sampling.dialect.SIMULATION_ANCHORS
-        )
-        assert len(added) == 2
-        assert added[0].prefix in ("V", "I")
-        assert added[1].prefix == "R" and added[1].model_type == ()
-
-    def test_met_groups_add_nothing(self, convert_spice):
-        pool = build_pool(simulate=True)
-        current = _sample(pool, "I", specifiers=("DC",))
-        resistor = _sample(pool, "R", model_type=())
-        added = sampling._fill_anchors(
-            random.Random(0), pool, [current, resistor], sampling.dialect.SIMULATION_ANCHORS
-        )
-        assert added == []
-
-    def test_model_resistor_does_not_meet_the_resistor_group(self, convert_spice):
-        pool = build_pool(simulate=True)
-        model_r = _sample(pool, "R", model_type=("R", "RES"))
-        added = sampling._fill_anchors(random.Random(0), pool, [model_r], sampling.dialect.SIMULATION_ANCHORS)
-        assert [s.prefix for s in added if s.prefix == "R"] == ["R"]
-
-    @pytest.mark.parametrize("seed", range(30))
-    def test_simulated_draw_is_always_anchored_and_anchors_are_optional(self, convert_spice, seed):
-        reqs = sample_requirements(random.Random(seed), build_pool(simulate=True), (5, 20), simulate=True)
-        assert any(s.prefix in ("V", "I") for s in reqs.allowed)
-        assert any(s.prefix == "R" and s.model_type == () for s in reqs.allowed)
-        # everything beyond the (fully required) draw is an anchor or a reference
-        required = {s.key() for s in reqs.required}
-        extras = [s for s in reqs.allowed if s.key() not in required]
-        assert all(s.prefix in ("V", "I", "R") for s in extras), extras
-
-    def test_no_anchors_without_simulation(self, convert_spice):
-        pool = build_pool()
-        for seed in range(30):
-            reqs = sample_requirements(
-                random.Random(seed), pool, (5, 20), simulate=False, required_fraction=1.0
-            )
-            required = {s.key() for s in reqs.required}
-            # only references may be added
-            assert all(s.prefix == "V" for s in reqs.allowed if s.key() not in required)
-
-
 class TestReferences:
-    @pytest.mark.parametrize("prefix", ["F", "H", "W"])
+    @pytest.mark.parametrize("prefix", ["f", "h", "w"])
     def test_controlled_elements_bring_a_voltage_source(self, convert_spice, prefix):
         pool = build_pool()
         element = next(s for s in pool if s.prefix == prefix)
         added = sampling._fill_references(random.Random(0), pool, [element])
-        assert [s.prefix for s in added] == ["V"]
+        assert [s.prefix for s in added] == ["v"]
 
     def test_existing_voltage_source_is_enough(self, convert_spice):
         pool = build_pool()
-        element = next(s for s in pool if s.prefix == "F")
-        source = _sample(pool, "V", specifiers=("DC",))
+        element = next(s for s in pool if s.prefix == "f")
+        source = _sample(pool, "v", specifiers=("dc",))
         assert sampling._fill_references(random.Random(0), pool, [element, source]) == []
 
 
@@ -215,40 +151,40 @@ class TestFromElement:
     @pytest.mark.parametrize(
         "netlist, prefix, fields",
         [
-            ("R1 a 0 1k\n", "R", {"model_type": ()}),
-            ("R1 a 0 Rm\n.model Rm R\n", "R", {"model_type": ("R", "RES")}),
-            ("V1 a 0 5\n", "V", {"specifiers": ("DC",)}),
-            ("V1 a 0 5 AC 1\n", "V", {"specifiers": ("DC", "AC")}),
-            ("Q1 c b e 0 Qp off\n.model Qp PNP\n", "Q", {"model_type": ("PNP",), "kind": ("off",)}),
-            ("S1 a b c d Sm ON\n.model Sm SW\n", "S", {"kind": ("ON",)}),
-            ("W1 a b V1 Wm OFF\n.model Wm CSW\n", "W", {"kind": ("OFF",)}),
-            ("B1 a 0 V=1\n", "B", {"skin": ("v",)}),
-            ("B1 a 0 I=1m\n", "B", {"skin": ("i",)}),
-            ("E1 a 0 vol='2*v(b)'\n", "E", {}),
-            ("C1 a 0 Q=2n\n", "C", {"model_type": ()}),
-            ("X1 a b amp\n.subckt amp p n\n.ends\n", "X", {}),
+            ("R1 a 0 1k\n", "r", {"model_type": ()}),
+            ("R1 a 0 Rm\n.model Rm R\n", "r", {"model_type": ("r", "res")}),
+            ("V1 a 0 5\n", "v", {"specifiers": ("dc",)}),
+            ("V1 a 0 5 AC 1\n", "v", {"specifiers": ("dc", "ac")}),
+            ("Q1 c b e 0 Qp off\n.model Qp PNP\n", "q", {"model_type": ("pnp",), "kind": ("off",)}),
+            ("S1 a b c d Sm ON\n.model Sm SW\n", "s", {"kind": ("on",)}),
+            ("W1 a b V1 Wm OFF\n.model Wm CSW\n", "w", {"kind": ("off",)}),
+            ("B1 a 0 V=1\n", "b", {"skin": ("v",)}),
+            ("B1 a 0 I=1m\n", "b", {"skin": ("i",)}),
+            ("E1 a 0 vol='2*v(b)'\n", "e", {}),
+            ("C1 a 0 Q={2n}\n", "c", {"model_type": ()}),
+            ("X1 a b amp\n.subckt amp p n\n.ends\n", "x", {}),
         ],
     )
     def test_parsed_element_maps_to_its_pool_sample(self, convert_spice, netlist, prefix, fields):
-        parsed = convert_spice._parse_netlist(netlist, strict=False, simulate=False)
+        parsed = convert_spice._parse_netlist(netlist, strict=False)
         (sample,) = [s for s in samples_in(parsed) if s.prefix == prefix]
         assert sample.key() == _sample(build_pool(), prefix, **fields).key()
 
     def test_samples_in_deduplicates(self, convert):
         parsed = convert._parse_netlist("V1 a 0 5\nR1 a b 1k\nR2 b 0 1k\n")
-        assert [s.prefix for s in samples_in(parsed)] == ["V", "R"]
+        assert [s.prefix for s in samples_in(parsed)] == ["v", "r"]
 
 
 class TestDescribeAndSeedPrompt:
     def test_describe_names_type_kind_and_forms(self, convert_spice):
-        sample = _sample(build_pool(), "Q", model_type=("PNP",), kind=("off",))
+        sample = _sample(build_pool(), "q", model_type=("pnp",), kind=("off",))
         assert sample.describe() == (
             "`Q` with a `.model` card of TYPE PNP, with kind keyword `off`; written as "
             "`Qname NC NB NE mname off` or `Qname NC NB NE NS mname off`"
         )
 
     def test_describe_marks_modelless_forms(self, convert_spice):
-        plain = _sample(build_pool(), "R", model_type=())
+        plain = _sample(build_pool(), "r", model_type=())
         assert plain.describe().startswith("`R` without a model name; written as `Rname N+ N- <r>`")
 
     def test_seed_prompt_lists_required_and_optional(self, convert):
@@ -258,7 +194,7 @@ class TestDescribeAndSeedPrompt:
         assert "{gen_count}" not in prompt and "Contraints" not in prompt
         assert "You have to generate 1 netlist(s) in total." in prompt
         assert "exact number of components for this instance: 10" in prompt
-        assert "You MUST use each of the following components at least once:" in prompt
+        assert "You MUST use each of the following components at least once, at the top level" in prompt
         assert "You MAY also use the following components:" in prompt
         for sample in reqs.allowed:
             assert f"- {sample.describe()}" in prompt

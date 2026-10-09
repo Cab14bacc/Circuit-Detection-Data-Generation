@@ -5,8 +5,6 @@ merging), hanging-node detection, and connected-component grouping — the
 same functions the generation pipeline's validator uses.
 """
 
-import pytest
-
 from circuit_data_gen.parser.convert import (
     GROUND_NAMES,
     _assign_net_ids,
@@ -19,7 +17,6 @@ from circuit_data_gen.validate import connected_component_groups
 from tests.conftest import (
     CONNECTED_NETLIST,
     ISOLATED_NETLIST,
-    WIRE_BRIDGED_NETLIST,
 )
 
 
@@ -66,15 +63,6 @@ class TestMergeNodes:
         find, _ = _merge_nodes(parsed)
         assert find("0") == find("GND")
 
-    def test_wire_merges_nodes(self, convert):
-        if convert.IS_SPICE:
-            # SPICE: W is the current-controlled switch, not a wire — no
-            # node merging; the line parses as a csw component instead.
-            pytest.skip("W is not a wire in the SPICE dialect")
-        parsed = convert._parse_netlist("V1 A 0 5\nW1 A B\nR1 B 0 1k\n")
-        find, _ = convert._merge_nodes(parsed)
-        assert find("A") == find("B")
-
 
 class TestAssignNetIds:
     def test_ground_net_id_found(self):
@@ -105,24 +93,6 @@ class TestConnectedComponentGroups:
         assert len(groups) == 2
         sizes = sorted(len(g) for g in groups)
         assert sizes == [2, 2]
-
-    def test_wire_bridge_connects(self, convert):
-        if convert.IS_SPICE:
-            # W is the current-controlled switch in SPICE, not a wire — the
-            # wire-bridge concept only exists in the lcapy dialect.
-            pytest.skip("W is not a wire in the SPICE dialect")
-        parsed = convert._parse_netlist(WIRE_BRIDGED_NETLIST)
-        is_connected, groups = connected_component_groups(parsed)
-        assert is_connected, groups
-        assert len(groups) == 1
-
-    def test_wires_excluded_from_groups(self, convert):
-        if convert.IS_SPICE:
-            pytest.skip("W is not a wire in the SPICE dialect")
-        parsed = convert._parse_netlist(WIRE_BRIDGED_NETLIST)
-        _, groups = connected_component_groups(parsed)
-        names = [n for g in groups for n in g]
-        assert not any(n.startswith("W") for n in names)
 
     def test_dropped_connections_do_not_connect(self):
         # G (VCCS) has ports 2/3 dropped by the skin. Craft a netlist where

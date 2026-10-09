@@ -1,195 +1,112 @@
 """
-SPICE (ngspice/LTspice) netlist conversion configuration.
+SPICE (ngspice) netlist conversion configuration.
 
-This module defines TO_SKIN_CONFIG (keyed by element letter, following the
-ngspice element-letter convention from the ngspice manual Table 2.2). It is
-loaded when NETLIST_FORMAT == "spice" in config.py; the lcapy grammar lives
-in default_convert_config.py (TO_SKIN_CONFIG) and the two are never mixed at
-parse time — convert.py branches on the format for its logic.
+TO_SKIN_CONFIG maps each element letter (ngspice manual, Table 2.2) to its
+specs: the variants of the element and the skin cell each one draws.
+MODEL_CONFIG lists the .model TYPEs and the card parameters they need, and
+EXPRESSION_CONSTANTS the names allowed in {expressions} without a .param.
+The field reference is docs/CONVERT_CONFIG.md. parser/macro.py loads these
+tables once and lower-cases prefixes, keys and model types, so this file may
+use either case.
 
-SPICE syntax differences from the lcapy dialect handled here:
-  - Values may be function calls: SINE(0 1m 100), PULSE(0 5 100u 10n 10n 500u 1)
-    — the tokenizer joins balanced parentheses into a single token (a space
-    before the paren, PWL (0,0 ...), is glued by _glue_paren_values).
-  - Elements reference MODEL names (D/Q/J/M/Z/R/C/L): the model name token is
-    positional and consumed (skin_label None), NOT a node; its .model TYPE
-    selects the spec (kind matching via the model table).
-  - Independent sources (V/I) use mode SPECIFIERS — bare keywords with fixed
-    operand arity (DC VALUE, AC [ACMAG [ACPHASE]]) that are declaratively
-    expanded into key=value tokens before matching; the DC vs AC specifier
-    split doubles as DC-source vs AC-source skin discrimination.
-  - Ground conventions: node "0", plus "gnd"/"GND" (auto-merged).
-  - Directives (.model .lib .tran .backanno .end ...) are filtered before parsing.
-  - Subcircuits (.subckt / X expansion) are NOT supported yet: X lines fall
-    back to the generic skin.
+How a line is read (parser/convert.py):
+  - The model name (a token naming a .model card of the netlist) is removed
+    from the line; its card's TYPE must be in the spec's `model_type`.
+  - Kind keywords (off, ON, OFF) are removed; the spec's `kind` must match.
+  - V/I specifiers (DC <value>, AC [<mag> [<phase>]]) are removed with their
+    operands, which fill value slots directly (parser/helper.py,
+    _read_specifiers). Whether AC is present picks the DC or AC source spec.
+  - Transient functions (SIN(...), PULSE(...), ...) are single tokens: the
+    tokenizer joins balanced parentheses, and a space before the paren
+    (PWL (0,0 ...)) is glued.
+  - What remains is matched by index: nodes (`arg_to_ports`), then
+    positional values; key=value arguments fill keyword slots.
+  - Every spec of the letter is tried; the one with the fewest errors, then
+    the fewest warnings, then the earliest one wins.
+Ground is node 0, also GND / gnd. X lines are subcircuit instances drawn as
+generic boxes, with pins named after the .subckt ports.
 
 ===========================================================================
-GRAMMAR — feed this section to an LLM to generate netlists in this dialect.
+GRAMMAR — the forms config_to_grammar() renders from this file (checked
+against ngspice 47). The LLM system prompt keeps a hand-written copy.
 
-Each netlist line defines exactly ONE element:
-    <Name> <args...>
-Name = element letter + instance id (R1, Vsrc, Mload); the element letter
-selects the rule below. Node "0" (also GND / gnd) is ground — all ground
-nodes are merged into one. Lines are case-insensitive.
+Notation:
+  N...       node: write the net's name (in, out, vdd, 0). Nodes listed as
+             "hidden" are written and connected but not drawn (the spec
+             marks them "drop"): Q substrate NS, M bulk NB, the E/G/S
+             control pair NC+ NC-, the T/O/Y far end NP2+ NP2-.
+  <value>    a value: a number with an optional suffix (1k, 2.2u, 1Meg), or
+             an expression in braces ({2*Rbase}) whose names are .params,
+             EXPRESSION_CONSTANTS, functions, v(node) or i(Vname).
+  [ ... ]    optional group; a|b = one of the alternatives.
+  key=<val>  keyword argument, written in that form; key={<val>} must keep
+             its braces (or quotes) even for a plain number.
+  mname      model name: after all nodes, before any key=value; for C, L
+             and Y before the value, for W after <Vcontrol>. A .model card
+             declaring it is required in the same netlist.
+  off on     kind keywords, right after mname.
+  dc ac      V/I specifiers, in any order.
+  <Vcontrol> the NAME of a V element of the netlist (not a node).
+SPICE ignores letter case; DC, AC, off, ON, OFF are reserved (no node names).
 
-TOKEN NOTATION — what each kind of token in the rules below means:
-  Ncode      NODE placeholder: write the net's real name (in, out, vdd, 0).
-             N+ is the main positive terminal and N- the negative one;
-             element-specific codes are named per rule below (NC collector,
-             NB base, NE emitter, ND drain, NG gate, NS source, NP/N switch
-             terminals). Real net names are any word.
-             Some nodes are HIDDEN (named in the rule's comment): they are
-             STILL REQUIRED in the line and electrically connected, but the
-             symbol has no pin for them, so they are NOT drawn (the spec
-             marks them "drop"). Used for: Q substrate NS, M bulk NB,
-             E/G/S control pairs NC+ NC-, and the far-end pair NP2+ NP2-
-             of transmission lines. Write 0 or a real net, as a plain name:
-             strict parsing rejects braced node tokens ({n1}).
-  <value>    REQUIRED value token: write the number/expression itself
-             (1k, 5, 2m, SIN(0 1m 100)), never the placeholder word.
-             Expressions go in curly braces ({2*Rbase}); every name in them
-             must be a .param, a built-in constant (EXPRESSION_CONSTANTS),
-             a function, v(node) or i(Vname).
-  [ ... ]    OPTIONAL: the whole bracketed group may be omitted.
-  Key=val    KEYWORD argument, written exactly in that form (Q=2n, Z0=50,
-             TD=10n, cur='...', V='...'). Unbracketed Key=val = required,
-             bracketed [Key=val] = optional.
-  bare kw    LITERAL keyword written verbatim: off (device starts off),
-             ON / OFF (switch state), DC / AC (source mode specifiers).
-  mname      MODEL name: written after all nodes and values of a
-             model-typed element (only off / ON / OFF may follow it;
-             C and L write it BEFORE the value: C1 a b CM 1u),
-             and a .model card declaring it is REQUIRED in the same
-             netlist. The card's TYPE selects the symbol; the COMPLETE
-             set of supported TYPEs is: D (D), NPN / PNP / LPNP (Q),
-             NJF / PJF (J), NMOS / PMOS (M), NMF / PMF (Z), SW (S),
-             CSW (W), R / RES (R), C (C), L (L), LTRA (O), TXL (Y) —
-             element letter in parentheses. A model TYPE outside this set
-             (URC, LTspice's VDMOS / CAP / IND, ...) has NO spec, and a
-             model name without a .model card cannot be resolved: both
-             make the line fail. Only use the listed TYPEs.
-  Vcontrol   Controlling-source REFERENCE: the NAME of a V element defined
-             elsewhere in the netlist (e.g. V1) — not a node, not drawn.
+Passives:
+    Rname N+ N- <r>
+    Rname N+ N- [<r>] mname                    TYPE R | RES
+    Cname N+ N- <c>
+    Cname N+ N- mname [<c>]                    TYPE C
+    Cname N+ N- q={<charge>}
+    Lname N+ N- <l>
+    Lname N+ N- inductance=<value>
+    Lname N+ N- mname [<inductance>]           TYPE L
 
-KIND KEYWORDS vs SPECIFIERS — two classes of bare literal words, not
-interchangeable:
-  kind keyword  ONE bare word, NO operands, written right after mname;
-                selects which VARIANT of the element the line is
-                (symbol or state):
-                off (device starts off, same symbol), ON / OFF (switch
-                state: ON closed, OFF open, omitted = default open).
-                Omitting it selects the default variant. For model-typed
-                elements the variant comes from the .model TYPE instead
-                (NPN vs PNP, NMOS vs PMOS, ...) — the model type acts as
-                an implicit kind keyword.
-  specifier     V/I SOURCES ONLY: a bare keyword that OPENS a mode
-                segment with a fixed operand arity, expanded into
-                keyword slots before matching:
-                  DC <value>           transparent — binds like a bare value
-                  AC <mag> [<phase>]   makes the source an AC source
-                                       (different symbol); bare AC == AC 1
-                The AC specifier doubles as DC-vs-AC source
-                discrimination: the DC-source rule treats a bare AC
-                token as foreign and rejects it, the AC-source rule
-                requires it. DC and AC segments may coexist on one line
-                (V3 a b 5 AC 1m = DC 5 with AC magnitude 1m).
-Reserved spellings — never use as net names: DC, AC, off, ON, OFF.
-===========================================================================
+Independent sources (an ac segment makes it an AC source, drawn differently):
+    Vname N+ N- [<value>|dc <value>] [SIN(...)|PULSE(...)|PWL(...)|...]
+    Vname N+ N- [<value>|dc <value>] [SIN(...)|...] ac [<mag>] [<phase>]
+    Iname ... (same two forms)
+  - <value> and dc <value> fill the same slot: write at most one.
+  - At most one function; a bare DC value comes before it (or dc anywhere).
+  - A bare ac means ac 1.
 
-Passives (plain value forms; semiconductor forms additionally end in mname):
-    Rname N+ N- <r>                       resistance; e.g. R1 in out 1k
-    Cname N+ N- <C>                       capacitance; e.g. C1 in out 1u
-    Lname N+ N- <L>                       inductance; e.g. L1 in out 10u
-    (semiconductor forms — referenced via a .model card; for C and L the
-    mname comes BEFORE the value, ngspice rejects `C1 a b 1u CM`):
-    Rname N+ N- [<r>] mname               model R/RES; r defaults 1e-3
-    Cname N+ N- mname [<CAP>]             model C; CAP defaults 0
-    Lname N+ N- mname [<L>]               model L; L defaults 0
-    (capacitor specified by charge instead of capacitance):
-    Cname N+ N- Q=<charge>                e.g. C1 in out Q=2n
+Controlled and behavioral sources:
+    Ename N+ N- NC+ NC- <gain>                 NC+ NC- hidden
+    Ename N+ N- vol={<expr>}
+    Gname N+ N- NC+ NC- <gain>                 NC+ NC- hidden
+    Gname N+ N- cur={<expr>}
+    Fname N+ N- <Vcontrol> <gain>
+    Hname N+ N- <Vcontrol> <gain>
+    Bname N+ N- v=<expr>
+    Bname N+ N- i=<expr>
+  vol=, cur=, v=, i= are the first argument after the nodes.
 
-Independent sources (the AC specifier decides DC vs AC source):
-    Vname N+ N- [<value>|DC <value>]      DC source; e.g. V1 in 0 5 / V2 in 0 DC 5
-    Vname N+ N- [<value>|DC <value>] AC <mag> [<phase>]
-                                          AC source;
-                                          e.g. V3 in 0 AC 1  /  V4 a b 5 AC 1m
-    Iname N+ N- [<value>|DC <value>]      DC source; e.g. I1 vdd 0 2m
-    Iname N+ N- [<value>|DC <value>] AC <mag> [<phase>]
-                                          AC source
-    - `[<value>|DC <value>]` = pick AT MOST ONE: a bare value, or the DC
-      specifier with its value — they bind the SAME slot, never write both
-      (Vname N+ N- 5 DC 7 is invalid). The whole group may be omitted:
-      `Vname N+ N-` and a trailing bare `DC` are valid and mean no value.
-    - a bare AC segment (AC, then magnitude, then optional phase) makes the
-      element an AC source; a line without AC is a DC source. Bare AC with
-      no operands means magnitude 1. The value/DC group must come BEFORE
-      the AC segment; extra Key=val parameters may follow it.
-    - DC is transparent: `DC 5` binds exactly like a bare `5`.
-    - function values are single tokens: SIN(0 1m 1k) PULSE(0 5 ...)
-      PWL(0,0 1m,5)
+Semiconductors (the card's TYPE picks the symbol):
+    Dname N+ N- mname [off]                    TYPE D
+    Qname NC NB NE [NS] mname [off]            TYPE NPN | PNP; NS hidden
+    Jname ND NG NS mname [off]                 TYPE NJF | PJF
+    Mname ND NG NS NB mname [off]              TYPE NMOS | PMOS; NB hidden
+    Zname ND NG NS mname [off]                 TYPE NMF | PMF (MESFET)
 
-Controlled sources (control terminals are written even though not drawn):
-    Ename N+ N- NC+ NC- <gain>            VCVS (voltage_gain); NC+ NC- hidden
-    Ename N+ N- vol='<expr>'              non-linear V source (2 nodes only)
-    Gname N+ N- NC+ NC- <gm>              VCCS (transconductance); NC+ NC- hidden
-    Gname N+ N- cur='<expr>'              non-linear I source (2 nodes only)
-    Fname N+ N- Vcontrol <gain>           CCCS (current_gain)
-    Hname N+ N- Vcontrol <resistance>     CCVS (transresistance)
+Switches (on = closed, off or nothing = open):
+    Sname NP N NC+ NC- mname [on|off]          TYPE SW; NC+ NC- hidden
+    Wname N+ N- <Vcontrol> mname [on|off]      TYPE CSW
 
-Behavioral sources (exactly one of V= / I=; the keyword selects the symbol):
-    Bname N+ N- V=<expr>                  draws as a voltage source
-    Bname N+ N- I=<expr>                  draws as a current source
+Transmission lines (NP2+ NP2- hidden):
+    Tname N+ N- NP2+ NP2- z0=<value>           (td=, f=, nl=, ic= are passed through)
+    Oname N+ N- NP2+ NP2- mname                TYPE LTRA
+    Yname N+ N- NP2+ NP2- mname [len=<value>]  TYPE TXL
+  Their cards need the line parameters (no ngspice defaults):
+    .model mname ltra r=<value> l=<value> c=<value> len=<value> g=0
+    .model mname txl r=<value> l=<value> g=<value> c=<value> length=<value>
+  LTRA's g must be 0; TXL's length belongs in the card (len= overrides it).
 
-Model-typed elements (mname follows the nodes and matches a .model card;
-optional `off` after mname starts the device off; the card's TYPE
-picks the symbol variant — accepted TYPEs listed per rule):
-    Dname N+ N- mname [off]               TYPE: D
-    Qname NC NB NE [NS] mname [off]       NS = substrate node, hidden;
-                                          TYPE: NPN | PNP | LPNP
-    Jname ND NG NS mname [off]            TYPE: NJF | PJF
-    Mname ND NG NS NB mname [off]         NB = bulk node, hidden;
-                                          TYPE: NMOS | PMOS
-    Zname ND NG NS mname [off]            MESFET; TYPE: NMF | PMF
+Subcircuits:
+    Xname N1 ... Nn SUBNAM [param=<value> ...]
+  with a .subckt SUBNAM N1 ... Nn [params: ...] ... .ends block in the
+  netlist. The instance counts as one component; its body is not drawn.
+  A, N, P, U are parsed as generic boxes but are not part of the grammar.
 
-Switches (model TYPE SW for S, CSW for W; ON or OFF selects the state,
-omitted = default open switch):
-    Sname NP N NC+ NC- mname [ON|OFF]     voltage-controlled; NP/N = switch
-                                          terminals, NC+ NC- = control
-                                          pair, hidden
-    Wname N+ N- Vcontrol mname [ON|OFF]   current-controlled
-
-Transmission lines (the far-end pair NP2+ NP2- is hidden: still written,
-not drawn — the bipole symbol has one pin pair):
-    Tname N+ N- NP2+ NP2- Z0=<val> [TD=<val>] [F=<freq> [NL=<len>]]
-                                          [IC=<v1,i1,v2,i2>]
-    Oname N+ N- NP2+ NP2- mname           lossy line (LTRA model)
-    Yname N+ N- NP2+ NP2- mname [LEN=<len>]   KSPICE TXL
-    Their .model cards REQUIRE the line parameters (per-unit-length R, L,
-    G, C and the line length); ngspice has no defaults, write them all:
-    .model mname LTRA R=<value> L=<value> C=<value> LEN=<value> G=0
-    .model mname TXL R=<value> L=<value> G=<value> C=<value> LENGTH=<value>
-    LTRA: G MUST be 0 (only RLC / RC / LC lines are implemented; write
-    L=0 for an RC line, R=0 for an LC line). TXL: the length belongs in
-    the CARD, LEN= on the Y line only overrides it.
-
-Generic elements (explicit generics: pin count depends on a definition,
-drawn as a generic box; the last non-keyword token is the definition name):
-    Xname N1 ... Nn SUBNAM [param=value ...]   subcircuit instance; strict
-                                          parsing requires a .subckt SUBNAM
-    Aname ...                             XSPICE code model
-    Nname ...                             OSDI (Verilog-A) device
-    Pname ...                             coupled multiconductor line (CPL)
-    Uname ...                             uniform RC line / digital device
-
-Directives (not drawn). Strict parsing accepts ONLY:
-    .model mname TYPE(param=val ...)      REQUIRED for every model-typed
-                                          element reference
-    .param name=value ...                 names used in {expressions}
-    .subckt SUBNAM N1 ... Nn / .ends      subcircuit definition (body ignored)
-    .end
-Lenient parsing ignores every other directive (.tran .ac .dc .op .lib
-.include .backanno ...) and skips .control ... .endc blocks; strict parsing
-rejects them (see STRICT_ALLOWED_DIRECTIVES in convert.py).
+Directives: strict parsing accepts only .model, .param, .subckt / .ends and
+.end (STRICT_ALLOWED_DIRECTIVES in parser/strict.py). Lenient parsing ignores
+the others and skips .control ... .endc blocks.
 Continuation lines start with '+'; comments start with '*' or ';'.
 ===========================================================================
 """  # noqa: E501
@@ -204,7 +121,12 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                2: {"skin_label": "value", "alias": ["r", "resistance"], "is_optional": False},
+                2: {
+                    "skin_label": "value",
+                    "alias": ["r", "resistance"],
+                    "is_optional": False,
+                    "is_positional": "positional_or_keyword",
+                },
             },
             "port_directions": {"+": "input", "-": "input"},
         },
@@ -221,12 +143,11 @@ TO_SKIN_CONFIG = {
                     "alias": ["r", "resistance"],
                     "is_optional": True,
                     "default_value": "1e-3",
+                    "is_positional": "positional_or_keyword",
                 },
             },
             "model_type": ["R", "RES"],
             "port_directions": {"+": "input", "-": "input"},
-            # Specify "parse_only" to parse for the netlist statement, but doesn't output it into yosys json
-            # "parse_only": True
         },
     ],
     # Capacitor — Cname N+ N- <value> <ic=v>, or Cname N+ N- mname [<value>]  (ngspice §3.3.6)
@@ -240,8 +161,9 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": "value",
-                    "alias": ["C"],
+                    "alias": ["c", "cap", "capacitance"],
                     "is_optional": False,
+                    "is_positional": "positional_or_keyword",
                 },
             },
             "port_directions": {"+": "input", "-": "output"},
@@ -257,8 +179,9 @@ TO_SKIN_CONFIG = {
                 2: {
                     "skin_label": "value",
                     # CAP is model capacitance
-                    "alias": ["CAP", "C"],
+                    "alias": ["c", "cap", "capacitance"],
                     "default_value": "0",
+                    "is_positional": "positional_or_keyword",
                 },
             },
             # ngspice (32 to 47) only reads a model name written BEFORE the
@@ -279,14 +202,15 @@ TO_SKIN_CONFIG = {
                 "Q": {
                     "skin_label": "value",
                     "alias": ["Q"],
+                    "display_alias": "charge",
                     "is_positional": "keyword",
                     "is_optional": False,
+                    "is_expression": True,
                 },
                 # 3rd arg may be a model name (mname) — consumed, not shown
             },
             # ngspice 32 rejects a constant charge (`Q=2n`, `Q={2n}`, `Q='2n'`:
             # "unknown parameter (q)"); 41+ needs it in {} or ''
-            "simulatable": False,
             "port_directions": {"+": "input", "-": "output"},
         },
     ],
@@ -304,6 +228,7 @@ TO_SKIN_CONFIG = {
                     "alias": ["L"],
                     # required, as in ngspice (and as for C)
                     "is_optional": False,
+                    "is_positional": "positional",
                 },
             },
             "port_directions": {"+": "input", "-": "input"},
@@ -317,12 +242,30 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": "value",
-                    "alias": ["L"],
+                    "alias": ["inductance"],
+                    # required, as in ngspice (and as for C)
+                    "is_optional": False,
+                    # the inductance= spelling, valid anywhere among the keywords
+                    # (`L1 a b m=1 inductance=1m`); a bare value is the spec above's
+                    "is_positional": "keyword",
+                },
+            },
+            "port_directions": {"+": "input", "-": "input"},
+        },
+        {
+            "skin_alias": ["l_h", "l_v"],
+            "arg_to_ports": {
+                0: {"alias": "+"},
+                1: {"alias": "-"},
+            },
+            "args_to_values": {
+                2: {
+                    "skin_label": "value",
+                    # doesn't accept "L" with a model
+                    "alias": ["inductance"],
                     "is_optional": True,
                     "default_value": "0",
-                    # ngspice (32, 47) rejects `L1 a b LM L=1m` ("unknown
-                    # parameter (l)"): with a model only the bare value works
-                    "is_positional": "positional_only",
+                    "is_positional": "positional_or_keyword",
                 },
             },
             # as for C: `L1 a b LM 1m`, never `L1 a b 1m LM`
@@ -336,16 +279,16 @@ TO_SKIN_CONFIG = {
     #   V3 IN 0 SINE(0 1m 100)
     #   V4 a b PULSE(0 5 100u 10n 10n 500u 1)
     #   V1 a b PWL(0,0 1m 5)
-    # Mode specifiers (DC/AC) are declaratively expanded before matching, and
-    # ALSO split the source into two specs (mirroring the lcapy dialect's
-    # dc/ac kind split):
+    # Mode specifiers (DC/AC) are read out of the line before matching
+    # (_read_specifiers), and ALSO split the source into two specs:
     #   DC source (skin v):  value and/or DC specifier; AC is FOREIGN here —
     #                        any AC on the line rejects this candidate.
     #   AC source (skin sv): AC specifier REQUIRED; value-only lines reject.
     #   V1 a b DC 5 AC 1m    -> AC source: value=5, ac=1m
     #   V1 a b AC 1 90       -> AC source: ac=1, phase=90 (bare AC -> ac=1)
     "V": [
-        # DC voltage source (skin v): plain value and/or the DC specifier.
+        # DC voltage source (skin v): plain value0
+        # . and/or the DC specifier.
         # The AC specifier is NOT declared here, so an AC token is foreign
         # to this spec — foreign detection routes the line to the AC spec.
         {
@@ -357,7 +300,19 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": "value",
-                    "alias": ["Value", "v", "dc", "DC"],
+                    "alias": ["dc"],
+                    "display_alias": "value",
+                    "is_positional": "positional_or_keyword",
+                },
+                # transient function (SIN(...), PULSE(...), ...): a value of
+                # its own next to the DC value (V1 a 0 DC 2 SIN(1 0.5 1k)),
+                # read by _read_specifiers; written alone it is the value above
+                "tran": {
+                    "skin_label": None,
+                    "display_alias": "tran",
+                    "alias": [],
+                    "is_positional": "keyword",
+                    "functions": ["sin", "sine", "pulse", "pwl", "exp", "sffm", "am"],
                 },
             },
             "specifiers": {
@@ -366,8 +321,11 @@ TO_SKIN_CONFIG = {
             },
             "port_directions": {"+": "output", "-": "input"},
         },
-        # AC voltage source: AC specifier is required, so value-only lines
-        # reject this spec and match the DC spec instead.
+        # AC voltage source: chosen by an AC magnitude, written as the AC
+        # specifier (AC 1) or as ac= / acmag=. The specifier is optional so
+        # that `V1 a 0 ac=1` can match; a value-only line matches both specs
+        # and the DC spec wins the tie (it comes first), while an ac= keyword
+        # is undeclared on the DC spec, which costs it a warning.
         {
             "skin_alias": ["sv"],
             "arg_to_ports": {
@@ -377,16 +335,30 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": "value",
-                    "alias": ["Value", "v", "dc", "DC"],
+                    "alias": ["dc"],
+                    "display_alias": "value",
+                    "is_positional": "positional_or_keyword",
+                },
+                # transient function (SIN(...), PULSE(...), ...): a value of
+                # its own next to the DC value (V1 a 0 DC 2 SIN(1 0.5 1k)),
+                # read by _read_specifiers; written alone it is the value above
+                "tran": {
+                    "skin_label": None,
+                    "display_alias": "tran",
+                    "alias": [],
+                    "is_positional": "keyword",
+                    "functions": ["sin", "sine", "pulse", "pwl", "exp", "sffm", "am"],
                 },
                 "AC": {
                     "skin_label": None,
-                    "alias": ["AC", "ac", "mag"],
+                    "alias": ["ac", "acmag"],
+                    "display_alias": "mag",
                     "is_positional": "keyword",
                 },
                 "phase": {
                     "skin_label": None,
-                    "alias": ["phase", "Phase"],
+                    "alias": ["acphase"],
+                    "display_alias": "phase",
                     "is_positional": "keyword",
                 },
             },
@@ -395,7 +367,7 @@ TO_SKIN_CONFIG = {
                 "DC": {"refs": [2], "is_optional": True},
                 # AC [ACMAG [ACPHASE]] — bare AC == AC 1 (default injected at
                 # expansion time when the specifier opens with no operands)
-                "AC": {"refs": ["AC", "phase"], "is_optional": False, "default": "1"},
+                "AC": {"refs": ["AC", "phase"], "is_optional": True, "default": "1"},
             },
             "port_directions": {"+": "output", "-": "input"},
         },
@@ -412,7 +384,19 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": "value",
-                    "alias": ["Value", "i", "dc"],
+                    "alias": ["c", "dc"],
+                    "display_alias": "value",
+                    "is_positional": "positional_or_keyword",
+                },
+                # transient function (SIN(...), PULSE(...), ...): a value of
+                # its own next to the DC value (V1 a 0 DC 2 SIN(1 0.5 1k)),
+                # read by _read_specifiers; written alone it is the value above
+                "tran": {
+                    "skin_label": None,
+                    "display_alias": "tran",
+                    "alias": [],
+                    "is_positional": "keyword",
+                    "functions": ["sin", "sine", "pulse", "pwl", "exp", "sffm", "am"],
                 },
             },
             "specifiers": {
@@ -420,7 +404,7 @@ TO_SKIN_CONFIG = {
             },
             "port_directions": {"+": "output", "-": "input"},
         },
-        # AC current source (skin si): AC specifier required.
+        # AC current source (skin si): chosen like the AC voltage source.
         {
             "skin_alias": ["si"],
             "arg_to_ports": {
@@ -430,22 +414,36 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": "value",
-                    "alias": ["Value", "i", "dc"],
+                    "alias": ["c", "dc"],
+                    "display_alias": "value",
+                    "is_positional": "positional_or_keyword",
+                },
+                # transient function (SIN(...), PULSE(...), ...): a value of
+                # its own next to the DC value (V1 a 0 DC 2 SIN(1 0.5 1k)),
+                # read by _read_specifiers; written alone it is the value above
+                "tran": {
+                    "skin_label": None,
+                    "display_alias": "tran",
+                    "alias": [],
+                    "is_positional": "keyword",
+                    "functions": ["sin", "sine", "pulse", "pwl", "exp", "sffm", "am"],
                 },
                 "AC": {
                     "skin_label": None,
-                    "alias": ["AC", "ac", "mag"],
+                    "alias": ["AC", "acmag"],
+                    "display_alias": "mag",
                     "is_positional": "keyword",
                 },
                 "phase": {
                     "skin_label": None,
-                    "alias": ["phase", "Phase"],
+                    "alias": ["acphase"],
+                    "display_alias": "phase",
                     "is_positional": "keyword",
                 },
             },
             "specifiers": {
                 "DC": {"refs": [2], "is_optional": True},
-                "AC": {"refs": ["AC", "phase"], "is_optional": False, "default": "1"},
+                "AC": {"refs": ["AC", "phase"], "is_optional": True, "default": "1"},
             },
             "port_directions": {"+": "output", "-": "input"},
         },
@@ -479,8 +477,8 @@ TO_SKIN_CONFIG = {
     # BJT — Qname C B E [substrate] mname  (ngspice §7.3.1)
     # the skin has 3 pins (c/b/e); the optional substrate node (4th token when
     # present) has no skin pin and is DROPPED. The model name is the LAST
-    # token: its .model TYPE (NPN/PNP/LPNP) selects the spec — kind matching
-    # via the model table, exactly like a lcapy kind keyword.
+    # token: its .model TYPE (NPN/PNP) selects the spec through the model
+    # table.
     "Q": [
         {
             "skin_alias": ["q_npn"],
@@ -527,54 +525,6 @@ TO_SKIN_CONFIG = {
             },
             "args_to_values": {},
             "model_type": ["NPN"],
-            "kind": ["off"],
-            "port_directions": {"b": "input", "c": "input", "e": "output"},
-        },
-        {
-            "skin_alias": ["q_npn"],  # LPNP (lateral PNP) draws NPN-style here
-            "arg_to_ports": {
-                0: {"alias": "c"},
-                1: {"alias": "b"},
-                2: {"alias": "e"},
-            },
-            "args_to_values": {},
-            "model_type": ["LPNP"],
-            "port_directions": {"b": "input", "c": "input", "e": "output"},
-        },
-        {
-            "skin_alias": ["q_npn"],
-            "arg_to_ports": {
-                0: {"alias": "c"},
-                1: {"alias": "b"},
-                2: {"alias": "e"},
-                3: {"alias": "ns", "drop": True},  # substrate: no skin pin
-            },
-            "args_to_values": {},
-            "model_type": ["LPNP"],
-            "port_directions": {"b": "input", "c": "input", "e": "output"},
-        },
-        {
-            "skin_alias": ["q_pnp"],
-            "arg_to_ports": {
-                0: {"alias": "c"},
-                1: {"alias": "b"},
-                2: {"alias": "e"},
-            },
-            "args_to_values": {},
-            "model_type": ["LPNP"],
-            "kind": ["off"],
-            "port_directions": {"b": "input", "c": "input", "e": "output"},
-        },
-        {
-            "skin_alias": ["q_pnp"],
-            "arg_to_ports": {
-                0: {"alias": "c"},
-                1: {"alias": "b"},
-                2: {"alias": "e"},
-                3: {"alias": "ns", "drop": True},  # substrate: no skin pin
-            },
-            "args_to_values": {},
-            "model_type": ["LPNP"],
             "kind": ["off"],
             "port_directions": {"b": "input", "c": "input", "e": "output"},
         },
@@ -733,7 +683,7 @@ TO_SKIN_CONFIG = {
         },
     ],
     # VCVS — Ename N+ N- NC+ NC- value  (ngspice §4.2.2 linear; §5.2 non-linear)
-    # skin is 2-pin: control nodes are DROPPED (same as lcapy dialect E spec).
+    # skin is 2-pin: control nodes are DROPPED (hidden).
     # Linear form puts the gain at index 4. Non-linear forms (ngspice §5.2)
     # have NO control nodes — the gain is a keyword arg, so a 2nd spec
     # consumes it at index 2.
@@ -746,7 +696,7 @@ TO_SKIN_CONFIG = {
                 2: {"alias": "c+", "drop": True},
                 3: {"alias": "c-", "drop": True},
             },
-            "args_to_values": {4: {"skin_label": "value", "alias": ["voltage_gain"], "is_optional": False}},
+            "args_to_values": {4: {"skin_label": "value", "alias": ["gain"], "is_optional": False}},
             "port_directions": {"+": "output", "-": "input"},
         },
         # Non-linear (2-node): the expression keyword is the only argument.
@@ -759,11 +709,15 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
+                # first argument after the nodes, always written vol=...:
+                # ngspice rejects `E1 a b m=1 vol={...}` and a bare `{...}`
                 2: {
                     "skin_label": "value",
                     "alias": ["vol"],
-                    "is_positional": "keyword",
+                    "display_alias": "expr",
+                    "is_positional": "positional_with_key",
                     "is_optional": False,
+                    "is_expression": True,
                 }
             },
             "port_directions": {"+": "output", "-": "input"},
@@ -784,7 +738,7 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 4: {
                     "skin_label": "value",
-                    "alias": ["transconductance"],
+                    "alias": ["gain"],
                     "is_optional": False,
                 }
             },
@@ -799,19 +753,22 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                "cur": {
+                # first argument after the nodes, always written cur=...
+                # (as E's vol=)
+                2: {
                     "skin_label": "value",
                     "alias": ["cur"],
-                    "is_positional": "keyword",
+                    "display_alias": "expr",
+                    "is_positional": "positional_with_key",
                     "is_optional": False,
+                    "is_expression": True,
                 }
             },
             "port_directions": {"+": "output", "-": "input"},
         },
     ],
     # CCCS — Fname N+ N- Vname value  (ngspice §4.2.3)
-    # Vname is a controlling VOLTAGE SOURCE reference (not a node); the lcapy
-    # dialect shows it via the 'vcontrol' skin label.
+    # Vname is a controlling VOLTAGE SOURCE reference (not a node, not drawn).
     "F": [
         {
             "skin_alias": ["ccs"],
@@ -821,15 +778,17 @@ TO_SKIN_CONFIG = {
             },
             "args_to_values": {
                 2: {
+                    # no alias
                     "skin_label": None,
-                    "alias": ["Vcontrol", "VNAM"],
                     # strict parsing: must name a V element of the netlist
                     "is_reference": "V",
                     "is_optional": False,
+                    "is_positional": "positional_only",
+                    "display_alias": "Vcontrol",
                 },
                 3: {
                     "skin_label": "value",
-                    "alias": ["current_gain"],
+                    "alias": ["gain"],
                     "is_optional": False,
                 },
             },
@@ -847,13 +806,16 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": "vcontrol",
-                    "alias": ["Vcontrol", "VNAM"],
                     # strict parsing: must name a V element of the netlist
                     "is_reference": "V",
+                    "is_optional": False,
+                    "is_positional": "positional_only",
+                    "display_alias": "Vcontrol",
                 },
                 3: {
                     "skin_label": "value",
-                    "alias": ["transresistance"],
+                    "alias": ["gain"],
+                    "is_optional": False,
                 },
             },
             "port_directions": {"+": "output", "-": "input"},
@@ -919,7 +881,7 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 "Z0": {
                     "skin_label": None,
-                    "alias": ["Z0"],
+                    "alias": ["Z0", "zo"],
                     "is_positional": "keyword",
                     "is_optional": False,
                 },
@@ -943,10 +905,11 @@ TO_SKIN_CONFIG = {
                 # controlling voltage anme
                 2: {
                     "skin_label": None,
-                    "alias": ["Vcontrol", "VNAM"],
                     # strict parsing: must name a V element of the netlist
                     "is_reference": "V",
                     "is_optional": False,
+                    "display_alias": "Vcontrol",
+                    "is_positional": "positional_only",
                 },
             },
             # the model name comes AFTER the controlling V source; ngspice
@@ -963,10 +926,11 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": None,
-                    "alias": ["Vcontrol", "VNAM"],
                     # strict parsing: must name a V element of the netlist
                     "is_reference": "V",
                     "is_optional": False,
+                    "display_alias": "Vcontrol",
+                    "is_positional": "positional_only",
                 },
             },
             # the model name comes AFTER the controlling V source; ngspice
@@ -984,10 +948,11 @@ TO_SKIN_CONFIG = {
             "args_to_values": {
                 2: {
                     "skin_label": None,
-                    "alias": ["Vcontrol", "VNAM"],
                     # strict parsing: must name a V element of the netlist
                     "is_reference": "V",
                     "is_optional": False,
+                    "display_alias": "Vcontrol",
+                    "is_positional": "positional_only",
                 },
             },
             # the model name comes AFTER the controlling V source; ngspice
@@ -1011,10 +976,13 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                "V": {
+                # first argument after the nodes, always written V=...:
+                # ngspice rejects `B1 a b tc1=0 V=2` and a bare `2`
+                2: {
                     "skin_label": "value",
                     "alias": ["V"],
-                    "is_positional": "keyword",
+                    "is_positional": "positional_with_key",
+                    "display_alias": "expr",
                     "is_optional": False,  # V= is the spec discriminator
                 },
             },
@@ -1027,10 +995,12 @@ TO_SKIN_CONFIG = {
                 1: {"alias": "-"},
             },
             "args_to_values": {
-                "I": {
+                # first argument after the nodes, always written I=... (as V=)
+                2: {
                     "skin_label": "value",
                     "alias": ["I"],
-                    "is_positional": "keyword",
+                    "is_positional": "positional_with_key",
+                    "display_alias": "expr",
                     "is_optional": False,  # I= is the spec discriminator
                 },
             },
@@ -1069,12 +1039,16 @@ TO_SKIN_CONFIG = {
                 3: {"alias": "p2-", "drop": True},
             },
             "args_to_values": {
-                4: {"skin_label": None, "alias": ["LEN", "len"]},
+                "len": {
+                    "skin_label": None,
+                    "alias": ["len"],
+                    "is_positional": "keyword",
+                },
             },
-            # the model name comes BEFORE the length (`Y1 a 0 b 0 YM LEN=2` or
-            # `... YM 2`); written after it, ngspice (32, 47) reads the
+            # the model name comes BEFORE the length (`Y1 a 0 b 0 YM LEN=2`);
+            # written after it, ngspice (32, 47) reads the
             # length as the model name ("Unable to find definition of model")
-            "model_type": {"txl": {"ref_arg": 4, "before_arg": True}},
+            "model_type": ["txl"],
             "port_directions": {"+": "input", "-": "input"},
         },
     ],
@@ -1130,9 +1104,10 @@ TO_SKIN_CONFIG = {
         },
     ],
     # Subcircuit invocation — Xname N1... SUBNAM [param=value]  (ngspice §2.6.3)
-    # NOT SUPPORTED yet (needs .subckt expansion / model-name table).
-    # Placeholder: parse into the generic skin (numeric pin slots + the
-    # subckt name as value), matching the lcapy generic fallback behavior.
+    # An explicit generic: parsed without this spec into the generic skin,
+    # with pins named after the .subckt ports (numbered when the definition
+    # is missing) and the subckt name as value. Strict parsing checks the
+    # instance against its .subckt (port count, declared params).
     "X": [
         {
             "skin_alias": "generic",
@@ -1142,36 +1117,32 @@ TO_SKIN_CONFIG = {
         }
     ],
     # XSPICE code model: needs a code-model .model card, which the grammar
-    # does not teach, so it is not offered for simulation.
+    # does not teach.
     "A": [
         {
             "skin_alias": "generic",
             "arg_to_ports": {},
             "args_to_values": {},
             "port_directions": {},
-            "simulatable": False,
         }
     ],
     # URC line / digital device: needs a .model ... URC card, which is not
-    # in MODEL_CONFIG, so it is not offered for simulation.
+    # in MODEL_CONFIG.
     "U": [
         {
             "skin_alias": "generic",
             "arg_to_ports": {},
             "args_to_values": {},
             "port_directions": {},
-            "simulatable": False,
         }
     ],
-    # Coupled multiconductor line (CPL): its model takes R/L/G/C matrices,
-    # so it is not offered for simulation.
+    # Coupled multiconductor line (CPL): its model takes R/L/G/C matrices.
     "P": [
         {
             "skin_alias": "generic",
             "arg_to_ports": {},
             "args_to_values": {},
             "port_directions": {},
-            "simulatable": False,
         }
     ],
     # OSDI (Verilog-A compiled) device — Nname N1 ... mname [param=value]
@@ -1184,7 +1155,6 @@ TO_SKIN_CONFIG = {
             "args_to_values": {},
             "port_directions": {},
             # ngspice 34 has no OSDI support: "unknown device type"
-            "simulatable": False,
         }
     ],
 }
@@ -1215,8 +1185,7 @@ def _required(*names: str) -> dict:
 #   variant        : label for error messages / the grammar listing when a
 #                    type has several configurations (the netlist never
 #                    writes it, unlike an element kind keyword).
-#   simulatable    : False when the bundled ngspice (34) cannot simulate the
-#                    configuration at all; defaults to True.
+
 MODEL_CONFIG = {
     # resistors / capacitors / inductors (semiconductor forms)
     "R": [{"args_to_values": {}}],
@@ -1227,8 +1196,6 @@ MODEL_CONFIG = {
     # BJT
     "NPN": [{"args_to_values": {}}],
     "PNP": [{"args_to_values": {}}],
-    # ngspice 34 rejects it: "model type mismatch", with or without substrate node
-    "LPNP": [{"args_to_values": {}, "simulatable": False}],
     # JFET / MOSFET / MESFET
     "NJF": [{"args_to_values": {}}],
     "PJF": [{"args_to_values": {}}],
@@ -1264,28 +1231,11 @@ MODEL_CONFIG = {
     "TXL": [{"args_to_values": _required("R", "L", "G", "C", "LENGTH")}],
 }
 
-# Generation with simulation (netlist_gen/sampling.py): every simulated
-# netlist is allowed (never required) one sample of each group below, so a
-# valid DC operating point is always reachable whatever else was drawn. A
-# group is a list of matchers; each names fields of a component sample
-# (prefix, model_type, kind, specifiers; [] = none). A group already met by
-# the drawn samples adds nothing; otherwise one matching sample is added,
-# drawn by its sampling weight.
-SIMULATION_ANCHORS = [
-    # a source that can carry a non-zero DC value (V or I, DC or DC+AC):
-    # without one every node solves to 0 V. A current source drives a
-    # resistor as well as a voltage source does.
-    {"any_of": [{"prefix": "V"}, {"prefix": "I"}]},
-    # a resistor: the only element that gives any node a DC path to ground
-    # without creating a new failure mode (an inductor is a short at DC, a
-    # diode or transistor conducts only when biased, a source fixes the node)
-    {"any_of": [{"prefix": "R", "model_type": []}]},
-]
 
 # Bare identifiers that ngspice resolves inside expressions without a .param
 # definition (strict parsing only). Matched case-insensitively. Function names
 # (sin, exp, PULSE, ...) are NOT listed: the parser does not check them, an
-# unknown function is reported by ngspice itself at simulation time.
+# unknown function is reported by ngspice itself (the ngspice smoke test).
 EXPRESSION_CONSTANTS = {
     "pi",
     "e",

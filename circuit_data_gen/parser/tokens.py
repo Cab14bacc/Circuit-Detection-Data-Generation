@@ -3,8 +3,6 @@ applied to SPICE argument lists before spec matching."""
 
 import string
 
-from . import dialect
-
 
 class Token(str):
     """A netlist token that remembers where it came from.
@@ -23,12 +21,25 @@ class Token(str):
         token = super().__new__(cls, text)
         token.raw = raw if raw is not None else text
         token.span = span
+
         return token
 
     @property
     def braced(self) -> bool:
         """True when the whole token is wrapped in curly braces, e.g. {n1}."""
         return self.raw.startswith("{") and self.raw.endswith("}")
+
+    def merge(self, other: "Token") -> "Token":
+        if not isinstance(other, Token):
+            raise TypeError(f"Cannot merge Token with {type(other).__name__}")
+
+        left, right = (self, other) if self.span[0] <= other.span[0] else (other, self)
+        if right.span[0] < left.span[1]:
+            raise ValueError(f"Token spans overlap: {left.span} and {right.span}")
+        gap = " " * (right.span[0] - left.span[1])
+        return Token(
+            str(left) + str(right), raw=left.raw + gap + right.raw, span=(left.span[0], right.span[1])
+        )
 
 
 def _strip_hints(line: str) -> str | None:
@@ -73,11 +84,11 @@ def _get_tokens(line: str) -> list[Token]:
                 if stack and stack[-1] == "{":
                     stack.pop()
                 continue
-            elif char == "(" and dialect.IS_SPICE:
+            elif char == "(":
                 # SPICE: function-call values (SINE(...), PULSE(...)) must stay
                 # one token — the whole parenthesised group is a single value.
                 stack.append("(")
-            elif char == ")" and dialect.IS_SPICE and stack and stack[-1] == "(":
+            elif char == ")" and stack and stack[-1] == "(":
                 stack.pop()
 
             current_token += char
@@ -98,7 +109,7 @@ def _token_origin(token: str) -> dict:
     }
 
 
-def _glue_paren_values(args: list[str]) -> list[str]:
+def _glue_paren_values(args: list[Token]) -> list[Token]:
     """LTspice allows a space between a function name and its argument list
     (PWL (0,0 10m,12)). _get_tokens can only paren-join without the space,
     so re-join bare-word + '(' pairs into one token here.
@@ -108,24 +119,24 @@ def _glue_paren_values(args: list[str]) -> list[str]:
     bare word. The guard against gluing onto an already ')'-closed token
     keeps consecutive groups separate: `(0,0) (1m,5)` stays two tokens.
     """
-    out: list[str] = []
+    out: list[Token] = []
     for tok in args:
         if out and tok.startswith("(") and not out[-1].endswith(")"):
-            out[-1] += tok
+            out[-1] = out[-1].merge(tok)
         else:
             out.append(tok)
     return out
 
 
-def _glue_comma_values(args: list[str]) -> list[str]:
+def _glue_comma_values(args: list[Token]) -> list[Token]:
     """SPICE writes multi-element values as comma lists that may span
     whitespace: IC=V1, I1, V2, I2. A comma is never a token boundary in this
     grammar (node names etc. never end with ','), so a token ending in ','
     continues the same value, as does a token starting with one."""
-    out: list[str] = []
+    out: list[Token] = []
     for tok in args:
         if out and (out[-1].endswith(",") or tok.startswith(",")):
-            out[-1] += tok
+            out[-1] = out[-1].merge(tok)
         else:
             out.append(tok)
     return out

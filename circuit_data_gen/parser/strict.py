@@ -3,13 +3,14 @@ ngspice input (see _strict_violations). Used by convert._parse_netlist."""
 
 import re
 
-from . import dialect
+from . import macro
 from .tokens import _get_tokens
+from .errors import NetlistError, SpecError
 
 # SPICE strict parsing: the only dot-directives a netlist may contain.
-# Analyses (.op/.tran/.ac/.dc) are added by the simulation step, and file
-# access (.lib/.include) or .control scripts (which can run shell commands)
-# are never accepted from generated netlists.
+# Analyses (.op/.tran/.ac/.dc) are not part of a generated netlist (the
+# ngspice smoke test adds its own), and file access (.lib/.include) or
+# .control scripts (which can run shell commands) are never accepted.
 STRICT_ALLOWED_DIRECTIVES = {".model", ".param", ".params", ".subckt", ".ends", ".end"}
 
 
@@ -89,7 +90,7 @@ def _is_zero(value: str | None, params: dict) -> bool:
         return True
     number = _spice_number(value)
     if number is None:
-        number = _spice_number(str(params.get(value.upper(), "")))
+        number = _spice_number(str(params.get(value.lower(), "")))
     return number == 0
 
 
@@ -105,7 +106,7 @@ def _match_model_card(model_type: str, given: dict, variants: list[dict], params
     for variant in variants:
         reasons: list[str] = []
         for name, entry in variant.get("args_to_values", {}).items():
-            value = next((given[a.lower()] for a in entry.get("alias", [name]) if a.lower() in given), None)
+            value = next((given[a] for a in entry.get("alias", [name]) if a in given), None)
             optional = entry.get("is_optional", True) or entry.get("default_value") is not None
             if value is None:
                 # required = present on the card; 0 is a valid value
@@ -120,73 +121,110 @@ def _match_model_card(model_type: str, given: dict, variants: list[dict], params
     return per_variant
 
 
-def _model_type_simulatable(model_type: str) -> bool:
-    """False when every configuration of the .model TYPE is marked
-    "simulatable": False in MODEL_CONFIG. Types not listed there (e.g. XSPICE
-    code models) are left to ngspice."""
-    variants = dialect.MODEL_CONFIG.get(model_type.upper())
-    return not variants or any(v.get("simulatable", True) for v in variants)
+def _subckt_violations(subckt_table: dict, meta: dict, model_table: dict) -> tuple[list[str], bool]:
+    """Strict parsing of the .subckt bodies, which the render never draws but
+    ngspice runs. Each body is parsed like a netlist of its own (its element
+    lines must match a spec) and checked with the strict rules, with the
+    netlist's models and .params plus the body's own and the header
+    parameters; it needs no ground of its own. Additionally every port must
+    be used inside the body, internal nodes need two connections (like
+    hanging nodes at the top level), and definitions may not nest.
 
+    Returns the violations (prefixed with the subcircuit) and whether any
+    body connects to ground, which is global in SPICE and so counts for the
+    top-level ground check.
+    """
+    from .convert import _parse_line, _preprocess_lines
 
-def _spec_simulatable(spec: dict) -> bool:
-    """False when ngspice cannot simulate a TO_SKIN_CONFIG spec: the spec is
-    marked "simulatable": False, or none of its model types simulate (the
-    Q specs of model type LPNP)."""
-    model_types = spec.get("model_type", [])
-    return spec.get("simulatable", True) and (
-        not model_types or any(_model_type_simulatable(m) for m in model_types)
-    )
-
-
-def _unsimulatable_spec_message(component_name: str, prefix: str, spec_index: int | None) -> str:
-    """The violation for an element whose spec cannot be simulated: when the
-    prefix has forms that simulate (C by charge vs C by value), name the
-    rejected form and suggest one that works; otherwise the whole prefix."""
-    from .grammar import _render_spec_grammar  # noqa: PLC0415 (grammar imports this module)
-
-    specs = dialect.TO_SKIN_CONFIG.get(prefix, [])
-    working = [spec for spec in specs if _spec_simulatable(spec)]
-    if not working or spec_index is None or spec_index >= len(specs):
-        return (
-            f"Component {component_name}: {prefix} elements cannot be simulated; "
-            f"remove it and use another component."
-        )
-    return (
-        f"Component {component_name}: the form `{_render_spec_grammar(prefix, specs[spec_index])}` cannot be "
-        f"simulated; write it as `{_render_spec_grammar(prefix, working[0])}` instead."
-    )
-
-
-def _simulation_violations(parsed_netlist: dict, model_table: dict) -> list[str]:
-    """Components ngspice cannot simulate: elements whose spec is marked
-    "simulatable": False in TO_SKIN_CONFIG (e.g. the N/P/A/U generics), and
-    elements whose .model card has a TYPE marked so in MODEL_CONFIG (LPNP)."""
     violations: list[str] = []
-    for component_name, element in parsed_netlist.items():
-        prefix = element["prefix"]
-        if not element.get("simulatable", True):
-            violations.append(_unsimulatable_spec_message(component_name, prefix, element.get("spec_index")))
-            continue
-        model_name = element.get("model_name")
-        card = model_table.get(model_name.upper()) if model_name else None
-        if card is None or _model_type_simulatable(card["model_type"]):
-            continue
-        # suggest the model types of the same element that do simulate
-        alternatives = sorted(
-            {
-                model_type.upper()
-                for spec in dialect.TO_SKIN_CONFIG.get(prefix, [])
-                if _spec_simulatable(spec)
-                for model_type in spec.get("model_type", [])
-                if _model_type_simulatable(model_type)
-            }
+    uses_ground = False
+    ground = macro.GROUND_NAMES
+    for info in meta.get("subckts", {}).values():
+        where = f".subckt {info['name']}"
+        lines, body_models, body_subckts, body_meta = _preprocess_lines(info["lines"])
+        if body_subckts:
+            violations.append(
+                f"{where}: nested .subckt definitions are not allowed; "
+                f"define every subcircuit at the top level."
+            )
+        models = {**model_table, **body_models}
+        body_meta["params"] = {**meta["params"], **info["params"], **body_meta["params"]}
+
+        parsed: dict = {}
+        for line in lines:
+            try:
+                name, element = _parse_line(line, model_table=models, subckt_table=subckt_table)
+            except (NetlistError, SpecError, ValueError) as e:
+                violations.append(f"{where}: {e}")
+                continue
+            if name in parsed:
+                violations.append(f"{where}: duplicate component name '{name}'.")
+                continue
+            parsed[name] = element
+        if not lines:
+            violations.append(
+                f"{where}: the body has no elements; add the components the subcircuit is made of."
+            )
+
+        violations += [
+            f"{where}: {v}"
+            for v in _strict_violations(parsed, subckt_table, body_meta, models, top_level=False)
+        ]
+
+        # nodes counted ignoring letter case (as ngspice), reported in the
+        # spelling first seen in the body
+        counts: dict[str, int] = {}
+        spellings: dict[str, str] = {}
+        for element in parsed.values():
+            for conn in element["connections"].values():
+                node_key = conn["node_name"].lower()
+                counts[node_key] = counts.get(node_key, 0) + 1
+                spellings.setdefault(node_key, conn["node_name"])
+        uses_ground |= bool(counts.keys() & ground)
+        ports = {port.lower() for port in info["ports"]}
+        for port in info["ports"]:
+            if parsed and port.lower() not in counts:
+                violations.append(f"{where}: port {port} is not connected to anything inside the subcircuit.")
+        floating = sorted(
+            spellings[n] for n, c in counts.items() if c == 1 and n not in ports and n not in ground
         )
-        hint = f"use model type {' or '.join(alternatives)} instead." if alternatives else "remove it."
+        if floating:
+            violations.append(
+                f"{where}: internal node(s) {', '.join(floating)} connect to only one element; "
+                f"connect each to another element or to a port."
+            )
+    return violations, uses_ground
+
+
+def _undefined_symbols(
+    where: str, expr: str, violations: list[str], params: dict, node_names: set, element_prefixes: dict
+) -> None:
+    """
+    Check a SPICE expression for undefined symbols, resolving symbols against constants
+    and .param names. Also checks v(node)/i(Vsrc) probes for dangling references.
+    """
+    identifiers, probes = _expression_symbols(expr)
+    undefined = sorted(
+        i for i in identifiers if i.lower() not in params and i.lower() not in macro.EXPRESSION_CONSTANTS
+    )
+    if undefined:
         violations.append(
-            f"Component {component_name}: model {model_name} has type {card['model_type'].upper()}, "
-            f"which cannot be simulated; {hint}"
+            f"{where}: value '{expr}' uses undefined symbol(s) {', '.join(undefined)}; "
+            f"define them with .param (e.g. .param {undefined[0]}=1k) or write a number."
         )
-    return violations
+    for probe, args in probes:
+        if probe == "v":
+            for node in args:
+                if node.lower() not in node_names:
+                    violations.append(
+                        f"{where}: v({node}) refers to node {node}, which is not in the netlist."
+                    )
+        else:
+            for source in args:
+                if element_prefixes.get(source.lower()) != "v":
+                    violations.append(
+                        f"{where}: i({source}) must name a voltage source (V element) of the netlist."
+                    )
 
 
 def _strict_violations(
@@ -194,7 +232,6 @@ def _strict_violations(
     subckt_table: dict,
     meta: dict,
     model_table: dict | None = None,
-    simulate: bool = False,
     top_level: bool = True,
     ground_elsewhere: bool = False,
 ) -> list[str]:
@@ -211,13 +248,10 @@ def _strict_violations(
     models are rejected earlier, in both modes, by _parse_line: no spec
     matches a model name without a .model card.
 
-    With `simulate` (the netlist will be run by ngspice), components that
-    ngspice cannot simulate are rejected too (_simulation_violations).
-    Strict parsing alone does not imply simulation, so this is opt-in.
-
     ngspice ignores letter case, so names that differ only in case clash:
-    two components (R1, r1) are one device to ngspice, and two node
-    spellings (Out, out) one net, while the schematic draws two.
+    two components (R1, r1) are one device to ngspice. Node names are
+    compared ignoring case throughout (Out and out are one net, as in
+    ngspice), so they need no check here.
 
     `top_level` is False for a .subckt body (convert._subckt_violations),
     which needs no ground of its own. At the top level a ground node is
@@ -225,47 +259,23 @@ def _strict_violations(
     which is global in SPICE).
     """
     violations: list[str] = []
+
+    body_violations, body_uses_ground = _subckt_violations(subckt_table, meta, model_table)
+    ground_elsewhere |= body_uses_ground
+    violations.extend(body_violations)
+
     params = meta["params"]
-    element_prefixes = {name.upper(): element["prefix"] for name, element in parsed_netlist.items()}
+    element_prefixes = {name.lower(): element["prefix"] for name, element in parsed_netlist.items()}
+    # lower case: v(node) lookups ignore letter case, as in ngspice
     node_names = {
         conn["node_name"].lower()
         for element in parsed_netlist.values()
         for conn in element["connections"].values()
-    } | {g.lower() for g in dialect.GROUND_NAMES}
-
-    def undefined_symbols(where: str, expr: str) -> None:
-        """
-        Check a SPICE expression for undefined symbols, resolving symbols against constants
-        and .param names. Also checks v(node)/i(Vsrc) probes for dangling references.
-        """
-        identifiers, probes = _expression_symbols(expr)
-        undefined = sorted(
-            i
-            for i in identifiers
-            if i.upper() not in params and i.lower() not in dialect.EXPRESSION_CONSTANTS
-        )
-        if undefined:
-            violations.append(
-                f"{where}: value '{expr}' uses undefined symbol(s) {', '.join(undefined)}; "
-                f"define them with .param (e.g. .param {undefined[0]}=1k) or write a number."
-            )
-        for probe, args in probes:
-            if probe == "v":
-                for node in args:
-                    if node.lower() not in node_names:
-                        violations.append(
-                            f"{where}: v({node}) refers to node {node}, which is not in the netlist."
-                        )
-            else:
-                for source in args:
-                    if element_prefixes.get(source.upper()) != "V":
-                        violations.append(
-                            f"{where}: i({source}) must name a voltage source (V element) of the netlist."
-                        )
+    } | macro.GROUND_NAMES
 
     # check a ground node exists: ngspice measures every voltage against it,
     # and without one it only reports a singular matrix
-    ground = {g.lower() for g in dialect.GROUND_NAMES}
+    ground = macro.GROUND_NAMES
     if top_level and not ground_elsewhere:
         uses_ground = any(
             conn["node_name"].lower() in ground
@@ -276,29 +286,6 @@ def _strict_violations(
             violations.append(
                 "The netlist has no ground node: connect at least one element to node 0 (or GND); "
                 "ngspice measures every voltage against it."
-            )
-
-    # check names that differ only in letter case (ngspice ignores case)
-    by_lower: dict[str, list[str]] = {}
-    for component_name in parsed_netlist:
-        by_lower.setdefault(component_name.lower(), []).append(component_name)
-    for names in by_lower.values():
-        if len(names) > 1:
-            violations.append(
-                f"Components {', '.join(names)} are the same device for ngspice, which ignores letter "
-                f"case; give each component a distinct name."
-            )
-    spellings: dict[str, set[str]] = {}
-    for element in parsed_netlist.values():
-        for conn in element["connections"].values():
-            node = conn["node_name"]
-            if node.lower() not in ground:
-                spellings.setdefault(node.lower(), set()).add(node)
-    for nodes in spellings.values():
-        if len(nodes) > 1:
-            violations.append(
-                f"Nodes {', '.join(sorted(nodes))} are one net for ngspice, which ignores letter case; "
-                f"write the net with one spelling, or rename one if they are meant to be different nets."
             )
 
     # check forbidden directives
@@ -312,8 +299,8 @@ def _strict_violations(
             )
     # check .model cards against their configurations (MODEL_CONFIG)
     for model_name, model in (model_table or {}).items():
-        model_type = model["model_type"].upper()
-        variants = dialect.MODEL_CONFIG.get(model_type)
+        model_type = model["model_type"]
+        variants = macro.MODEL_CONFIG.get(model_type)
         if not variants:
             continue  # type not described here (e.g. XSPICE code models): ngspice's job
         given = dict(arg.split("=", 1) for arg in (a.lower() for a in model.get("args", [])) if "=" in arg)
@@ -329,13 +316,9 @@ def _strict_violations(
                 + "\n".join(f"    {reason}" for reason in reasons)
             )
 
-    # check components ngspice cannot simulate (only when simulating)
-    if simulate:
-        violations.extend(_simulation_violations(parsed_netlist, model_table or {}))
-
     # check undefined symbols/identifiers
     for name, value in params.items():
-        undefined_symbols(f".param {name}", value)
+        _undefined_symbols(f".param {name}", value, violations, params, node_names, element_prefixes)
 
     for component_name, element in parsed_netlist.items():
         # check invalid node name format
@@ -357,7 +340,9 @@ def _strict_violations(
         # parameters (`R1 a b R=1k RM` fails with "unknown parameter (rm)")
         model_span = element.get("model_span")
         if model_span is not None:
-            before = [kw for kw, span in element.get("keyword_spans", {}).items() if span[0] < model_span[0]]
+            before = [
+                kw for kw, span in element.get("keyword_arg_spans", {}).items() if span[0] < model_span[0]
+            ]
             if before:
                 violations.append(
                     f"Component {component_name}: the model name '{element.get('model_name')}' must come "
@@ -365,25 +350,28 @@ def _strict_violations(
                     f"parameter."
                 )
 
-        # check model name order, where the spec pins it next to an argument:
-        # C, L and Y read the model name only BEFORE the value (C1 a b CM 1u),
-        # W only AFTER its controlling source (W1 a b V1 WM); ngspice cannot
-        # parse the other order
+        # check the model name's order relative to a value, where the spec
+        # pins it (model_type {TYPE: {"ref_arg", "before_arg"}}): C and L
+        # before the value, W after Vcontrol. "After all nodes" is enforced
+        # while matching the spec (_match_spec).
         model_span = element.get("model_span")
-        order = element.get("model_order")
-        if order and model_span is not None and order.get("ref_span") is not None:
-            if (model_span[0] < order["ref_span"][0]) != order["before"]:
-                side = "before" if order["before"] else "after"
-                violations.append(
-                    f"Component {component_name}: the model name '{element.get('model_name')}' must come "
-                    f"{side} '{order['ref']}'; ngspice cannot read it on the other side."
-                )
+        orders = element.get("model_order")
+        if orders and model_span is not None:
+            for order in orders:
+                if order.get("ref_span") is None:
+                    continue
+
+                if (model_span[0] < order["ref_span"][0]) != order["before"]:
+                    side = "before" if order["before"] else "after"
+                    violations.append(
+                        f"Component {component_name}: the model name '{element.get('model_name')}' must come "
+                        f"{side} '{order['ref']}'; ngspice cannot read it on the other side."
+                    )
 
         # check kind keyword order: ngspice requires off / ON / OFF AFTER the
         # model name (D1 a b Dm off), the lenient grammar accepts any order
-        # kind keywords in SPICE are keywords specified as parameters, unlike in
-        # lcapy where the kind keywords specify the component variant (e.g. "amp", "inamp").
-        # That job is delegated to the model name in SPICE.
+        # (the variant of a model-typed element comes from its card's TYPE;
+        # kind keywords only set a state: off, ON / OFF)
         model_span = element.get("model_span")
         for keyword, span in element.get("kind_spans", {}).items():
             if model_span is not None and span[0] < model_span[0]:
@@ -393,35 +381,87 @@ def _strict_violations(
                 )
 
         # check referenced component exists (e.g. referenced by control v source.)
-        for key, value in element["values"].items():
-            if element["if_generic"] and key == "value":
+        for skin_label, value in element["values"].items():
+            if element["if_generic"] and skin_label == "value":
                 continue  # a generic's trailing name token (subckt/model name), not an expression
             reference = value.get("reference")
             if reference is not None:
-                if element_prefixes.get(str(value["value"]).upper()) != reference:
+                if element_prefixes.get(str(value["value"]).lower()) != reference:
                     violations.append(
-                        f"Component {component_name}: '{value['value']}' must name a {reference} "
-                        f"element of the netlist."
+                        f"Component {component_name}: '{value.get('raw_token', value['value'])}' must name a "
+                        f"{reference.upper()} element of the netlist; elements inside a .subckt body "
+                        f"cannot be named from outside it."
                     )
                 continue
-            undefined_symbols(f"Component {component_name}", str(value["value"]))
+            _undefined_symbols(
+                f"Component {component_name}",
+                str(value["value"]),
+                violations,
+                params,
+                node_names,
+                element_prefixes,
+            )
+
+        for skin_label, value in element["values"].items():
+            if value.get("unwrapped_expression"):
+                key, has_key, val = value["raw_token"].partition("=")
+                if has_key:
+                    fix = f"write {key}={{{val}}} or {key}='{val}'"
+                    what = f"{key}="
+                else:
+                    fix = f"write {{{key}}} or '{key}'"
+                    what = f"'{key}'"
+                violations.append(
+                    f"Component {component_name}: {what} is an expression, which ngspice requires in braces "
+                    f"or quotes; {fix}."
+                )
 
         subckt = element.get("subckt")
-        if subckt is not None and subckt.upper() not in subckt_table:
+        if subckt is not None and subckt.lower() not in subckt_table:
             violations.append(
                 f"Component {component_name}: subcircuit '{subckt}' is not defined; "
                 f"add a .subckt {subckt} ... .ends block."
             )
+        elif subckt is not None and len(element["connections"]) != len(subckt_table[subckt.lower()]):
+            ports = subckt_table[subckt.lower()]
+            violations.append(
+                f"Component {component_name}: subcircuit '{subckt}' has {len(ports)} ports "
+                f"({' '.join(ports)}), but {len(element['connections'])} nodes are connected."
+            )
+
+        # check X instance parameters against the subcircuit header: ngspice
+        # silently ignores an undeclared one (the header default is used), and
+        # fails when the header declares none. Only the definitions of this
+        # netlist level are known here (meta["subckts"]), so an X inside a
+        # subcircuit body that names a top-level definition is not checked.
+        definition = meta.get("subckts", {}).get(subckt.lower()) if subckt is not None else None
+        if definition is not None:
+            declared = definition.get("params", {})
+            for skin_label, value in element["values"].items():
+                if skin_label == "value":
+                    continue  # the subckt name label, not a parameter
+                key = value["alias"][0]
+                if key.lower() in declared:
+                    continue
+                if declared:
+                    hint = f"declared parameters: {', '.join(declared)}"
+                else:
+                    hint = f"the header declares none; add `params: {key}=<default>` to .subckt {subckt}"
+                violations.append(
+                    f"Component {component_name}: subcircuit '{subckt}' has no parameter '{key}' ({hint})."
+                )
 
     # checks the coupled-inductor lines (K), they must reference inductors.
     for line in meta["coupling"]:
         tokens = _get_tokens(line)
         for inductor in tokens[1:-1]:
-            if element_prefixes.get(inductor.upper()) != "L":
+            if element_prefixes.get(inductor.lower()) != "l":
                 violations.append(
                     f"Coupling {tokens[0]}: inductor '{inductor}' is not an L element of the netlist."
                 )
         if len(tokens) > 1:
-            undefined_symbols(f"Coupling {tokens[0]}", str(tokens[-1]))
+            _undefined_symbols(
+                f"Coupling {tokens[0]}", str(tokens[-1]), violations, params, node_names, element_prefixes
+            )
 
     return violations
