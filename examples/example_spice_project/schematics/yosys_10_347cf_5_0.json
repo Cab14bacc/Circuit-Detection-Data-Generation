@@ -1,0 +1,438 @@
+{
+  "modules": {
+    "circuit": {
+      "cells": {
+        "gnd": {
+          "type": "gnd",
+          "port_directions": {
+            "A": "input"
+          },
+          "connections": {
+            "A": [
+              3
+            ]
+          },
+          "attributes": {
+            "name": "GND"
+          }
+        },
+        "V1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              13
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "V1",
+            "value": "5"
+          }
+        },
+        "V2": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              11
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "V2",
+            "value": "0"
+          }
+        },
+        "V3": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              12
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "V3",
+            "value": "0"
+          }
+        },
+        "V4": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "V4",
+            "value": "0"
+          }
+        },
+        "V5": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "V5",
+            "value": "2"
+          }
+        },
+        "L1": {
+          "type": "l_h",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              13
+            ],
+            "-": [
+              11
+            ]
+          },
+          "attributes": {
+            "ref": "L1",
+            "value": "1m"
+          }
+        },
+        "F1": {
+          "type": "ccs",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              10
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "F1",
+            "unknown_Vcontrol": "V2",
+            "value": "5"
+          }
+        },
+        "E1": {
+          "type": "cvs",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              10
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "E1",
+            "value": "2"
+          }
+        },
+        "G1": {
+          "type": "ccs",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              10
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "G1",
+            "value": "1m"
+          }
+        },
+        "B1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              7
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "B1",
+            "value": "2*v(gate)"
+          }
+        },
+        "D1": {
+          "type": "d_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              7
+            ],
+            "-": [
+              10
+            ]
+          },
+          "attributes": {
+            "ref": "D1",
+            "unknown_is": "1e-14",
+            "unknown_N": "1"
+          }
+        },
+        "T1": {
+          "type": "tline",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              6
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "T1",
+            "unknown_z0": "50"
+          }
+        },
+        "H1": {
+          "type": "cvs",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              6
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "H1",
+            "vcontrol": "V4",
+            "value": "10"
+          }
+        },
+        "S1": {
+          "type": "sw_nc",
+          "port_directions": {
+            "p": "input",
+            "n": "input"
+          },
+          "connections": {
+            "p": [
+              7
+            ],
+            "n": [
+              8
+            ]
+          },
+          "attributes": {
+            "ref": "S1",
+            "unknown_vt": "2.5",
+            "unknown_VH": "0.1",
+            "unknown_RON": "1",
+            "unknown_ROFF": "1Meg"
+          }
+        },
+        "W1": {
+          "type": "csw",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              8
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "W1",
+            "unknown_Vcontrol": "V3",
+            "unknown_it": "1m",
+            "unknown_IH": "0.1m",
+            "unknown_RON": "1",
+            "unknown_ROFF": "1Meg"
+          }
+        },
+        "Z1": {
+          "type": "jfet_n",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              13
+            ],
+            "g": [
+              2
+            ],
+            "s": [
+              12
+            ]
+          },
+          "attributes": {
+            "ref": "Z1",
+            "unknown_vto": "-2",
+            "unknown_BETA": "1m"
+          }
+        },
+        "Z2": {
+          "type": "jfet_n",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              9
+            ],
+            "g": [
+              10
+            ],
+            "s": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "Z2",
+            "unknown_vto": "-2",
+            "unknown_BETA": "1m"
+          }
+        },
+        "M1": {
+          "type": "mos_n",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              9
+            ],
+            "g": [
+              2
+            ],
+            "s": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "M1",
+            "unknown_level": "1",
+            "unknown_VTO": "0.7",
+            "unknown_KP": "100u"
+          }
+        },
+        "M2": {
+          "type": "mos_p",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              4
+            ],
+            "g": [
+              2
+            ],
+            "s": [
+              13
+            ]
+          },
+          "attributes": {
+            "ref": "M2",
+            "unknown_level": "1",
+            "unknown_VTO": "-0.7",
+            "unknown_KP": "50u"
+          }
+        },
+        "Q1": {
+          "type": "q_pnp",
+          "port_directions": {
+            "c": "input",
+            "b": "input",
+            "e": "output"
+          },
+          "connections": {
+            "c": [
+              4
+            ],
+            "b": [
+              5
+            ],
+            "e": [
+              13
+            ]
+          },
+          "attributes": {
+            "ref": "Q1",
+            "unknown_bf": "100"
+          }
+        }
+      }
+    }
+  }
+}

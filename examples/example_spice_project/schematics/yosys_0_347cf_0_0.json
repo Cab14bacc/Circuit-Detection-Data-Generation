@@ -1,0 +1,214 @@
+{
+  "modules": {
+    "circuit": {
+      "cells": {
+        "gnd": {
+          "type": "gnd",
+          "port_directions": {
+            "A": "input"
+          },
+          "connections": {
+            "A": [
+              2
+            ]
+          },
+          "attributes": {
+            "name": "GND"
+          }
+        },
+        "I1": {
+          "type": "si",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              9
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "I1",
+            "value": "1m",
+            "unknown_ac": "1m"
+          }
+        },
+        "T1": {
+          "type": "tline",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              9
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "T1",
+            "unknown_Z0": "50"
+          }
+        },
+        "M1": {
+          "type": "mos_n",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              3
+            ],
+            "g": [
+              6
+            ],
+            "s": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "M1",
+            "unknown_level": "1",
+            "unknown_VTO": "0.7",
+            "unknown_KP": "100u"
+          }
+        },
+        "B1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              5
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "B1",
+            "value": "2*v(vdd)"
+          }
+        },
+        "Z1": {
+          "type": "jfet_n",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              5
+            ],
+            "g": [
+              7
+            ],
+            "s": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "Z1",
+            "unknown_vto": "-2",
+            "unknown_BETA": "1m"
+          }
+        },
+        "S1": {
+          "type": "sw_no",
+          "port_directions": {
+            "p": "input",
+            "n": "input"
+          },
+          "connections": {
+            "p": [
+              4
+            ],
+            "n": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "S1",
+            "unknown_vt": "2.5",
+            "unknown_VH": "0.1",
+            "unknown_RON": "1",
+            "unknown_ROFF": "1Meg"
+          }
+        },
+        "X1": {
+          "type": "generic",
+          "port_directions": {
+            "a": "input",
+            "b": "output"
+          },
+          "connections": {
+            "a": [
+              6
+            ],
+            "b": [
+              7
+            ]
+          },
+          "attributes": {
+            "ref": "X1",
+            "value": "SUBCKT"
+          }
+        },
+        "M2": {
+          "type": "mos_n",
+          "port_directions": {
+            "d": "output",
+            "g": "input",
+            "s": "output"
+          },
+          "connections": {
+            "d": [
+              4
+            ],
+            "g": [
+              8
+            ],
+            "s": [
+              4
+            ]
+          },
+          "attributes": {
+            "ref": "M2",
+            "unknown_level": "1",
+            "unknown_VTO": "0.7",
+            "unknown_KP": "100u"
+          }
+        },
+        "B2": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              8
+            ],
+            "-": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "B2",
+            "value": "5*v(n3)"
+          }
+        }
+      }
+    }
+  }
+}

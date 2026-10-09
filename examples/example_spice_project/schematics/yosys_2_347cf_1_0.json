@@ -1,0 +1,189 @@
+{
+  "modules": {
+    "circuit": {
+      "cells": {
+        "gnd": {
+          "type": "gnd",
+          "port_directions": {
+            "A": "input"
+          },
+          "connections": {
+            "A": [
+              5
+            ]
+          },
+          "attributes": {
+            "name": "GND"
+          }
+        },
+        "T1": {
+          "type": "tline",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              3
+            ]
+          },
+          "attributes": {
+            "ref": "T1",
+            "unknown_Z0": "50"
+          }
+        },
+        "T2": {
+          "type": "tline",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              3
+            ],
+            "-": [
+              4
+            ]
+          },
+          "attributes": {
+            "ref": "T2",
+            "unknown_Z0": "75"
+          }
+        },
+        "X1": {
+          "type": "generic",
+          "port_directions": {
+            "a": "input",
+            "b": "input",
+            "gnd_s": "output"
+          },
+          "connections": {
+            "a": [
+              2
+            ],
+            "b": [
+              3
+            ],
+            "gnd_s": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "X1",
+            "unknown_rtop": "1k",
+            "value": "DIV"
+          }
+        },
+        "Q1": {
+          "type": "q_pnp",
+          "port_directions": {
+            "c": "input",
+            "b": "input",
+            "e": "output"
+          },
+          "connections": {
+            "c": [
+              4
+            ],
+            "b": [
+              5
+            ],
+            "e": [
+              2
+            ]
+          },
+          "attributes": {
+            "ref": "Q1",
+            "unknown_bf": "100"
+          }
+        },
+        "B1": {
+          "type": "v",
+          "port_directions": {
+            "+": "output",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "B1",
+            "value": "v(e)"
+          }
+        },
+        "O1": {
+          "type": "tline",
+          "port_directions": {
+            "+": "input",
+            "-": "input"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              4
+            ]
+          },
+          "attributes": {
+            "ref": "O1",
+            "unknown_r": "0.1",
+            "unknown_L": "250n",
+            "unknown_C": "100p",
+            "unknown_LEN": "1",
+            "unknown_G": "0"
+          }
+        },
+        "D1": {
+          "type": "d_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              2
+            ],
+            "-": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "D1",
+            "unknown_is": "1e-14",
+            "unknown_N": "1"
+          }
+        },
+        "D2": {
+          "type": "d_h",
+          "port_directions": {
+            "+": "input",
+            "-": "output"
+          },
+          "connections": {
+            "+": [
+              4
+            ],
+            "-": [
+              5
+            ]
+          },
+          "attributes": {
+            "ref": "D2",
+            "unknown_is": "1e-14",
+            "unknown_N": "1"
+          }
+        }
+      }
+    }
+  }
+}
